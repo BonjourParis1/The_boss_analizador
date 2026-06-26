@@ -1,0 +1,84 @@
+"""
+analysis/indicators.py — Indicadores técnicos.
+
+Implementación propia en pandas/numpy (sin dependencias frágiles de versión).
+Si tienes la librería `ta` instalada, los resultados son equivalentes.
+
+Indicadores: RSI, MACD, medias móviles (SMA/EMA), Bandas de Bollinger, ATR.
+La función `compute_all` agrega todas las columnas al DataFrame OHLCV.
+"""
+from __future__ import annotations
+
+import numpy as np
+import pandas as pd
+
+
+def rsi(close: pd.Series, period: int = 14) -> pd.Series:
+    """Índice de Fuerza Relativa (Wilder)."""
+    delta = close.diff()
+    gain = delta.clip(lower=0.0)
+    loss = -delta.clip(upper=0.0)
+    avg_gain = gain.ewm(alpha=1 / period, min_periods=period, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=1 / period, min_periods=period, adjust=False).mean()
+    rs = avg_gain / avg_loss.replace(0, np.nan)
+    return (100 - (100 / (1 + rs))).fillna(50.0)
+
+
+def macd(close: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9):
+    """MACD, línea de señal e histograma."""
+    ema_fast = close.ewm(span=fast, adjust=False).mean()
+    ema_slow = close.ewm(span=slow, adjust=False).mean()
+    macd_line = ema_fast - ema_slow
+    signal_line = macd_line.ewm(span=signal, adjust=False).mean()
+    hist = macd_line - signal_line
+    return macd_line, signal_line, hist
+
+
+def sma(close: pd.Series, period: int) -> pd.Series:
+    return close.rolling(window=period, min_periods=1).mean()
+
+
+def ema(close: pd.Series, period: int) -> pd.Series:
+    return close.ewm(span=period, adjust=False).mean()
+
+
+def bollinger(close: pd.Series, period: int = 20, num_std: float = 2.0):
+    """Bandas de Bollinger: media, banda superior e inferior."""
+    mid = sma(close, period)
+    std = close.rolling(window=period, min_periods=1).std(ddof=0)
+    upper = mid + num_std * std
+    lower = mid - num_std * std
+    return mid, upper, lower
+
+
+def atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
+    """Average True Range — mide volatilidad para stop loss / take profit."""
+    high, low, close = df["high"], df["low"], df["close"]
+    prev_close = close.shift(1)
+    tr = pd.concat([
+        (high - low),
+        (high - prev_close).abs(),
+        (low - prev_close).abs(),
+    ], axis=1).max(axis=1)
+    return tr.ewm(alpha=1 / period, min_periods=period, adjust=False).mean()
+
+
+def compute_all(df: pd.DataFrame) -> pd.DataFrame:
+    """Agrega todas las columnas de indicadores a una copia del DataFrame."""
+    out = df.copy()
+    close = out["close"]
+
+    out["rsi"] = rsi(close)
+    macd_line, signal_line, hist = macd(close)
+    out["macd"] = macd_line
+    out["macd_signal"] = signal_line
+    out["macd_hist"] = hist
+    out["sma_fast"] = sma(close, 9)
+    out["sma_slow"] = sma(close, 21)
+    out["ema_50"] = ema(close, 50)
+    bb_mid, bb_up, bb_low = bollinger(close)
+    out["bb_mid"] = bb_mid
+    out["bb_upper"] = bb_up
+    out["bb_lower"] = bb_low
+    out["atr"] = atr(out)
+    return out

@@ -1,0 +1,32 @@
+# ===== Secretos: NUNCA subir al repositorio =====
+.env
+.secrets/
+*.key
+*.pem
+
+# ===== Base de datos local =====
+*.db
+*.sqlite
+*.sqlite3
+
+# ===== Modelos ML entrenados =====
+ml/*.joblib
+ml/*.pkl
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# ===== Streamlit =====
+.streamlit/secrets.toml
+
+# ===== Sistema operativo / editores =====
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

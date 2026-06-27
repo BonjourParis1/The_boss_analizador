@@ -82,30 +82,51 @@ settings = Settings()
 class Symbol:
     key: str
     label: str
-    type: str
+    type: str            # cripto | forex | stock  (define el conector)
     provider_id: str
     news_query: str = ""
+    group: str = ""      # categoría para la UI: Cripto | Forex | Acciones | Índices | Materias
 
 
 SYMBOLS: list[Symbol] = [
     # --- Criptomonedas (Binance, sin API key) ---
-    Symbol("BTCUSDT", "Bitcoin", "cripto", "BTCUSDT", "Bitcoin OR BTC crypto"),
-    Symbol("ETHUSDT", "Ethereum", "cripto", "ETHUSDT", "Ethereum OR ETH crypto"),
-    Symbol("BNBUSDT", "BNB", "cripto", "BNBUSDT", "Binance OR BNB"),
-    Symbol("SOLUSDT", "Solana", "cripto", "SOLUSDT", "Solana OR SOL crypto"),
-    Symbol("XRPUSDT", "XRP", "cripto", "XRPUSDT", "XRP OR Ripple"),
-    # --- Forex (Alpha Vantage intradía) ---
-    Symbol("EURUSD", "EUR/USD", "forex", "EUR/USD", "euro dollar forex ECB Fed"),
-    Symbol("GBPUSD", "GBP/USD", "forex", "GBP/USD", "pound dollar forex"),
-    Symbol("USDJPY", "USD/JPY", "forex", "USD/JPY", "yen dollar forex BOJ"),
-    Symbol("AUDUSD", "AUD/USD", "forex", "AUD/USD", "australian dollar forex"),
-    # --- Acciones / índices / commodities (Yahoo Finance) ---
-    Symbol("AAPL", "Apple", "stock", "AAPL", "Apple stock AAPL"),
-    Symbol("MSFT", "Microsoft", "stock", "MSFT", "Microsoft stock MSFT"),
-    Symbol("TSLA", "Tesla", "stock", "TSLA", "Tesla stock TSLA"),
-    Symbol("NVDA", "NVIDIA", "stock", "NVDA", "Nvidia stock NVDA"),
-    Symbol("SPY", "S&P 500", "stock", "SPY", "S&P 500 stock market"),
-    Symbol("GC=F", "Oro (Gold)", "stock", "GC=F", "gold price commodity"),
+    Symbol("BTCUSDT", "Bitcoin", "cripto", "BTCUSDT", "Bitcoin OR BTC crypto", "Cripto"),
+    Symbol("ETHUSDT", "Ethereum", "cripto", "ETHUSDT", "Ethereum OR ETH crypto", "Cripto"),
+    Symbol("BNBUSDT", "BNB", "cripto", "BNBUSDT", "Binance OR BNB", "Cripto"),
+    Symbol("SOLUSDT", "Solana", "cripto", "SOLUSDT", "Solana OR SOL crypto", "Cripto"),
+    Symbol("XRPUSDT", "XRP", "cripto", "XRPUSDT", "XRP OR Ripple", "Cripto"),
+    Symbol("ADAUSDT", "Cardano", "cripto", "ADAUSDT", "Cardano OR ADA crypto", "Cripto"),
+    Symbol("DOGEUSDT", "Dogecoin", "cripto", "DOGEUSDT", "Dogecoin OR DOGE", "Cripto"),
+    Symbol("AVAXUSDT", "Avalanche", "cripto", "AVAXUSDT", "Avalanche OR AVAX crypto", "Cripto"),
+    Symbol("LINKUSDT", "Chainlink", "cripto", "LINKUSDT", "Chainlink OR LINK crypto", "Cripto"),
+    Symbol("MATICUSDT", "Polygon", "cripto", "MATICUSDT", "Polygon OR MATIC crypto", "Cripto"),
+    # --- Forex (Alpha Vantage intradía / Yahoo) ---
+    Symbol("EURUSD", "EUR/USD", "forex", "EUR/USD", "euro dollar forex ECB Fed", "Forex"),
+    Symbol("GBPUSD", "GBP/USD", "forex", "GBP/USD", "pound dollar forex", "Forex"),
+    Symbol("USDJPY", "USD/JPY", "forex", "USD/JPY", "yen dollar forex BOJ", "Forex"),
+    Symbol("AUDUSD", "AUD/USD", "forex", "AUD/USD", "australian dollar forex", "Forex"),
+    Symbol("USDCAD", "USD/CAD", "forex", "USD/CAD", "canadian dollar forex", "Forex"),
+    Symbol("USDCHF", "USD/CHF", "forex", "USD/CHF", "swiss franc forex", "Forex"),
+    Symbol("NZDUSD", "NZD/USD", "forex", "NZD/USD", "new zealand dollar forex", "Forex"),
+    Symbol("EURJPY", "EUR/JPY", "forex", "EUR/JPY", "euro yen forex", "Forex"),
+    # --- Acciones (Yahoo Finance) ---
+    Symbol("AAPL", "Apple", "stock", "AAPL", "Apple stock AAPL", "Acciones"),
+    Symbol("MSFT", "Microsoft", "stock", "MSFT", "Microsoft stock MSFT", "Acciones"),
+    Symbol("TSLA", "Tesla", "stock", "TSLA", "Tesla stock TSLA", "Acciones"),
+    Symbol("NVDA", "NVIDIA", "stock", "NVDA", "Nvidia stock NVDA", "Acciones"),
+    Symbol("GOOGL", "Alphabet", "stock", "GOOGL", "Google Alphabet stock", "Acciones"),
+    Symbol("AMZN", "Amazon", "stock", "AMZN", "Amazon stock AMZN", "Acciones"),
+    Symbol("META", "Meta", "stock", "META", "Meta Facebook stock", "Acciones"),
+    Symbol("AMD", "AMD", "stock", "AMD", "AMD stock", "Acciones"),
+    # --- Índices (Yahoo Finance) ---
+    Symbol("SPY", "S&P 500 (SPY)", "stock", "SPY", "S&P 500 stock market", "Índices"),
+    Symbol("QQQ", "Nasdaq 100 (QQQ)", "stock", "QQQ", "Nasdaq 100 index", "Índices"),
+    Symbol("DIA", "Dow Jones (DIA)", "stock", "DIA", "Dow Jones index", "Índices"),
+    # --- Materias primas (Yahoo Finance) ---
+    Symbol("GC=F", "Oro (Gold)", "stock", "GC=F", "gold price commodity", "Materias"),
+    Symbol("SI=F", "Plata (Silver)", "stock", "SI=F", "silver price commodity", "Materias"),
+    Symbol("CL=F", "Petróleo (WTI)", "stock", "CL=F", "oil price WTI commodity", "Materias"),
 ]
 
 SYMBOLS_BY_KEY: dict[str, Symbol] = {s.key: s for s in SYMBOLS}
+GROUPS: list[str] = ["Cripto", "Forex", "Acciones", "Índices", "Materias"]

@@ -69,23 +69,27 @@ def ticker_header(symbol_label: str, df: pd.DataFrame, mkt_type: str,
 
 
 def pro_chart(symbol_label: str, df: pd.DataFrame,
-              support: float | None = None, resistance: float | None = None) -> go.Figure:
-    """Velas + volumen + SMA9/21 + EMA50 + Bandas de Bollinger, estilo TradingView."""
-    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03,
-                        row_heights=[0.78, 0.22])
+              support: float | None = None, resistance: float | None = None,
+              show_ma: bool = True, show_bb: bool = True, show_volume: bool = True) -> go.Figure:
+    """Velas + volumen + SMA9/21 + EMA50 + Bollinger. Indicadores conmutables."""
+    if show_volume:
+        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03,
+                            row_heights=[0.78, 0.22])
+    else:
+        fig = make_subplots(rows=1, cols=1)
 
     fig.add_trace(go.Candlestick(
         x=df.index, open=df["open"], high=df["high"], low=df["low"], close=df["close"],
         name="Precio", increasing_line_color=T.GREEN, decreasing_line_color=T.RED,
         increasing_fillcolor=T.GREEN, decreasing_fillcolor=T.RED), row=1, col=1)
 
-    if "bb_upper" in df:
+    if show_bb and "bb_upper" in df:
         fig.add_trace(go.Scatter(x=df.index, y=df["bb_upper"], name="BB Sup",
                                  line=dict(color=T.MUTED, width=1, dash="dot")), row=1, col=1)
         fig.add_trace(go.Scatter(x=df.index, y=df["bb_lower"], name="BB Inf",
                                  line=dict(color=T.MUTED, width=1, dash="dot"),
                                  fill="tonexty", fillcolor="rgba(122,132,153,0.06)"), row=1, col=1)
-    if "sma_fast" in df:
+    if show_ma and "sma_fast" in df:
         fig.add_trace(go.Scatter(x=df.index, y=df["sma_fast"], name="SMA9",
                                  line=dict(color="#4d9fff", width=1.3)), row=1, col=1)
         fig.add_trace(go.Scatter(x=df.index, y=df["sma_slow"], name="SMA21",
@@ -103,9 +107,10 @@ def pro_chart(symbol_label: str, df: pd.DataFrame,
                       annotation_text="Soporte", annotation_position="bottom right",
                       annotation_font_color=T.GREEN, row=1, col=1)
 
-    vol_colors = [T.GREEN if c >= o else T.RED for o, c in zip(df["open"], df["close"])]
-    fig.add_trace(go.Bar(x=df.index, y=df["volume"], name="Volumen",
-                         marker_color=vol_colors, opacity=0.5), row=2, col=1)
+    if show_volume:
+        vol_colors = [T.GREEN if c >= o else T.RED for o, c in zip(df["open"], df["close"])]
+        fig.add_trace(go.Bar(x=df.index, y=df["volume"], name="Volumen",
+                             marker_color=vol_colors, opacity=0.5), row=2, col=1)
 
     fig.update_layout(
         template="plotly_dark", height=640, paper_bgcolor=T.PANEL, plot_bgcolor=T.PANEL,
@@ -130,9 +135,70 @@ def pro_chart(symbol_label: str, df: pd.DataFrame,
         showspikes=True, spikemode="across", spikethickness=1,
         spikecolor=T.MUTED, gridcolor="#1e2533", row=1, col=1,
     )
-    fig.update_xaxes(gridcolor="#1e2533", row=2, col=1)
+    if show_volume:
+        fig.update_xaxes(gridcolor="#1e2533", row=2, col=1)
     fig.update_yaxes(gridcolor="#1e2533", side="right")
     return fig
+
+
+def seconds_ohlc(ticks, bin_seconds: int = 5) -> pd.DataFrame:
+    """Agrega ticks (lista de (datetime, precio)) en velas OHLC de N segundos.
+
+    Sirve para ver el mercado fluctuar por SEGUNDOS (estilo binarias IQ Option),
+    construido en vivo a partir del flujo de precios capturado mientras observas.
+    """
+    if len(ticks) < 2:
+        return pd.DataFrame(columns=["open", "high", "low", "close"])
+    s = pd.Series([p for _, p in ticks],
+                  index=pd.to_datetime([t for t, _ in ticks]))
+    rule = f"{bin_seconds}s"
+    o = s.resample(rule).first()
+    h = s.resample(rule).max()
+    low = s.resample(rule).min()
+    c = s.resample(rule).last()
+    df = pd.DataFrame({"open": o, "high": h, "low": low, "close": c}).dropna()
+    return df
+
+
+def seconds_candle_chart(symbol_label: str, df_sec: pd.DataFrame, bin_seconds: int) -> go.Figure:
+    """Velas de N segundos construidas en vivo desde los ticks."""
+    fig = go.Figure()
+    if not df_sec.empty:
+        fig.add_trace(go.Candlestick(
+            x=df_sec.index, open=df_sec["open"], high=df_sec["high"],
+            low=df_sec["low"], close=df_sec["close"],
+            increasing_line_color=T.GREEN, decreasing_line_color=T.RED,
+            increasing_fillcolor=T.GREEN, decreasing_fillcolor=T.RED))
+        last = float(df_sec["close"].iloc[-1])
+        up = df_sec["close"].iloc[-1] >= df_sec["open"].iloc[-1]
+        fig.add_hline(y=last, line=dict(color=T.GREEN if up else T.RED, width=1, dash="dot"))
+    fig.update_layout(
+        template="plotly_dark", height=640, paper_bgcolor=T.PANEL, plot_bgcolor=T.PANEL,
+        margin=dict(l=8, r=8, t=26, b=8), xaxis_rangeslider_visible=False,
+        hovermode="x unified", dragmode="pan",
+        title=dict(text=f"{symbol_label} · velas {bin_seconds}s (en vivo)", font=dict(size=12)))
+    fig.update_xaxes(gridcolor="#1e2533")
+    fig.update_yaxes(gridcolor="#1e2533", side="right")
+    return fig
+
+
+def trade_plan_html(plan, symbol_label: str) -> str:
+    """Tarjeta destacada del PLAN AUTÓNOMO con dirección y duración sugerida."""
+    color = T.GREEN if plan.direction == "SUBE" else T.RED if plan.direction == "BAJA" else T.GOLD
+    dur = (f"<span style='font-size:0.95rem;color:{T.MUTED};'>duración sugerida "
+           f"<b style='color:{T.TEXT};'>{plan.duration_label}</b></span>"
+           if plan.expiry_seconds else "")
+    return f"""
+    <div class="gx-card" style="border:2px solid {color};background:rgba(255,255,255,0.02);">
+      <div class="gx-tag">🎯 Plan autónomo · {symbol_label}</div>
+      <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin-top:2px;">
+        <span style="font-size:1.9rem;font-weight:800;color:{color};line-height:1.1;">
+          {plan.icon} {plan.action_label}</span>
+        <span style="font-size:1.1rem;font-weight:700;">{plan.confidence:.0f}%</span>
+      </div>
+      <div style="margin-top:4px;">{dur}</div>
+    </div>
+    """
 
 
 def live_line_chart(symbol_label: str, ticks) -> go.Figure:

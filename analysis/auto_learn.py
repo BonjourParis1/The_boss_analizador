@@ -38,6 +38,7 @@ class TrainReport:
     horizon: int
     threshold_pct: float
     class_counts: dict
+    importances: dict           # importancia de cada feature (0..1)
 
 
 def _label_forward(df: pd.DataFrame, horizon: int, threshold: float) -> np.ndarray:
@@ -98,7 +99,9 @@ def train_from_history(datasets: list[pd.DataFrame], horizon: int = 6,
                  "horizon": horizon, "threshold": threshold}, MODEL_PATH)
 
     counts = {lbl: int(np.sum(y == lbl)) for lbl in LABELS}
-    return TrainReport(len(y), round(acc, 3), horizon, threshold, counts)
+    importances = {name: round(float(v), 3)
+                   for name, v in zip(FEATURE_NAMES, clf.feature_importances_)}
+    return TrainReport(len(y), round(acc, 3), horizon, threshold, counts, importances)
 
 
 def model_exists() -> bool:

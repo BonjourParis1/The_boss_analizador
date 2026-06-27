@@ -56,14 +56,14 @@ def fetch_youtube_transcript(url: str, languages=("es", "en")) -> str:
 
 def ingest_text(text: str, source: str = "texto pegado") -> Ingested:
     analysis = (llm.analyze_content(text, source) if llm.is_available()
-                else "ℹ️ Inicia un modelo local (Ollama) para el análisis con IA. "
-                     "Por ahora solo se calcula el sentimiento.")
+                else "ℹ️ El cerebro IA no está disponible ahora; se muestra solo el "
+                     "sentimiento. (Análisis completo cuando la IA esté activa.)")
     return Ingested(source, "texto", text, round(_vader(text), 3), analysis)
 
 
 def ingest_youtube(url: str) -> Ingested:
     text = fetch_youtube_transcript(url)
     analysis = (llm.analyze_content(text, f"YouTube: {url}") if llm.is_available()
-                else "ℹ️ Inicia un modelo local (Ollama) para el análisis con IA. "
-                     "Por ahora solo se calcula el sentimiento de la transcripción.")
+                else "ℹ️ El cerebro IA no está disponible ahora; se muestra solo el "
+                     "sentimiento de la transcripción.")
     return Ingested(url, "youtube", text, round(_vader(text), 3), analysis)

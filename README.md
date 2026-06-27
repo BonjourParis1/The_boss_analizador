@@ -96,6 +96,14 @@ Abre `http://localhost:8501` e introduce tus tres claves.
   (Alpha Vantage ~25 llamadas/día), por lo que se actualizan de forma manual.
 - **Temporalidades y zoom**: selector de 1m a 1M y botones de zoom temporal
   (15m/1H/4H/1D/1S/Todo) + scroll/arrastre sobre el gráfico, como en TradingView.
+- **Velas por segundos**: tipos de gráfico **"Velas 5s"** y **"Velas 30s"** que se
+  construyen en vivo desde los ticks — ves el mercado fluctuar por segundos.
+- **Panel lateral**: filtro por categoría (Cripto/Forex/Acciones/Índices/Materias),
+  32 activos, y conmutadores de indicadores (medias, Bollinger, volumen, RSI/MACD).
+- **🎯 Plan autónomo**: en cada refresco el sistema decide y muestra qué hacer —
+  **COMPRA (CALL) / VENTA (PUT) / ESPERAR** con **duración sugerida** (30s/1m/3m/5m)
+  según volatilidad y señal, combinando el motor técnico con el autoaprendizaje.
+  Acumula un feed de **operaciones sugeridas** en el tiempo.
 - **Alertas en paralelo**: mientras observas, el sistema detecta patrones y acumula
   un feed de **🔔 alertas en vivo** de señales fuertes. Para vigilancia 24/7 de TODOS
   los activos a la vez, usa el escáner (`scanner.py`).

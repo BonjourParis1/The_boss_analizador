@@ -16,7 +16,7 @@ from datetime import datetime
 
 import streamlit as st
 
-from analysis import auto_learn
+from analysis import advisor, auto_learn
 from analysis.backtest import run_backtest
 from analysis.engine import BUY, HOLD, SELL, analyze
 from analysis.indicators import compute_all
@@ -24,7 +24,7 @@ from analysis.news import get_news
 from analysis.patterns import read_candles
 from brain import llm
 from ingest import content as ingest
-from config import SYMBOLS, SYMBOLS_BY_KEY, settings
+from config import GROUPS, SYMBOLS, SYMBOLS_BY_KEY, settings
 from data.connectors import fetch_with_retry
 from data.realtime import fast_quote, is_realtime
 from db.store import (BACKEND, get_history, get_stats, init_db,
@@ -69,23 +69,33 @@ with st.sidebar:
                 f"<div class='gx-tag'>Terminal de trading · {BACKEND}</div><br>",
                 unsafe_allow_html=True)
 
+    # Filtro por categoría de mercado
+    grp = st.selectbox("Mercado", ["Todos"] + GROUPS, index=0)
+    opciones = [s.key for s in SYMBOLS if grp == "Todos" or s.group == grp]
+    prev = st.session_state.get("symbol_key", SYMBOLS[0].key)
+    idx = opciones.index(prev) if prev in opciones else 0
     st.session_state["symbol_key"] = st.selectbox(
-        "Activo", options=[s.key for s in SYMBOLS],
-        format_func=lambda k: f"{SYMBOLS_BY_KEY[k].label}  ·  {SYMBOLS_BY_KEY[k].type}",
-        index=[s.key for s in SYMBOLS].index(st.session_state.get("symbol_key", SYMBOLS[0].key)),
-    )
+        "Activo", options=opciones, index=idx,
+        format_func=lambda k: SYMBOLS_BY_KEY[k].label)
+
     st.session_state["interval"] = st.selectbox(
         "Temporalidad",
         ["1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "1d", "1w", "1M"], index=2)
-    st.session_state["chart_type"] = st.radio(
-        "Gráfico", ["Velas", "Línea en vivo"], horizontal=True)
-    st.session_state["limit"] = st.slider("Velas", 60, 500, 200, step=20)
+    st.session_state["chart_type"] = st.selectbox(
+        "Tipo de gráfico",
+        ["Velas", "Velas 5s", "Velas 30s", "Línea en vivo"], index=0)
+
+    with st.expander("⚙️ Indicadores / opciones"):
+        st.session_state["show_ma"] = st.checkbox("Medias móviles (SMA/EMA)", value=True)
+        st.session_state["show_bb"] = st.checkbox("Bandas de Bollinger", value=True)
+        st.session_state["show_vol"] = st.checkbox("Volumen", value=True)
+        st.session_state["show_ind"] = st.checkbox("Panel RSI / MACD", value=True)
+        st.session_state["limit"] = st.slider("Velas a cargar", 60, 500, 200, step=20)
+
+    st.session_state.setdefault("limit", 200)
     st.session_state["live"] = st.toggle("🔴 Tiempo real", value=True)
-    st.session_state["refresh"] = st.number_input("Refresco cripto (seg)", 1, 120,
+    st.session_state["refresh"] = st.number_input("Refresco (seg)", 1, 120,
                                                    value=settings.refresh_seconds)
-    if not settings.alpha_vantage_key:
-        st.caption("⚠️ Sin ALPHA_VANTAGE_API_KEY: el forex usa Yahoo Finance "
-                   "(menos intradía). Añádela en .env para datos pro.")
     st.divider()
     if st.button("🚪 Cerrar sesión", use_container_width=True):
         logout()
@@ -128,6 +138,24 @@ def render_terminal():
     reading = read_candles(df)
     sig = analyze(sk, df, news_score=digest.score, candles=reading)
 
+    # --- Asesor autónomo: plan de operación con duración (usa autoaprendizaje si existe) ---
+    auto_pred = auto_conf = None
+    if auto_learn.model_exists():
+        try:
+            auto_pred, auto_conf, _ = auto_learn.predict(df)
+        except Exception:
+            auto_pred = None
+    plan = advisor.build_plan(sig, auto_pred, auto_conf)
+    # Feed de operaciones sugeridas en el tiempo
+    if plan.is_actionable:
+        feed = st.session_state.setdefault("plan_feed", [])
+        tag = f"{sk}:{plan.direction}:{plan.duration_label}"
+        if not feed or feed[0].get("tag") != tag:
+            feed.insert(0, {"tag": tag, "t": datetime.now().strftime("%H:%M:%S"),
+                            "txt": f"{plan.icon} {plan.action_label} {symbol.label} · "
+                                   f"{plan.duration_label} · {plan.confidence:.0f}%"})
+            del feed[30:]
+
     # --- Buffer de ticks por símbolo (para la línea en vivo, sensación de segundos) ---
     buf_key = f"ticks_{sk}"
     buf = st.session_state.setdefault(buf_key, [])
@@ -151,22 +179,45 @@ def render_terminal():
 
     col_chart, col_side = st.columns([3.1, 1.4], gap="medium")
     with col_chart:
-        if st.session_state.get("chart_type") == "Línea en vivo":
-            st.plotly_chart(C.live_line_chart(symbol.label, buf),
-                            use_container_width=True,
-                            config={"scrollZoom": True, "displayModeBar": False})
+        ctype = st.session_state.get("chart_type", "Velas")
+        cfg = {"scrollZoom": True, "displayModeBar": False}
+        if ctype == "Línea en vivo":
+            st.plotly_chart(C.live_line_chart(symbol.label, buf), use_container_width=True, config=cfg)
+        elif ctype in ("Velas 5s", "Velas 30s"):
+            bs = 5 if ctype == "Velas 5s" else 30
+            df_sec = C.seconds_ohlc(buf, bs)
+            if len(df_sec) < 2:
+                st.info(f"⏳ Capturando ticks para construir velas de {bs}s… "
+                        "deja la pestaña abierta unos segundos (solo cripto/acciones en vivo).")
+            st.plotly_chart(C.seconds_candle_chart(symbol.label, df_sec, bs),
+                            use_container_width=True, config=cfg)
         else:
-            st.plotly_chart(C.pro_chart(symbol.label, df, sig.support, sig.resistance),
-                            use_container_width=True,
-                            config={"scrollZoom": True, "displayModeBar": False})
-        st.plotly_chart(C.indicator_panel(df), use_container_width=True,
-                        config={"displayModeBar": False})
+            st.plotly_chart(
+                C.pro_chart(symbol.label, df, sig.support, sig.resistance,
+                            show_ma=st.session_state.get("show_ma", True),
+                            show_bb=st.session_state.get("show_bb", True),
+                            show_volume=st.session_state.get("show_vol", True)),
+                use_container_width=True, config=cfg)
+        if st.session_state.get("show_ind", True):
+            st.plotly_chart(C.indicator_panel(df), use_container_width=True,
+                            config={"displayModeBar": False})
 
     with col_side:
+        # Plan autónomo (lo más importante): qué hacer y por cuánto tiempo
+        st.markdown(C.trade_plan_html(plan, symbol.label), unsafe_allow_html=True)
         st.markdown(C.signal_html(sig, symbol.label), unsafe_allow_html=True)
         st.plotly_chart(C.confidence_gauge(sig), use_container_width=True,
                         config={"displayModeBar": False})
         st.markdown(C.candles_html(reading), unsafe_allow_html=True)
+
+        # Operaciones sugeridas en el tiempo (asesor autónomo)
+        feed = st.session_state.get("plan_feed", [])
+        if feed:
+            rows = "".join(
+                f"<div class='gx-news'><b>{a['t']}</b> &nbsp; {a['txt']}</div>"
+                for a in feed[:6])
+            st.markdown(f"<div class='gx-card'><div class='gx-tag'>🎯 Operaciones sugeridas</div>"
+                        f"{rows}</div>", unsafe_allow_html=True)
 
         # Alertas en vivo detectadas en paralelo (mientras observas)
         alerts = st.session_state.get("live_alerts", [])
@@ -218,15 +269,16 @@ def render_terminal():
 
 with tab_live:
     _symbol = SYMBOLS_BY_KEY[st.session_state["symbol_key"]]
-    # Solo cripto tiene streaming real gratuito -> auto-refresco en vivo.
-    # Forex/acciones: APIs gratuitas limitadas -> actualización manual.
+    _seconds_mode = st.session_state.get("chart_type") in ("Velas 5s", "Velas 30s", "Línea en vivo")
+    # Cripto (y acciones con Finnhub) -> streaming en vivo. En modos por segundos
+    # forzamos refresco rápido (1s) para capturar ticks y ver la fluctuación.
     if is_realtime(_symbol) and st.session_state.get("live"):
-        _run_every = st.session_state["refresh"]
+        _run_every = 1 if _seconds_mode else st.session_state["refresh"]
     else:
         _run_every = None
         if not is_realtime(_symbol):
-            st.caption("ℹ️ Forex/acciones usan datos con APIs gratuitas limitadas "
-                       "(sin tick a tick). Pulsa **Actualizar** para refrescar.")
+            st.caption("ℹ️ Forex/acciones (sin Finnhub) usan APIs gratuitas limitadas, "
+                       "sin tick a tick. Pulsa **Actualizar** para refrescar.")
             if st.button("🔄 Actualizar"):
                 load_market.clear()
     _live_fragment = st.fragment(run_every=_run_every)(render_terminal)
@@ -259,14 +311,10 @@ with tab_radar:
 with tab_brain:
     st.subheader("🧠 Cerebro IA — razonamiento con modelo local (open-source)")
     if not llm.is_available():
-        st.info("Razonamiento IA **gratis**, elige una opción en `.env`:\n\n"
-                "• **Más fácil (nube, sin instalar):** `LLM_PROVIDER=gemini` + tu "
-                "`GEMINI_API_KEY` (gratis en aistudio.google.com/apikey).\n\n"
-                "• **100% local y privado:** `LLM_PROVIDER=ollama`, instala Ollama "
-                "(ollama.com) y ejecuta `ollama pull llama3.1`.\n\n"
-                "El resto del sistema funciona sin esto.")
+        st.warning("🧠 El cerebro IA no está disponible en este momento. "
+                   "El resto del sistema funciona con normalidad.")
     else:
-        st.caption(f"Cerebro IA: {llm.backend_label()}")
+        st.caption("🧠 Cerebro IA activo")
 
     c_reason, c_ingest = st.columns(2, gap="large")
 
@@ -363,23 +411,48 @@ with tab_ml:
     st.markdown("### 🧪 Autoaprendizaje del histórico (sin que operes)")
     st.write("Aprende del mercado: etiqueta cada vela por lo que pasó después y "
              "entrena un modelo para anticipar SUBE / LATERAL / BAJA.")
-    if st.button("🎓 Entrenar con el histórico de todos los activos"):
+
+    cc1, cc2, cc3 = st.columns(3)
+    horizon = cc1.slider("Horizonte (velas)", 3, 24, 6,
+                         help="Cuántas velas hacia adelante se evalúa el resultado.")
+    threshold = cc2.slider("Umbral de movimiento %", 0.1, 2.0, 0.4, step=0.1) / 100
+    n_assets = cc3.slider("Nº de activos a usar", 3, len(SYMBOLS), min(10, len(SYMBOLS)))
+
+    if st.button("🎓 Entrenar autoaprendizaje"):
         with st.spinner("Descargando históricos y entrenando..."):
             try:
                 datasets = []
-                for s in SYMBOLS:
+                for s in SYMBOLS[:n_assets]:
                     try:
                         datasets.append(fetch_with_retry(
                             s, interval=st.session_state["interval"], limit=400))
                     except Exception:
                         continue
-                rep = auto_learn.train_from_history(datasets)
-                st.success(f"Entrenado con {rep.samples} ejemplos. "
-                           f"Precisión validada: **{rep.accuracy_cv:.0%}** "
-                           f"(horizonte {rep.horizon} velas).")
-                st.caption(f"Distribución de clases: {rep.class_counts}")
+                rep = auto_learn.train_from_history(datasets, horizon=horizon, threshold=threshold)
+                st.session_state["auto_report"] = rep
+                st.success(f"Entrenado con {rep.samples} ejemplos · "
+                           f"precisión validada **{rep.accuracy_cv:.0%}** · "
+                           f"horizonte {rep.horizon} velas.")
             except Exception as e:  # noqa: BLE001
                 st.error(f"No se pudo entrenar: {e}")
+
+    rep = st.session_state.get("auto_report")
+    if rep:
+        mm1, mm2, mm3 = st.columns(3)
+        mm1.metric("Ejemplos", rep.samples)
+        mm2.metric("Precisión validada", f"{rep.accuracy_cv:.0%}")
+        mm3.metric("Horizonte", f"{rep.horizon} velas")
+        import pandas as pd
+        c1, c2 = st.columns(2)
+        with c1:
+            st.caption("Distribución de clases (qué pasó tras cada vela)")
+            st.bar_chart(pd.Series(rep.class_counts))
+        with c2:
+            st.caption("Importancia de cada indicador para el modelo")
+            st.bar_chart(pd.Series(rep.importances))
+        if rep.accuracy_cv < 0.45:
+            st.warning("Precisión baja: este mercado/temporalidad es poco predecible. "
+                       "Úsalo solo como apoyo y prioriza la gestión de riesgo.")
 
     if auto_learn.model_exists():
         try:
@@ -387,7 +460,7 @@ with tab_ml:
                 st.session_state["symbol_key"], st.session_state["interval"],
                 st.session_state["limit"]))
             if lbl:
-                st.info(f"Para **{SYMBOLS_BY_KEY[st.session_state['symbol_key']].label}**, "
+                st.info(f"📍 Para **{SYMBOLS_BY_KEY[st.session_state['symbol_key']].label}**, "
                         f"el autoaprendizaje anticipa **{lbl}** en las próximas {hz} velas "
                         f"(confianza {proba}%).")
         except Exception as e:  # noqa: BLE001

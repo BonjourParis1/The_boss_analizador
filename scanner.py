@@ -25,6 +25,7 @@ try:
 except Exception:
     pass
 
+from analysis import advisor, auto_learn
 from analysis.engine import BUY, SELL, analyze
 from analysis.indicators import compute_all
 from analysis.news import get_news
@@ -57,8 +58,15 @@ def scan_once(interval: str = "5m", min_confidence: float = 65.0) -> list:
             if sig.action in (BUY, SELL) and sig.confidence >= min_confidence:
                 save_recommendation(sig)
                 strong.append((s, sig))
-                _log(f"⚡ {sig.icon} {sig.action} {s.label} "
-                     f"conf={sig.confidence}% precio={sig.price}")
+                ap = ac = None
+                if auto_learn.model_exists():
+                    try:
+                        ap, ac, _ = auto_learn.predict(df)
+                    except Exception:
+                        pass
+                plan = advisor.build_plan(sig, ap, ac)
+                _log(f"⚡ {plan.icon} {plan.action_label} {s.label} · "
+                     f"{plan.duration_label} · conf={plan.confidence:.0f}% · precio={sig.price}")
                 if email_alerts.is_enabled():
                     ok, info = email_alerts.send_signal_alert(sig, s.label)
                     _log(f"   correo: {info}")

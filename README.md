@@ -170,8 +170,12 @@ Elige proveedor en `.env` con `LLM_PROVIDER` (todas opciones gratuitas):
   `OPENAI_BASE_URL`, `OPENAI_API_KEY` y `LLM_MODEL`).
 
 ### 📡 Datos en tiempo real adicionales (opcional)
-Con `FINNHUB_API_KEY` (gratis, 60/min en finnhub.io) las **acciones de EE. UU.**
-también muestran **precio en vivo tick a tick** en el encabezado y la línea en vivo.
+- `FINNHUB_API_KEY` (gratis, 60/min en finnhub.io): **acciones de EE. UU.** con
+  precio en vivo en el encabezado y la línea en vivo.
+- `TWELVEDATA_API_KEY` (gratis, 800/día y 8/min en twelvedata.com): **forex intradía
+  en vivo** — los pares (EUR/USD, etc.) muestran velas intradía y precio que fluctúa.
+  El sistema **protege automáticamente** tu cuota (límite interno 8/min, ~750/día) y
+  cae a otra fuente al alcanzarla; el forex en vivo se refresca como mucho cada 15 s.
 
 ## 🤖 Aprendizaje (apoyo probabilístico, no predice el futuro)
 - **Autoaprendizaje del histórico** (`analysis/auto_learn.py`): aprende solo, sin

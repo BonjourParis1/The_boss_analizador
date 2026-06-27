@@ -47,6 +47,7 @@ class Settings:
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "").strip()
     # --- Datos en tiempo real adicionales (opcional) ---
     finnhub_api_key: str = os.getenv("FINNHUB_API_KEY", "").strip()
+    twelvedata_api_key: str = os.getenv("TWELVEDATA_API_KEY", "").strip()
     # --- Escáner autónomo ---
     scan_interval_minutes: int = int(os.getenv("SCAN_INTERVAL_MINUTES", "3"))
     # --- Correo ---

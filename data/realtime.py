@@ -20,12 +20,36 @@ _HEADERS = {"User-Agent": "GuiaExpertoTrading/2.0"}
 
 
 def is_realtime(symbol: Symbol) -> bool:
-    """Cripto siempre (Binance); acciones si hay Finnhub configurado."""
+    """Cripto siempre (Binance); acciones con Finnhub; forex con Twelve Data."""
     if symbol.type == "cripto":
         return True
     if symbol.type == "stock" and settings.finnhub_api_key:
         return True
+    if symbol.type == "forex" and settings.twelvedata_api_key:
+        return True
     return False
+
+
+def _twelvedata_quote(symbol: Symbol) -> dict | None:
+    """Precio en vivo de forex (y acciones) vía Twelve Data."""
+    from data.connectors import td_allowed
+    if not td_allowed():
+        return None
+    try:
+        r = requests.get("https://api.twelvedata.com/quote",
+                         params={"symbol": symbol.provider_id,
+                                 "apikey": settings.twelvedata_api_key},
+                         headers=_HEADERS, timeout=_TIMEOUT)
+        r.raise_for_status()
+        d = r.json()
+        if "close" not in d:
+            return None
+        return {"price": float(d["close"]), "change": float(d.get("change") or 0.0),
+                "change_pct": float(d.get("percent_change") or 0.0),
+                "high": float(d.get("high") or 0.0), "low": float(d.get("low") or 0.0),
+                "volume": 0.0, "is_live": True}
+    except Exception:
+        return None
 
 
 def _finnhub_quote(symbol: Symbol) -> dict | None:
@@ -50,6 +74,8 @@ def fast_quote(symbol: Symbol) -> dict | None:
     """Cotización rápida para el ticker. None si no hay fuente en vivo."""
     if symbol.type == "stock" and settings.finnhub_api_key:
         return _finnhub_quote(symbol)
+    if symbol.type == "forex" and settings.twelvedata_api_key:
+        return _twelvedata_quote(symbol)
     if symbol.type != "cripto":
         return None
     try:

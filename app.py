@@ -42,7 +42,9 @@ st.markdown(T.CSS, unsafe_allow_html=True)
 
 
 # --------------------------- Cache de datos --------------------------------
-@st.cache_data(show_spinner=False, ttl=settings.refresh_seconds)
+# TTL de 15s: las velas se recargan como mucho cada 15s (protege APIs gratuitas
+# como Twelve Data 8/min); el movimiento "en vivo" lo da el tick de la última vela.
+@st.cache_data(show_spinner=False, ttl=15)
 def load_market(symbol_key: str, interval: str, limit: int):
     df = fetch_with_retry(SYMBOLS_BY_KEY[symbol_key], interval=interval, limit=limit)
     return compute_all(df)
@@ -289,15 +291,20 @@ def render_terminal():
 with tab_live:
     _symbol = SYMBOLS_BY_KEY[st.session_state["symbol_key"]]
     _seconds_mode = st.session_state.get("chart_type") in ("Velas 5s", "Velas 30s", "Línea en vivo")
-    # Cripto (y acciones con Finnhub) -> streaming en vivo. En modos por segundos
-    # forzamos refresco rápido (1s) para capturar ticks y ver la fluctuación.
     if is_realtime(_symbol) and st.session_state.get("live"):
-        _run_every = 1 if _seconds_mode else st.session_state["refresh"]
+        if _symbol.type == "cripto":
+            # Binance: ilimitado -> en modos por segundos refrescamos a 1s (ticks suaves)
+            _run_every = 1 if _seconds_mode else st.session_state["refresh"]
+        elif _symbol.type == "forex":
+            # Twelve Data free: 8/min -> limitamos a >=15s para no agotar la cuota
+            _run_every = max(15, st.session_state["refresh"])
+        else:
+            _run_every = st.session_state["refresh"]   # acciones (Finnhub 60/min)
     else:
         _run_every = None
         if not is_realtime(_symbol):
-            st.caption("ℹ️ Forex/acciones (sin Finnhub) usan APIs gratuitas limitadas, "
-                       "sin tick a tick. Pulsa **Actualizar** para refrescar.")
+            st.caption("ℹ️ Este activo usa APIs gratuitas limitadas (sin tick a tick). "
+                       "Pulsa **Actualizar** para refrescar.")
             if st.button("🔄 Actualizar"):
                 load_market.clear()
     _live_fragment = st.fragment(run_every=_run_every)(render_terminal)

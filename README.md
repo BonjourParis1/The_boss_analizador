@@ -90,10 +90,16 @@ Abre `http://localhost:8501` e introduce tus tres claves.
   usando *fragments* de Streamlit, sin recargar toda la página.
 - **Lectura de velas**: detecta patrones (martillo, envolvente, doji, estrella
   del amanecer/atardecer…), tendencia y soportes/resistencias, como un trader.
-- **Tiempo real**: las **criptomonedas** se transmiten en vivo — la última vela se
-  mueve tick a tick (Binance) y hay un modo **"Línea en vivo"** que dibuja el precio
-  por segundos como IQ Option. **Forex/acciones** usan APIs gratuitas limitadas
-  (Alpha Vantage ~25 llamadas/día), por lo que se actualizan de forma manual.
+- **Tiempo real (tipo IQ Option)**: el tipo de gráfico **"🔴 Stream en vivo"** (cripto)
+  se conecta por **WebSocket a Binance desde el navegador** y la vela **fluctúa tick a
+  tick** de verdad, sin recargas. También hay "Velas 5s/30s" y "Línea en vivo".
+- **⏱️ Duración de la inversión**: eliges 30s/1m/3m/5m/15m y el asesor **analiza para
+  esa duración** y te dice COMPRA/VENTA/ESPERAR; el plan es **estable** (se calcula
+  sobre velas cerradas, no cambia cada segundo). Si hay una oportunidad en **otra
+  duración** distinta a la elegida, te la muestra con su detalle.
+- **Radar y Backtest automáticos**: el Radar se alimenta del motor autónomo (sin
+  botón) y el Backtest del activo se ejecuta solo para mostrar la fiabilidad histórica.
+- **Forex** en vivo con Twelve Data; **acciones** con Finnhub; el resto, manual.
 - **Temporalidades y zoom**: selector de 1m a 1M y botones de zoom temporal
   (15m/1H/4H/1D/1S/Todo) + scroll/arrastre sobre el gráfico, como en TradingView.
 - **Velas por segundos**: tipos de gráfico **"Velas 5s"** y **"Velas 30s"** que se

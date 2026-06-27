@@ -50,10 +50,21 @@ def _duration(vol: float, strong: bool) -> tuple[str, int]:
     return ("3m", 180) if strong else ("5m", 300)
 
 
-def build_plan(sig, auto_pred: str | None = None, auto_conf: float | None = None) -> TradePlan:
+# Catálogo de duraciones de inversión: (etiqueta, segundos, intervalo de análisis)
+DURATIONS = [
+    ("30s", 30, "1m"), ("1m", 60, "1m"), ("3m", 180, "3m"),
+    ("5m", 300, "5m"), ("15m", 900, "15m"),
+]
+DURATION_BY_LABEL = {d[0]: d for d in DURATIONS}
+
+
+def build_plan(sig, auto_pred: str | None = None, auto_conf: float | None = None,
+               force_duration: tuple | None = None) -> TradePlan:
     """Genera el plan a partir de la señal del motor y (opcional) el autoaprendizaje.
 
     `auto_pred` es la etiqueta de analysis.auto_learn.predict (SUBE/LATERAL/BAJA).
+    `force_duration` = (etiqueta, segundos): si se indica, la duración la fija el
+    usuario (no se calcula por volatilidad). El motor analiza para ESA duración.
     """
     reasons: list[str] = []
 
@@ -95,11 +106,13 @@ def build_plan(sig, auto_pred: str | None = None, auto_conf: float | None = None
         direction = "ESPERAR"
         reasons.append("Confianza insuficiente: lo prudente es no operar ahora.")
 
-    # Duración por volatilidad
-    price = sig.price or 1.0
-    vol = (sig.atr or 0.0) / price if price else 0.0
-    strong = conf >= 72
-    dur_label, dur_sec = _duration(vol, strong)
+    # Duración: la fija el usuario si la indica; si no, se estima por volatilidad
+    if force_duration:
+        dur_label, dur_sec = force_duration
+    else:
+        price = sig.price or 1.0
+        vol = (sig.atr or 0.0) / price if price else 0.0
+        dur_label, dur_sec = _duration(vol, conf >= 72)
     if direction == "ESPERAR":
         dur_label, dur_sec = "—", 0
 

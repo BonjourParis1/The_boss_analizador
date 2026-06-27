@@ -61,6 +61,50 @@ def ingest_text(text: str, source: str = "texto pegado") -> Ingested:
     return Ingested(source, "texto", text, round(_vader(text), 3), analysis)
 
 
+def youtube_search(query: str, max_results: int = 3) -> list[dict]:
+    """Busca videos recientes en YouTube (requiere YOUTUBE_API_KEY). Lista de {title,url}."""
+    from config import settings
+    if not settings.youtube_api_key:
+        return []
+    r = requests.get("https://www.googleapis.com/youtube/v3/search", timeout=10,
+                     params={"part": "snippet", "q": query, "type": "video",
+                             "order": "relevance", "relevanceLanguage": "es",
+                             "maxResults": max_results, "key": settings.youtube_api_key})
+    r.raise_for_status()
+    out = []
+    for it in r.json().get("items", []):
+        vid = it.get("id", {}).get("videoId")
+        if vid:
+            out.append({"title": it["snippet"]["title"],
+                        "url": f"https://youtu.be/{vid}"})
+    return out
+
+
+def auto_research(symbol) -> str:
+    """Investigación automática: noticias + (si hay clave) un video de YouTube,
+    sintetizado por el cerebro IA. Devuelve un informe breve en texto."""
+    from analysis.news import get_news
+    bits = []
+    try:
+        dg = get_news(symbol, limit=6)
+        bits.append("Titulares recientes (" + dg.label + f", {dg.score:+.2f}):\n" +
+                    "\n".join(f"- {i.title}" for i in dg.items[:6]))
+    except Exception:
+        pass
+    # Video de YouTube (opcional)
+    try:
+        vids = youtube_search(f"trading {symbol.label} análisis hoy")
+        if vids:
+            tr = fetch_youtube_transcript(vids[0]["url"])
+            bits.append(f"Transcripción de '{vids[0]['title']}':\n{tr[:6000]}")
+    except Exception:
+        pass
+    material = "\n\n".join(bits) or "Sin material disponible."
+    if llm.is_available():
+        return llm.analyze_content(material, f"Investigación de {symbol.label}")
+    return ("ℹ️ Cerebro IA no disponible; resumen de fuentes:\n\n" + material[:1500])
+
+
 def ingest_youtube(url: str) -> Ingested:
     text = fetch_youtube_transcript(url)
     analysis = (llm.analyze_content(text, f"YouTube: {url}") if llm.is_available()

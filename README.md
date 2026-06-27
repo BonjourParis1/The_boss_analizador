@@ -148,15 +148,22 @@ Gmail) y `EMAIL_TO`. El sistema enviará un correo cuando aparezca una señal fu
 
 ---
 
-## 🧠 Cerebro IA (modelo open-source local, GRATIS) — opcional
-Usa un modelo local vía **Ollama** (https://ollama.com) — sin ninguna API de pago.
-Instálalo y descarga un modelo: `ollama pull llama3.1`. Con Ollama abierto, la
-pestaña **Cerebro IA** puede **razonar la operación** del activo en lenguaje natural
-(lectura, escenario probable y gestión de riesgo, siempre en probabilidades) y
+## 🧠 Cerebro IA (GRATIS, sin API de pago) — opcional
+La pestaña **Cerebro IA** puede **razonar la operación** del activo en lenguaje
+natural (lectura, escenario probable y gestión de riesgo, siempre en probabilidades) y
 **procesar contenido que le adjuntes**: pegas texto o una **URL de YouTube** (analiza
 la *transcripción*) y extrae resumen, sesgo, ideas accionables y banderas rojas.
-También soporta cualquier servidor local compatible con OpenAI (LM Studio) mediante
-`LLM_PROVIDER=openai_compatible`. Config en `.env`: `LLM_PROVIDER`, `LLM_MODEL`.
+Elige proveedor en `.env` con `LLM_PROVIDER` (todas opciones gratuitas):
+- **`gemini`** — la más fácil (nube, sin instalar nada). Clave gratis en
+  aistudio.google.com/apikey → `GEMINI_API_KEY`.
+- **`ollama`** — 100% local y privado (instala ollama.com → `ollama pull llama3.1`).
+- **`openai_compatible`** — cualquier servidor estilo OpenAI: LM Studio (local) o free
+  tiers en la nube como **Groq / Together / DeepInfra / Hugging Face** (pon su
+  `OPENAI_BASE_URL`, `OPENAI_API_KEY` y `LLM_MODEL`).
+
+### 📡 Datos en tiempo real adicionales (opcional)
+Con `FINNHUB_API_KEY` (gratis, 60/min en finnhub.io) las **acciones de EE. UU.**
+también muestran **precio en vivo tick a tick** en el encabezado y la línea en vivo.
 
 ## 🤖 Aprendizaje (apoyo probabilístico, no predice el futuro)
 - **Autoaprendizaje del histórico** (`analysis/auto_learn.py`): aprende solo, sin

@@ -149,7 +149,7 @@ def render_terminal():
                                 updated=datetime.now().strftime("%H:%M:%S")),
                 unsafe_allow_html=True)
 
-    col_chart, col_side = st.columns([3.6, 1.15], gap="medium")
+    col_chart, col_side = st.columns([3.1, 1.4], gap="medium")
     with col_chart:
         if st.session_state.get("chart_type") == "Línea en vivo":
             st.plotly_chart(C.live_line_chart(symbol.label, buf),
@@ -259,12 +259,14 @@ with tab_radar:
 with tab_brain:
     st.subheader("🧠 Cerebro IA — razonamiento con modelo local (open-source)")
     if not llm.is_available():
-        st.info("Para activar el razonamiento en lenguaje natural (gratis, local), "
-                "instala **Ollama** (https://ollama.com) y ejecuta en una terminal: "
-                "`ollama pull llama3.1`. Luego deja Ollama abierto. El resto del "
-                "sistema funciona sin esto. (Config en `.env`: `LLM_PROVIDER`, `LLM_MODEL`.)")
+        st.info("Razonamiento IA **gratis**, elige una opción en `.env`:\n\n"
+                "• **Más fácil (nube, sin instalar):** `LLM_PROVIDER=gemini` + tu "
+                "`GEMINI_API_KEY` (gratis en aistudio.google.com/apikey).\n\n"
+                "• **100% local y privado:** `LLM_PROVIDER=ollama`, instala Ollama "
+                "(ollama.com) y ejecuta `ollama pull llama3.1`.\n\n"
+                "El resto del sistema funciona sin esto.")
     else:
-        st.caption(f"Modelo local: {llm.backend_label()}")
+        st.caption(f"Cerebro IA: {llm.backend_label()}")
 
     c_reason, c_ingest = st.columns(2, gap="large")
 

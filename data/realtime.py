@@ -13,19 +13,43 @@ from __future__ import annotations
 
 import requests
 
-from config import Symbol
+from config import Symbol, settings
 
 _TIMEOUT = 6
 _HEADERS = {"User-Agent": "GuiaExpertoTrading/2.0"}
 
 
 def is_realtime(symbol: Symbol) -> bool:
-    """Solo cripto tiene streaming real gratuito."""
-    return symbol.type == "cripto"
+    """Cripto siempre (Binance); acciones si hay Finnhub configurado."""
+    if symbol.type == "cripto":
+        return True
+    if symbol.type == "stock" and settings.finnhub_api_key:
+        return True
+    return False
+
+
+def _finnhub_quote(symbol: Symbol) -> dict | None:
+    """Precio en vivo de acciones US vía Finnhub (free 60/min)."""
+    try:
+        r = requests.get("https://finnhub.io/api/v1/quote",
+                         params={"symbol": symbol.provider_id,
+                                 "token": settings.finnhub_api_key},
+                         headers=_HEADERS, timeout=_TIMEOUT)
+        r.raise_for_status()
+        d = r.json()
+        if not d.get("c"):
+            return None
+        return {"price": float(d["c"]), "change": float(d.get("d") or 0.0),
+                "change_pct": float(d.get("dp") or 0.0), "high": float(d.get("h") or 0.0),
+                "low": float(d.get("l") or 0.0), "volume": 0.0, "is_live": True}
+    except Exception:
+        return None
 
 
 def fast_quote(symbol: Symbol) -> dict | None:
     """Cotización rápida para el ticker. None si no hay fuente en vivo."""
+    if symbol.type == "stock" and settings.finnhub_api_key:
+        return _finnhub_quote(symbol)
     if symbol.type != "cripto":
         return None
     try:

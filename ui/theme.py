@@ -47,8 +47,10 @@ CSS = f"""
   /* Tarjetas */
   .gx-card {{
     background: {PANEL}; border: 1px solid #2a3142; border-radius: 12px;
-    padding: 16px 18px; margin-bottom: 12px;
+    padding: 14px 16px; margin-bottom: 12px;
+    overflow: hidden; word-break: break-word; overflow-wrap: anywhere;
   }}
+  .gx-card * {{ overflow-wrap: anywhere; }}
   .gx-ticker {{
     display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;
   }}

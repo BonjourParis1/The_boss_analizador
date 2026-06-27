@@ -37,12 +37,16 @@ class Settings:
     alpha_vantage_key: str = os.getenv("ALPHA_VANTAGE_API_KEY", "").strip()
     # --- Noticias ---
     newsapi_key: str = os.getenv("NEWSAPI_KEY", "").strip()
-    # --- Cerebro IA (modelo open-source local; sin API de pago) ---
+    # --- Cerebro IA (gratis: local con Ollama, o nube con Gemini free tier) ---
+    # provider: ollama | gemini | openai_compatible (Groq/Together/LM Studio/HF) | none
     llm_provider: str = os.getenv("LLM_PROVIDER", "ollama").strip().lower()
     llm_model: str = os.getenv("LLM_MODEL", os.getenv("OLLAMA_MODEL", "llama3.1")).strip()
     ollama_url: str = os.getenv("OLLAMA_URL", "http://localhost:11434").rstrip("/")
     openai_base_url: str = os.getenv("OPENAI_BASE_URL", "http://localhost:1234/v1").rstrip("/")
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "").strip()
+    gemini_api_key: str = os.getenv("GEMINI_API_KEY", "").strip()
+    # --- Datos en tiempo real adicionales (opcional) ---
+    finnhub_api_key: str = os.getenv("FINNHUB_API_KEY", "").strip()
     # --- Escáner autónomo ---
     scan_interval_minutes: int = int(os.getenv("SCAN_INTERVAL_MINUTES", "15"))
     # --- Correo ---
@@ -64,7 +68,7 @@ class Settings:
 
     @property
     def has_llm(self) -> bool:
-        return self.llm_provider in ("ollama", "openai_compatible")
+        return self.llm_provider in ("ollama", "openai_compatible", "gemini")
 
 
 settings = Settings()

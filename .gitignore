@@ -28,6 +28,11 @@ env/
 # ===== Streamlit =====
 .streamlit/secrets.toml
 
+# ===== Notas/borradores locales (pueden contener claves) =====
+borrador.md
+borrador*.md
+notas*.md
+
 # ===== Sistema operativo / editores =====
 .DS_Store
 Thumbs.db

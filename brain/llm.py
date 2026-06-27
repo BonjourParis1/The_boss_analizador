@@ -1,18 +1,20 @@
 """
 brain/llm.py — Cerebro IA con modelo OPEN-SOURCE LOCAL (gratis, sin API de pago).
 
-Proveedores soportados (LLM_PROVIDER en .env):
-  * "ollama" (por defecto): habla con Ollama en http://localhost:11434.
-        Instala Ollama (https://ollama.com) y descarga un modelo, p. ej.:
-            ollama pull llama3.1
-        Configura el modelo con OLLAMA_MODEL (por defecto "llama3.1").
-  * "openai_compatible": cualquier servidor local con API estilo OpenAI
-        (LM Studio en http://localhost:1234/v1, vLLM, etc.). Usa OPENAI_BASE_URL,
-        OPENAI_API_KEY (puede ir vacía en local) y LLM_MODEL.
+Proveedores soportados (LLM_PROVIDER en .env), todos GRATIS:
+  * "ollama" (por defecto): modelo LOCAL con Ollama en http://localhost:11434.
+        Instala Ollama (https://ollama.com) y:  ollama pull llama3.1
+  * "gemini": Google Gemini free tier (NUBE, sin instalar nada). Consigue una API
+        key gratis en https://aistudio.google.com/apikey y ponla en GEMINI_API_KEY.
+        Modelo por defecto: gemini-2.0-flash (rápido y gratuito).
+  * "openai_compatible": cualquier servidor con API estilo OpenAI — sirve para
+        servidores LOCALES (LM Studio en http://localhost:1234/v1) y también para
+        free tiers en la nube como Groq, Together AI, DeepInfra o el endpoint
+        OpenAI-compat de Hugging Face. Usa OPENAI_BASE_URL, OPENAI_API_KEY y LLM_MODEL.
   * "none": desactiva la IA (la app funciona igual, sin razonamiento en texto).
 
-Todo es local y gratuito; NO se usa ninguna API de pago. Se conversa por HTTP con
-`requests` (sin SDKs propietarios). Si el servidor no responde, is_available() == False.
+NO se usa ninguna API de pago. Se conversa por HTTP con `requests`. Si el backend no
+responde o falta la clave, is_available() == False y la app sigue funcionando.
 
 Diseño honesto: el modelo RAZONA y EXPLICA el contexto; no inventa precios ni
 garantiza resultados. Se le instruye a hablar en probabilidades y gestión de riesgo.
@@ -44,27 +46,35 @@ _CONTENT_SYSTEM = (
 
 
 # ------------------------------ Disponibilidad -----------------------------
+def _gemini_model() -> str:
+    m = settings.llm_model
+    return m if "gemini" in m.lower() else "gemini-2.0-flash"
+
+
 def is_available() -> bool:
-    """Comprueba si el backend local está accesible (ping corto)."""
+    """Comprueba si el backend está accesible (ping corto / clave presente)."""
     p = settings.llm_provider
     try:
+        if p == "gemini":
+            return bool(settings.gemini_api_key)   # evitamos gastar cuota con un ping
         if p == "ollama":
-            r = requests.get(f"{settings.ollama_url}/api/tags", timeout=2)
-            return r.ok
+            return requests.get(f"{settings.ollama_url}/api/tags", timeout=2).ok
         if p == "openai_compatible":
-            r = requests.get(f"{settings.openai_base_url}/models", timeout=2,
-                             headers=_oai_headers())
-            return r.ok
+            return requests.get(f"{settings.openai_base_url}/models", timeout=2,
+                                headers=_oai_headers()).ok
     except Exception:
         return False
     return False
 
 
 def backend_label() -> str:
-    if settings.llm_provider == "ollama":
+    p = settings.llm_provider
+    if p == "gemini":
+        return f"Gemini (free) · {_gemini_model()}"
+    if p == "ollama":
         return f"Ollama · {settings.llm_model}"
-    if settings.llm_provider == "openai_compatible":
-        return f"Local OpenAI-compat · {settings.llm_model}"
+    if p == "openai_compatible":
+        return f"OpenAI-compat · {settings.llm_model}"
     return "desactivado"
 
 
@@ -78,6 +88,22 @@ def _oai_headers() -> dict:
 
 def _chat(system: str, user: str, max_tokens: int = 900) -> str:
     p = settings.llm_provider
+    if p == "gemini":
+        model = _gemini_model()
+        url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
+               f"{model}:generateContent?key={settings.gemini_api_key}")
+        r = requests.post(url, timeout=120, json={
+            "system_instruction": {"parts": [{"text": system}]},
+            "contents": [{"role": "user", "parts": [{"text": user}]}],
+            "generationConfig": {"maxOutputTokens": max_tokens, "temperature": 0.4},
+        })
+        r.raise_for_status()
+        cands = r.json().get("candidates", [])
+        if not cands:
+            raise RuntimeError("Gemini no devolvió respuesta (¿filtro de seguridad o cuota?).")
+        parts = cands[0].get("content", {}).get("parts", [])
+        return "".join(pt.get("text", "") for pt in parts).strip()
+
     if p == "ollama":
         r = requests.post(
             f"{settings.ollama_url}/api/chat",

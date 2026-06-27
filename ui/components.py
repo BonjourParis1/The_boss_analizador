@@ -207,7 +207,8 @@ def signal_html(sig: Signal, symbol_label: str) -> str:
     color = _ACT_COLOR.get(sig.action, T.GOLD)
     risk = ""
     if sig.stop_loss is not None:
-        risk = (f"<div style='margin-top:10px;display:flex;gap:18px;font-size:0.95rem;'>"
+        risk = (f"<div style='margin-top:10px;display:flex;flex-wrap:wrap;gap:6px 16px;"
+                f"font-size:0.9rem;'>"
                 f"<span>🛑 SL: <b style='color:{T.RED};'>{_fmt(sig.stop_loss)}</b></span>"
                 f"<span>🎯 TP: <b style='color:{T.GREEN};'>{_fmt(sig.take_profit)}</b></span></div>")
     news = ""
@@ -216,13 +217,11 @@ def signal_html(sig: Signal, symbol_label: str) -> str:
         news = f"<span style='color:{nc};'>Noticias {sig.news_score:+.2f}</span>"
     return f"""
     <div class="gx-card" style="border:2px solid {color};">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div>
-          <div class="gx-tag">{symbol_label} · señal del experto</div>
-          <div style="font-size:2.4rem;font-weight:800;color:{color};">{sig.icon} {sig.action}</div>
-        </div>
-      </div>
-      <div style="margin-top:6px;display:flex;gap:18px;font-size:0.95rem;color:{T.MUTED};">
+      <div class="gx-tag">{symbol_label} · señal del experto</div>
+      <div style="font-size:2rem;font-weight:800;color:{color};line-height:1.1;">
+        {sig.icon} {sig.action}</div>
+      <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px 16px;
+                  font-size:0.9rem;color:{T.MUTED};">
         <span>Precio <b style="color:{T.TEXT};">{_fmt(sig.price)}</b></span>
         <span>RSI <b style="color:{T.TEXT};">{sig.rsi}</b></span>
         {news}

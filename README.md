@@ -88,6 +88,11 @@ Abre `http://localhost:8501` e introduce tus tres claves.
   Profit (por ATR), RSI y sentimiento de noticias.
 - **Tiempo real**: la terminal se auto-refresca cada N segundos (configurable)
   usando *fragments* de Streamlit, sin recargar toda la página.
+- **Lectura de velas**: detecta patrones (martillo, envolvente, doji, estrella
+  del amanecer/atardecer…), tendencia y soportes/resistencias, como un trader.
+- **Tiempo real**: las **criptomonedas** se transmiten en vivo (Binance, tick a
+  tick). **Forex/acciones** usan APIs gratuitas limitadas (Alpha Vantage ~25
+  llamadas/día), por lo que se actualizan de forma manual, no tick a tick.
 - **Lectura del experto**: explicación concisa de por qué se da la señal.
 - **Registrar operación**: botones que guardan tu decisión en la base de datos.
 - **Noticias**: titulares recientes del activo con sentimiento coloreado.

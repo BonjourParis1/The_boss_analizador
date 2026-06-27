@@ -32,28 +32,44 @@ def _fmt(x: float) -> str:
     return f"{x:.6f}".rstrip("0").rstrip(".")
 
 
-def ticker_header(symbol_label: str, df: pd.DataFrame, mkt_type: str) -> str:
-    last = float(df["close"].iloc[-1])
-    first = float(df["close"].iloc[0])
-    chg = last - first
-    pct = (chg / first * 100) if first else 0.0
+def ticker_header(symbol_label: str, df: pd.DataFrame, mkt_type: str,
+                  quote: dict | None = None, updated: str = "") -> str:
+    """Encabezado tipo ticker. Si `quote` (cripto en vivo) existe, usa su precio
+    y variación de 24h; si no, calcula la variación sobre las velas cargadas."""
+    if quote:
+        last = quote["price"]
+        chg = quote["change"]
+        pct = quote["change_pct"]
+        live_badge = "<span class='gx-live'><span class='dot'></span>EN VIVO</span>"
+        period = "24h"
+    else:
+        last = float(df["close"].iloc[-1])
+        first = float(df["close"].iloc[0])
+        chg = last - first
+        pct = (chg / first * 100) if first else 0.0
+        live_badge = "<span class='gx-tag'>diferido</span>"
+        period = "sesión"
     up = chg >= 0
     cls = "gx-up" if up else "gx-down"
     arrow = "▲" if up else "▼"
     color = T.GREEN if up else T.RED
+    foot = f"<span class='gx-tag'>actualizado {updated}</span>" if updated else ""
     return f"""
     <div class="gx-card">
       <div class="gx-ticker">
         <span class="gx-symbol">{symbol_label}</span>
         <span class="gx-tag">{mkt_type.upper()}</span>
+        {live_badge}
         <span class="gx-price" style="color:{color};">{_fmt(last)}</span>
-        <span class="gx-delta {cls}">{arrow} {_fmt(chg)} ({pct:+.2f}%)</span>
+        <span class="gx-delta {cls}">{arrow} {_fmt(chg)} ({pct:+.2f}%) · {period}</span>
+        &nbsp; {foot}
       </div>
     </div>
     """
 
 
-def pro_chart(symbol_label: str, df: pd.DataFrame) -> go.Figure:
+def pro_chart(symbol_label: str, df: pd.DataFrame,
+              support: float | None = None, resistance: float | None = None) -> go.Figure:
     """Velas + volumen + SMA9/21 + EMA50 + Bandas de Bollinger, estilo TradingView."""
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03,
                         row_heights=[0.78, 0.22])
@@ -76,6 +92,16 @@ def pro_chart(symbol_label: str, df: pd.DataFrame) -> go.Figure:
                                  line=dict(color=T.GOLD, width=1.3)), row=1, col=1)
         fig.add_trace(go.Scatter(x=df.index, y=df["ema_50"], name="EMA50",
                                  line=dict(color="#b388ff", width=1.1)), row=1, col=1)
+
+    # Niveles clave detectados por la lectura de velas
+    if resistance:
+        fig.add_hline(y=resistance, line=dict(color=T.RED, width=1, dash="dash"),
+                      annotation_text="Resistencia", annotation_position="top right",
+                      annotation_font_color=T.RED, row=1, col=1)
+    if support:
+        fig.add_hline(y=support, line=dict(color=T.GREEN, width=1, dash="dash"),
+                      annotation_text="Soporte", annotation_position="bottom right",
+                      annotation_font_color=T.GREEN, row=1, col=1)
 
     vol_colors = [T.GREEN if c >= o else T.RED for o, c in zip(df["open"], df["close"])]
     fig.add_trace(go.Bar(x=df.index, y=df["volume"], name="Volumen",
@@ -160,6 +186,32 @@ def signal_html(sig: Signal, symbol_label: str) -> str:
         {news}
       </div>
       {risk}
+    </div>
+    """
+
+
+def candles_html(reading) -> str:
+    """Tarjeta con la 'lectura de velas': tendencia, patrones y niveles."""
+    tcolor = {"alcista": T.GREEN, "bajista": T.RED, "lateral": T.MUTED}.get(reading.trend, T.MUTED)
+    chips = ""
+    for p in reading.patterns:
+        c = T.GREEN if p.bias == "alcista" else T.RED if p.bias == "bajista" else T.MUTED
+        chips += f"<span class='gx-chip' style='background:rgba(122,132,153,0.12);color:{c};'>{p.name}</span>"
+    if not chips:
+        chips = "<span style='color:#7a8499;font-size:0.85rem;'>Sin patrón claro en las últimas velas.</span>"
+    levels = ""
+    if reading.support or reading.resistance:
+        levels = (f"<div style='margin-top:8px;font-size:0.85rem;color:{T.MUTED};'>"
+                  f"Soporte <b style='color:{T.GREEN};'>{_fmt(reading.support)}</b> · "
+                  f"Resistencia <b style='color:{T.RED};'>{_fmt(reading.resistance)}</b></div>")
+    return f"""
+    <div class="gx-card">
+      <div class="gx-tag">Lectura de velas</div>
+      <div style="margin:4px 0;">Tendencia:
+        <b style="color:{tcolor};">{reading.trend.upper()}</b>
+        <span style="color:#7a8499;">(fuerza {reading.trend_strength:.0%})</span></div>
+      <div>{chips}</div>
+      {levels}
     </div>
     """
 

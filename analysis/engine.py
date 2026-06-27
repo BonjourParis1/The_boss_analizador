@@ -34,6 +34,10 @@ class Signal:
     rsi: float | None = None
     atr: float | None = None
     news_score: float | None = None  # sentimiento de noticias (-1..1)
+    trend: str | None = None         # alcista | bajista | lateral
+    patterns: list[str] = field(default_factory=list)  # patrones de velas detectados
+    support: float | None = None
+    resistance: float | None = None
 
     @property
     def icon(self) -> str:
@@ -54,11 +58,12 @@ def _cross_down(prev_a, prev_b, a, b) -> bool:
 
 
 def analyze(symbol_key: str, df_ind: pd.DataFrame,
-            news_score: float | None = None) -> Signal:
+            news_score: float | None = None, candles=None) -> Signal:
     """Genera la señal a partir del DataFrame con indicadores ya calculados.
 
-    `news_score` (sentimiento de noticias en -1..1) es un factor SECUNDARIO:
-    refuerza o suaviza la señal técnica, nunca la sustituye.
+    `news_score` (sentimiento de noticias en -1..1) y `candles` (lectura de velas
+    de analysis.patterns) son factores que refuerzan o suavizan la señal técnica,
+    nunca la sustituyen.
     """
     if len(df_ind) < 2:
         last = df_ind.iloc[-1]
@@ -120,7 +125,31 @@ def analyze(symbol_key: str, df_ind: pd.DataFrame,
         reasons.append("Precio por encima de la banda superior de Bollinger.")
         notes.append("El precio rompió la banda superior: posible corrección a la baja.")
 
-    # --- 5) Sentimiento de noticias (factor secundario) ---
+    # --- 5) Lectura de velas: patrones y tendencia ---
+    trend = patterns_names = None
+    support = resistance = None
+    if candles is not None:
+        trend = candles.trend
+        patterns_names = [p.name for p in candles.patterns]
+        support, resistance = candles.support, candles.resistance
+        # Patrones de velas
+        if candles.bull_score > candles.bear_score:
+            buy_votes += 0.9
+            reasons.append("Velas con patrón alcista: " +
+                           ", ".join(p.name for p in candles.patterns if p.bias == "alcista") + ".")
+        elif candles.bear_score > candles.bull_score:
+            sell_votes += 0.9
+            reasons.append("Velas con patrón bajista: " +
+                           ", ".join(p.name for p in candles.patterns if p.bias == "bajista") + ".")
+        # Tendencia (acompaña, con peso por su fuerza)
+        if trend == "alcista":
+            buy_votes += 0.7 * (0.5 + candles.trend_strength)
+            reasons.append(f"Tendencia alcista (fuerza {candles.trend_strength:.0%}).")
+        elif trend == "bajista":
+            sell_votes += 0.7 * (0.5 + candles.trend_strength)
+            reasons.append(f"Tendencia bajista (fuerza {candles.trend_strength:.0%}).")
+
+    # --- 6) Sentimiento de noticias (factor secundario) ---
     if news_score is not None:
         if news_score > 0.08:
             buy_votes += 0.6
@@ -170,4 +199,8 @@ def analyze(symbol_key: str, df_ind: pd.DataFrame,
         rsi=round(rsi_val, 1),
         atr=round(atr_val, 6),
         news_score=news_score,
+        trend=trend,
+        patterns=patterns_names or [],
+        support=round(support, 6) if support else None,
+        resistance=round(resistance, 6) if resistance else None,
     )

@@ -64,5 +64,18 @@ CSS = f"""
 
   /* Métricas */
   div[data-testid="stMetricValue"] {{ font-size:1.4rem; }}
+
+  /* Indicador EN VIVO pulsante */
+  .gx-live {{ display:inline-flex; align-items:center; gap:6px; font-size:0.72rem;
+              font-weight:700; color:{RED}; letter-spacing:1px; }}
+  .gx-live .dot {{ width:9px; height:9px; border-radius:50%; background:{RED};
+                   animation: gxpulse 1.1s infinite; }}
+  @keyframes gxpulse {{
+    0%   {{ box-shadow:0 0 0 0 rgba(239,83,80,0.6); }}
+    70%  {{ box-shadow:0 0 0 8px rgba(239,83,80,0); }}
+    100% {{ box-shadow:0 0 0 0 rgba(239,83,80,0); }}
+  }}
+  .gx-chip {{ display:inline-block; font-size:0.74rem; font-weight:700; padding:3px 9px;
+              border-radius:6px; margin:2px 4px 2px 0; }}
 </style>
 """

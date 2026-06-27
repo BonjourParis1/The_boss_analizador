@@ -12,14 +12,18 @@ registro de decisiones en Supabase -> historial, radar, backtest y ML.
 """
 from __future__ import annotations
 
+from datetime import datetime
+
 import streamlit as st
 
 from analysis.backtest import run_backtest
 from analysis.engine import BUY, HOLD, SELL, analyze
 from analysis.indicators import compute_all
 from analysis.news import get_news
+from analysis.patterns import read_candles
 from config import SYMBOLS, SYMBOLS_BY_KEY, settings
 from data.connectors import fetch_with_retry
+from data.realtime import fast_quote, is_realtime
 from db.store import (BACKEND, get_history, get_stats, init_db,
                       save_recommendation, save_user_decision)
 from ml import model as ml_model
@@ -71,7 +75,7 @@ with st.sidebar:
                                                 index=1)
     st.session_state["limit"] = st.slider("Velas", 60, 500, 200, step=20)
     st.session_state["live"] = st.toggle("🔴 Tiempo real", value=True)
-    st.session_state["refresh"] = st.number_input("Refresco (seg)", 3, 120,
+    st.session_state["refresh"] = st.number_input("Refresco cripto (seg)", 1, 120,
                                                    value=settings.refresh_seconds)
     if not settings.alpha_vantage_key:
         st.caption("⚠️ Sin ALPHA_VANTAGE_API_KEY: el forex usa Yahoo Finance "
@@ -101,14 +105,19 @@ def render_terminal():
         return
 
     digest = load_news(sk)
-    sig = analyze(sk, df, news_score=digest.score)
+    reading = read_candles(df)
+    quote = fast_quote(symbol)              # precio en vivo (solo cripto)
+    sig = analyze(sk, df, news_score=digest.score, candles=reading)
 
-    # Encabezado tipo ticker
-    st.markdown(C.ticker_header(symbol.label, df, symbol.type), unsafe_allow_html=True)
+    # Encabezado tipo ticker (precio en vivo si es cripto)
+    st.markdown(C.ticker_header(symbol.label, df, symbol.type, quote=quote,
+                                updated=datetime.now().strftime("%H:%M:%S")),
+                unsafe_allow_html=True)
 
     col_chart, col_side = st.columns([3, 1.25], gap="medium")
     with col_chart:
-        st.plotly_chart(C.pro_chart(symbol.label, df), use_container_width=True,
+        st.plotly_chart(C.pro_chart(symbol.label, df, sig.support, sig.resistance),
+                        use_container_width=True,
                         config={"scrollZoom": True, "displayModeBar": False})
         st.plotly_chart(C.indicator_panel(df), use_container_width=True,
                         config={"displayModeBar": False})
@@ -117,6 +126,7 @@ def render_terminal():
         st.markdown(C.signal_html(sig, symbol.label), unsafe_allow_html=True)
         st.plotly_chart(C.confidence_gauge(sig), use_container_width=True,
                         config={"displayModeBar": False})
+        st.markdown(C.candles_html(reading), unsafe_allow_html=True)
 
         if sig.is_strong:
             st.toast(f"{sig.icon} Señal FUERTE de {sig.action} en {symbol.label}", icon="🔔")
@@ -158,8 +168,18 @@ def render_terminal():
 
 
 with tab_live:
-    # El fragmento se auto-refresca cada N seg solo si "Tiempo real" está activo.
-    _run_every = st.session_state["refresh"] if st.session_state.get("live") else None
+    _symbol = SYMBOLS_BY_KEY[st.session_state["symbol_key"]]
+    # Solo cripto tiene streaming real gratuito -> auto-refresco en vivo.
+    # Forex/acciones: APIs gratuitas limitadas -> actualización manual.
+    if is_realtime(_symbol) and st.session_state.get("live"):
+        _run_every = st.session_state["refresh"]
+    else:
+        _run_every = None
+        if not is_realtime(_symbol):
+            st.caption("ℹ️ Forex/acciones usan datos con APIs gratuitas limitadas "
+                       "(sin tick a tick). Pulsa **Actualizar** para refrescar.")
+            if st.button("🔄 Actualizar"):
+                load_market.clear()
     _live_fragment = st.fragment(run_every=_run_every)(render_terminal)
     _live_fragment()
 

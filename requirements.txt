@@ -7,7 +7,7 @@ pandas==2.2.3              # Manejo de datos
 numpy==2.1.3               # Cálculo numérico
 plotly==5.24.1             # Gráficos profesionales (velas, volumen, gauges)
 requests==2.32.3           # Conexión a APIs REST
-yfinance==0.2.50           # Acciones, índices y commodities (Yahoo Finance)
+yfinance>=1.4.1            # Acciones, índices y commodities (Yahoo Finance)
 scikit-learn==1.5.2        # Modelo de Machine Learning supervisado
 joblib==1.4.2              # Persistencia del modelo ML
 python-dotenv==1.0.1       # Carga de variables de entorno (.env)

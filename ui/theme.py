@@ -29,6 +29,16 @@ CSS = f"""
   #MainMenu, footer, header {{ visibility: hidden; }}
   .block-container {{ padding-top: 1rem; padding-bottom: 1rem; max-width: 100%; }}
 
+  /* Evitar el ATENUADO/parpadeo durante los auto-refrescos (fragments).
+     Streamlit baja la opacidad y muestra un indicador de "ejecutando";
+     lo desactivamos para que la interfaz se vea nítida y estable. */
+  [data-testid="stStatusWidget"] {{ display: none !important; }}
+  [data-testid="stAppViewContainer"], [data-testid="stAppViewBlockContainer"],
+  .stApp, .main, .element-container, [data-testid="stVerticalBlock"] {{
+    opacity: 1 !important; filter: none !important; transition: none !important;
+  }}
+  [data-stale="true"], .stApp [data-stale="true"] {{ opacity: 1 !important; }}
+
   /* Panel lateral compacto (deja más espacio al gráfico, estilo terminal) */
   section[data-testid="stSidebar"] {{
     background: {PANEL}; border-right: 1px solid #2a3142;

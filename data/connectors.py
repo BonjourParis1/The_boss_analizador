@@ -52,14 +52,32 @@ _AV_INTERVAL = {"1m": "1min", "5m": "5min", "15m": "15min", "1h": "60min", "1d":
 
 
 def fetch_forex(symbol: Symbol, interval: str = "5m", limit: int = 200) -> pd.DataFrame:
-    """Forex: Alpha Vantage intradía si hay API key; si no, Yahoo Finance."""
+    """Forex con cadena de respaldo robusta para que el gráfico nunca quede vacío:
+
+        1) Alpha Vantage intradía (FX_INTRADAY)  — requiere plan que lo permita
+        2) Yahoo Finance (EURUSD=X)              — gratis, a veces bloqueado
+        3) Alpha Vantage diario (FX_DAILY)       — gratis y fiable (último recurso)
+    """
     base, quote = symbol.provider_id.split("/")
+    errors = []
+    # 1) Intradía con Alpha Vantage (si hay clave)
     if settings.alpha_vantage_key:
         try:
             return _fetch_forex_av(base, quote, interval, limit)
-        except Exception:
-            pass  # fallback a Yahoo Finance
-    return _fetch_yf(f"{base}{quote}=X", interval, limit)
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"AV intradía: {e}")
+    # 2) Yahoo Finance
+    try:
+        return _fetch_yf(f"{base}{quote}=X", interval, limit)
+    except Exception as e:  # noqa: BLE001
+        errors.append(f"Yahoo: {e}")
+    # 3) Diario con Alpha Vantage (gratis y fiable)
+    if settings.alpha_vantage_key:
+        try:
+            return _fetch_forex_av(base, quote, "1d", limit)
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"AV diario: {e}")
+    raise RuntimeError("forex sin datos · " + " | ".join(errors[-2:]))
 
 
 def _fetch_forex_av(base: str, quote: str, interval: str, limit: int) -> pd.DataFrame:

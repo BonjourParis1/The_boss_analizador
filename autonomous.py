@@ -82,7 +82,7 @@ def _scan_cycle(stop_event: threading.Event, min_conf: float, timeframe: str) ->
         except Exception:
             pass
         # Pausa breve, interrumpible (cortesía con las APIs)
-        stop_event.wait(0.8)
+        stop_event.wait(0.4)
     return found
 
 

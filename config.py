@@ -48,7 +48,7 @@ class Settings:
     # --- Datos en tiempo real adicionales (opcional) ---
     finnhub_api_key: str = os.getenv("FINNHUB_API_KEY", "").strip()
     # --- Escáner autónomo ---
-    scan_interval_minutes: int = int(os.getenv("SCAN_INTERVAL_MINUTES", "15"))
+    scan_interval_minutes: int = int(os.getenv("SCAN_INTERVAL_MINUTES", "3"))
     # --- Correo ---
     email_enabled: bool = _bool("EMAIL_ENABLED", False)
     smtp_host: str = os.getenv("SMTP_HOST", "smtp.gmail.com")

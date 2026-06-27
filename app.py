@@ -16,6 +16,7 @@ from datetime import datetime
 
 import streamlit as st
 
+import autonomous
 from analysis import advisor, auto_learn
 from analysis.backtest import run_backtest
 from analysis.engine import BUY, HOLD, SELL, analyze
@@ -96,15 +97,33 @@ with st.sidebar:
     st.session_state["live"] = st.toggle("🔴 Tiempo real", value=True)
     st.session_state["refresh"] = st.number_input("Refresco (seg)", 1, 120,
                                                    value=settings.refresh_seconds)
+
+    st.divider()
+    # --- Motor autónomo 24/7 (arranca solo; se puede apagar para descansar) ---
+    st.session_state.setdefault("auto_interval", max(60, settings.scan_interval_minutes * 60))
+    st.session_state.setdefault("auto_minconf", 65)
+    auto_on = st.toggle("🤖 Autónomo 24/7", value=True, key="auto_on",
+                        help="Analiza todos los mercados en segundo plano y genera "
+                             "operaciones sugeridas. Apágalo para descansar y no gastar recursos.")
+    if auto_on and not autonomous.is_running():
+        autonomous.start(interval_seconds=st.session_state["auto_interval"],
+                         min_confidence=st.session_state["auto_minconf"],
+                         timeframe=st.session_state["interval"])
+    elif not auto_on and autonomous.is_running():
+        autonomous.stop()
+    st.caption("🟢 Analizando en segundo plano" if autonomous.is_running()
+               else "⚪ Detenido (sin consumo)")
+
     st.divider()
     if st.button("🚪 Cerrar sesión", use_container_width=True):
+        autonomous.stop()
         logout()
         st.rerun()
 
 
-tab_live, tab_radar, tab_brain, tab_hist, tab_back, tab_ml = st.tabs(
-    ["🖥️ Terminal", "📡 Radar de mercado", "🧠 Cerebro IA",
-     "📜 Historial", "⏮ Backtesting", "🤖 Aprendizaje"]
+tab_live, tab_auto, tab_radar, tab_brain, tab_hist, tab_back, tab_ml = st.tabs(
+    ["🖥️ Terminal", "🤖 Autónomo", "📡 Radar de mercado", "🧠 Cerebro IA",
+     "📜 Historial", "⏮ Backtesting", "🎓 Aprendizaje"]
 )
 
 
@@ -305,6 +324,54 @@ with tab_radar:
         import pandas as pd
         df_radar = pd.DataFrame(rows).sort_values("Confianza %", ascending=False)
         st.dataframe(df_radar, use_container_width=True, hide_index=True)
+
+
+# ============================== TAB: AUTÓNOMO ==============================
+with tab_auto:
+    st.subheader("🤖 Motor autónomo — analiza todos los mercados por ti")
+    st.caption("Trabaja en segundo plano aunque no estés mirando. Usa el interruptor "
+               "**🤖 Autónomo 24/7** de la izquierda para encenderlo o **apagarlo y "
+               "descansar** (al apagarlo deja de consumir recursos).")
+
+    cfg1, cfg2, cfg3 = st.columns([1, 1, 1])
+    st.session_state["auto_minconf"] = cfg1.slider(
+        "Confianza mínima %", 50, 90, int(st.session_state.get("auto_minconf", 65)))
+    mins = cfg2.slider("Escanear cada (min)", 1, 60,
+                       max(1, int(st.session_state.get("auto_interval", 300)) // 60))
+    st.session_state["auto_interval"] = mins * 60
+    if cfg3.button("🔄 Aplicar (reiniciar)", use_container_width=True):
+        autonomous.stop()
+        autonomous.start(interval_seconds=st.session_state["auto_interval"],
+                         min_confidence=st.session_state["auto_minconf"],
+                         timeframe=st.session_state["interval"])
+        st.success("Motor reiniciado con la nueva configuración.")
+
+    @st.fragment(run_every=(3 if autonomous.is_running() else None))
+    def _auto_panel():
+        snap = autonomous.snapshot()
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Estado", "🟢 Activo" if snap["running"] else "⚪ Detenido")
+        m2.metric("Ciclos", snap["cycles"])
+        m3.metric("Señales totales", snap["found_total"])
+        last = snap["last_scan"].strftime("%H:%M:%S") if snap["last_scan"] else "—"
+        m4.metric("Último análisis", last)
+
+        st.markdown("#### 🎯 Operaciones sugeridas (todos los mercados)")
+        if snap["results"]:
+            import pandas as pd
+            rows = [{"Hora": r["t"], "Activo": r["symbol"], "Señal": f"{r['icon']} {r['action']}",
+                     "Duración": r["dur"], "Confianza %": r["conf"], "Precio": r["price"]}
+                    for r in snap["results"]]
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        else:
+            st.info("Aún sin señales fuertes. El motor sigue analizando…"
+                    if snap["running"] else "Motor detenido. Enciéndelo a la izquierda.")
+
+        with st.expander("📋 Registro del motor"):
+            for line in snap["log"]:
+                st.text(line)
+
+    _auto_panel()
 
 
 # ============================== TAB: CEREBRO IA ============================

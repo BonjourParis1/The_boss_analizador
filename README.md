@@ -180,10 +180,19 @@ también muestran **precio en vivo tick a tick** en el encabezado y la línea en
 - **Aprendizaje de tus decisiones** (`ml/model.py`): aprende qué harías **tú** según
   los indicadores, a partir de las decisiones que registras.
 
-## 🛰️ Escáner autónomo 24/7
-`scanner.py` es un proceso independiente que escanea **todos** los activos cada N
-minutos (`SCAN_INTERVAL_MINUTES`), guarda recomendaciones y, si activas el correo,
-avisa de señales fuertes aunque no tengas el navegador abierto:
+## 🤖 Motor autónomo (dentro del dashboard)
+La pestaña **🤖 Autónomo** ejecuta un motor en **segundo plano** que analiza **todos**
+los mercados en bucle y va generando **operaciones sugeridas** (con dirección y
+duración) aunque no estés mirando esa pestaña.
+- **Arranca solo** al abrir el dashboard.
+- **Botón de apagado**: el interruptor **🤖 Autónomo 24/7** de la barra lateral lo
+  **detiene al instante** para descansar y **no gastar recursos** (el hilo termina;
+  consumo cero). Al cerrar sesión también se detiene.
+- Configurable: confianza mínima y frecuencia de escaneo (botón *Aplicar/reiniciar*).
+
+## 🛰️ Escáner 24/7 como proceso aparte (opcional)
+Para vigilancia continua **sin el navegador abierto**, `scanner.py` hace lo mismo
+como proceso independiente (y puede enviar correo):
 ```powershell
 python scanner.py            # bucle continuo
 python scanner.py --once     # una sola pasada (para cron/pruebas)

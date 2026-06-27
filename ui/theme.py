@@ -29,9 +29,13 @@ CSS = f"""
   #MainMenu, footer, header {{ visibility: hidden; }}
   .block-container {{ padding-top: 1rem; padding-bottom: 1rem; max-width: 100%; }}
 
+  /* Panel lateral compacto (deja más espacio al gráfico, estilo terminal) */
   section[data-testid="stSidebar"] {{
     background: {PANEL}; border-right: 1px solid #2a3142;
+    width: 215px !important; min-width: 215px !important;
   }}
+  section[data-testid="stSidebar"] .block-container {{ padding-top: 0.8rem; }}
+  section[data-testid="stSidebar"] label {{ font-size: 0.82rem; }}
   h1, h2, h3, h4 {{ color: #e8eaed; font-family: 'Segoe UI', sans-serif; }}
 
   /* Tabs estilo terminal */

@@ -24,7 +24,11 @@ _HEADERS = {"User-Agent": "GuiaExpertoTrading/2.0"}
 
 
 # ----------------------------- Criptomonedas -------------------------------
-_BINANCE_INTERVAL = {"1m": "1m", "5m": "5m", "15m": "15m", "1h": "1h", "1d": "1d"}
+_BINANCE_INTERVAL = {
+    "1m": "1m", "3m": "3m", "5m": "5m", "15m": "15m", "30m": "30m",
+    "1h": "1h", "2h": "2h", "4h": "4h", "6h": "6h", "12h": "12h",
+    "1d": "1d", "3d": "3d", "1w": "1w", "1M": "1M",
+}
 
 
 def fetch_crypto(symbol: Symbol, interval: str = "5m", limit: int = 200) -> pd.DataFrame:
@@ -94,8 +98,17 @@ def fetch_stock(symbol: Symbol, interval: str = "5m", limit: int = 200) -> pd.Da
     return _fetch_yf(symbol.provider_id, interval, limit)
 
 
-_YF_INTERVAL = {"1m": "1m", "5m": "5m", "15m": "15m", "1h": "60m", "1d": "1d"}
-_YF_PERIOD = {"1m": "1d", "5m": "5d", "15m": "5d", "1h": "1mo", "1d": "1y"}
+# Yahoo Finance soporta menos timeframes; mapeamos al más cercano disponible.
+_YF_INTERVAL = {
+    "1m": "1m", "3m": "5m", "5m": "5m", "15m": "15m", "30m": "30m",
+    "1h": "60m", "2h": "60m", "4h": "60m", "6h": "60m", "12h": "1d",
+    "1d": "1d", "3d": "1d", "1w": "1wk", "1M": "1mo",
+}
+_YF_PERIOD = {
+    "1m": "1d", "3m": "5d", "5m": "5d", "15m": "5d", "30m": "1mo",
+    "1h": "1mo", "2h": "1mo", "4h": "3mo", "6h": "3mo", "12h": "6mo",
+    "1d": "1y", "3d": "2y", "1w": "5y", "1M": "10y",
+}
 
 
 def _fetch_yf(ticker: str, interval: str, limit: int) -> pd.DataFrame:

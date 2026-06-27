@@ -37,9 +37,12 @@ class Settings:
     alpha_vantage_key: str = os.getenv("ALPHA_VANTAGE_API_KEY", "").strip()
     # --- Noticias ---
     newsapi_key: str = os.getenv("NEWSAPI_KEY", "").strip()
-    # --- Cerebro IA (Claude) ---
-    anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "").strip()
-    anthropic_model: str = os.getenv("ANTHROPIC_MODEL", "claude-opus-4-8").strip()
+    # --- Cerebro IA (modelo open-source local; sin API de pago) ---
+    llm_provider: str = os.getenv("LLM_PROVIDER", "ollama").strip().lower()
+    llm_model: str = os.getenv("LLM_MODEL", os.getenv("OLLAMA_MODEL", "llama3.1")).strip()
+    ollama_url: str = os.getenv("OLLAMA_URL", "http://localhost:11434").rstrip("/")
+    openai_base_url: str = os.getenv("OPENAI_BASE_URL", "http://localhost:1234/v1").rstrip("/")
+    openai_api_key: str = os.getenv("OPENAI_API_KEY", "").strip()
     # --- Escáner autónomo ---
     scan_interval_minutes: int = int(os.getenv("SCAN_INTERVAL_MINUTES", "15"))
     # --- Correo ---
@@ -61,7 +64,7 @@ class Settings:
 
     @property
     def has_llm(self) -> bool:
-        return bool(self.anthropic_api_key)
+        return self.llm_provider in ("ollama", "openai_compatible")
 
 
 settings = Settings()

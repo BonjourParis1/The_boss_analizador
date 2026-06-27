@@ -74,8 +74,11 @@ with st.sidebar:
         format_func=lambda k: f"{SYMBOLS_BY_KEY[k].label}  ·  {SYMBOLS_BY_KEY[k].type}",
         index=[s.key for s in SYMBOLS].index(st.session_state.get("symbol_key", SYMBOLS[0].key)),
     )
-    st.session_state["interval"] = st.selectbox("Temporalidad", ["1m", "5m", "15m", "1h", "1d"],
-                                                index=1)
+    st.session_state["interval"] = st.selectbox(
+        "Temporalidad",
+        ["1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "1d", "1w", "1M"], index=2)
+    st.session_state["chart_type"] = st.radio(
+        "Gráfico", ["Velas", "Línea en vivo"], horizontal=True)
     st.session_state["limit"] = st.slider("Velas", 60, 500, 200, step=20)
     st.session_state["live"] = st.toggle("🔴 Tiempo real", value=True)
     st.session_state["refresh"] = st.number_input("Refresco cripto (seg)", 1, 120,
@@ -109,20 +112,53 @@ def render_terminal():
         return
 
     digest = load_news(sk)
-    reading = read_candles(df)
     quote = fast_quote(symbol)              # precio en vivo (solo cripto)
+
+    # --- Vela en vivo: actualizamos la última vela con el precio del tick ---
+    if quote:
+        lp = quote["price"]
+        df = df.copy()
+        last = df.index[-1]
+        df.loc[last, "close"] = lp
+        df.loc[last, "high"] = max(df.loc[last, "high"], lp)
+        df.loc[last, "low"] = min(df.loc[last, "low"], lp)
+        df = compute_all(df.drop(columns=[c for c in df.columns
+                                          if c not in ("open", "high", "low", "close", "volume")]))
+
+    reading = read_candles(df)
     sig = analyze(sk, df, news_score=digest.score, candles=reading)
+
+    # --- Buffer de ticks por símbolo (para la línea en vivo, sensación de segundos) ---
+    buf_key = f"ticks_{sk}"
+    buf = st.session_state.setdefault(buf_key, [])
+    price_now = quote["price"] if quote else float(df["close"].iloc[-1])
+    buf.append((datetime.now(), price_now))
+    del buf[:-300]                          # conservamos los últimos 300 ticks
+
+    # --- Alertas en paralelo: acumula señales fuertes mientras observas ---
+    if sig.is_strong:
+        alerts = st.session_state.setdefault("live_alerts", [])
+        tag = f"{sk}:{sig.action}"
+        if not alerts or alerts[0].get("tag") != tag:
+            alerts.insert(0, {"tag": tag, "t": datetime.now().strftime("%H:%M:%S"),
+                              "txt": f"{sig.icon} {sig.action} {symbol.label} · {sig.confidence:.0f}%"})
+            del alerts[20:]
 
     # Encabezado tipo ticker (precio en vivo si es cripto)
     st.markdown(C.ticker_header(symbol.label, df, symbol.type, quote=quote,
                                 updated=datetime.now().strftime("%H:%M:%S")),
                 unsafe_allow_html=True)
 
-    col_chart, col_side = st.columns([3, 1.25], gap="medium")
+    col_chart, col_side = st.columns([3.6, 1.15], gap="medium")
     with col_chart:
-        st.plotly_chart(C.pro_chart(symbol.label, df, sig.support, sig.resistance),
-                        use_container_width=True,
-                        config={"scrollZoom": True, "displayModeBar": False})
+        if st.session_state.get("chart_type") == "Línea en vivo":
+            st.plotly_chart(C.live_line_chart(symbol.label, buf),
+                            use_container_width=True,
+                            config={"scrollZoom": True, "displayModeBar": False})
+        else:
+            st.plotly_chart(C.pro_chart(symbol.label, df, sig.support, sig.resistance),
+                            use_container_width=True,
+                            config={"scrollZoom": True, "displayModeBar": False})
         st.plotly_chart(C.indicator_panel(df), use_container_width=True,
                         config={"displayModeBar": False})
 
@@ -131,6 +167,15 @@ def render_terminal():
         st.plotly_chart(C.confidence_gauge(sig), use_container_width=True,
                         config={"displayModeBar": False})
         st.markdown(C.candles_html(reading), unsafe_allow_html=True)
+
+        # Alertas en vivo detectadas en paralelo (mientras observas)
+        alerts = st.session_state.get("live_alerts", [])
+        if alerts:
+            rows = "".join(
+                f"<div class='gx-news'><b>{a['t']}</b> &nbsp; {a['txt']}</div>"
+                for a in alerts[:6])
+            st.markdown(f"<div class='gx-card'><div class='gx-tag'>🔔 Alertas en vivo</div>"
+                        f"{rows}</div>", unsafe_allow_html=True)
 
         if sig.is_strong:
             st.toast(f"{sig.icon} Señal FUERTE de {sig.action} en {symbol.label}", icon="🔔")
@@ -212,13 +257,14 @@ with tab_radar:
 
 # ============================== TAB: CEREBRO IA ============================
 with tab_brain:
-    st.subheader("🧠 Cerebro IA — razonamiento con Claude")
+    st.subheader("🧠 Cerebro IA — razonamiento con modelo local (open-source)")
     if not llm.is_available():
-        st.info("Para activar el razonamiento en lenguaje natural y el análisis de "
-                "contenido, añade tu **ANTHROPIC_API_KEY** en el archivo `.env` "
-                "(tiene coste por uso). El resto del sistema funciona sin ella.")
+        st.info("Para activar el razonamiento en lenguaje natural (gratis, local), "
+                "instala **Ollama** (https://ollama.com) y ejecuta en una terminal: "
+                "`ollama pull llama3.1`. Luego deja Ollama abierto. El resto del "
+                "sistema funciona sin esto. (Config en `.env`: `LLM_PROVIDER`, `LLM_MODEL`.)")
     else:
-        st.caption(f"Modelo: {settings.anthropic_model}")
+        st.caption(f"Modelo local: {llm.backend_label()}")
 
     c_reason, c_ingest = st.columns(2, gap="large")
 

@@ -21,6 +21,7 @@ supabase==2.9.1            # Cliente oficial de Supabase (backend por defecto)
 feedparser==6.0.11         # Lectura de feeds RSS de noticias financieras
 vaderSentiment==3.3.2      # Análisis de sentimiento (sin descargas pesadas)
 
-# ----- Cerebro IA (Claude) y ingesta de contenido -----
-anthropic==0.69.0          # SDK oficial de Claude (razonamiento del experto)
+# ----- Cerebro IA (modelo open-source local) e ingesta de contenido -----
+# No requiere ninguna API de pago. El razonamiento usa Ollama (https://ollama.com)
+# o cualquier servidor local compatible con OpenAI (LM Studio). Solo se usa `requests`.
 youtube-transcript-api==0.6.3  # Transcripciones de YouTube para ingesta

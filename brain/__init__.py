@@ -1,1 +1,1 @@
-"""Cerebro IA: razonamiento con Claude (Anthropic) sobre el contexto de mercado."""
+"""Cerebro IA: razonamiento con un modelo open-source local (Ollama / OpenAI-compat)."""

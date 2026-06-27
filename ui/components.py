@@ -108,14 +108,56 @@ def pro_chart(symbol_label: str, df: pd.DataFrame,
                          marker_color=vol_colors, opacity=0.5), row=2, col=1)
 
     fig.update_layout(
-        template="plotly_dark", height=560, paper_bgcolor=T.PANEL, plot_bgcolor=T.PANEL,
+        template="plotly_dark", height=640, paper_bgcolor=T.PANEL, plot_bgcolor=T.PANEL,
         margin=dict(l=8, r=8, t=10, b=8), xaxis_rangeslider_visible=False,
         legend=dict(orientation="h", y=1.04, x=0, font=dict(size=10)),
         hovermode="x unified", dragmode="pan",
     )
-    fig.update_xaxes(showspikes=True, spikemode="across", spikethickness=1,
-                     spikecolor=T.MUTED, gridcolor="#1e2533")
+    # Botones de zoom temporal (estilo IQ Option / TradingView)
+    fig.update_xaxes(
+        rangeselector=dict(
+            buttons=[
+                dict(count=15, label="15m", step="minute", stepmode="backward"),
+                dict(count=1, label="1H", step="hour", stepmode="backward"),
+                dict(count=4, label="4H", step="hour", stepmode="backward"),
+                dict(count=1, label="1D", step="day", stepmode="backward"),
+                dict(count=7, label="1S", step="day", stepmode="backward"),
+                dict(step="all", label="Todo"),
+            ],
+            bgcolor=T.PANEL_2, activecolor=T.BLUE, font=dict(color=T.TEXT, size=10),
+            x=0, y=1.02,
+        ),
+        showspikes=True, spikemode="across", spikethickness=1,
+        spikecolor=T.MUTED, gridcolor="#1e2533", row=1, col=1,
+    )
+    fig.update_xaxes(gridcolor="#1e2533", row=2, col=1)
     fig.update_yaxes(gridcolor="#1e2533", side="right")
+    return fig
+
+
+def live_line_chart(symbol_label: str, ticks) -> go.Figure:
+    """Gráfico de LÍNEA en vivo (tick a tick) — actualiza cada refresco.
+
+    `ticks` es una lista de (timestamp, precio) acumulada en tiempo real.
+    Da la sensación de movimiento por segundos como en IQ Option.
+    """
+    xs = [t for t, _ in ticks]
+    ys = [p for _, p in ticks]
+    up = len(ys) < 2 or ys[-1] >= ys[0]
+    color = T.GREEN if up else T.RED
+    fig = go.Figure(go.Scatter(
+        x=xs, y=ys, mode="lines", line=dict(color=color, width=2),
+        fill="tozeroy", fillcolor=("rgba(38,166,154,0.10)" if up else "rgba(239,83,80,0.10)"),
+        name="Precio en vivo"))
+    if ys:
+        fig.add_hline(y=ys[-1], line=dict(color=color, width=1, dash="dot"))
+    fig.update_layout(
+        template="plotly_dark", height=640, paper_bgcolor=T.PANEL, plot_bgcolor=T.PANEL,
+        margin=dict(l=8, r=8, t=10, b=8), showlegend=False, hovermode="x unified",
+        title=dict(text=f"{symbol_label} · línea en vivo (ticks)", font=dict(size=12)))
+    fig.update_yaxes(gridcolor="#1e2533", side="right",
+                     range=[min(ys) * 0.999, max(ys) * 1.001] if ys else None)
+    fig.update_xaxes(gridcolor="#1e2533")
     return fig
 
 

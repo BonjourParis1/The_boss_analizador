@@ -90,9 +90,15 @@ Abre `http://localhost:8501` e introduce tus tres claves.
   usando *fragments* de Streamlit, sin recargar toda la página.
 - **Lectura de velas**: detecta patrones (martillo, envolvente, doji, estrella
   del amanecer/atardecer…), tendencia y soportes/resistencias, como un trader.
-- **Tiempo real**: las **criptomonedas** se transmiten en vivo (Binance, tick a
-  tick). **Forex/acciones** usan APIs gratuitas limitadas (Alpha Vantage ~25
-  llamadas/día), por lo que se actualizan de forma manual, no tick a tick.
+- **Tiempo real**: las **criptomonedas** se transmiten en vivo — la última vela se
+  mueve tick a tick (Binance) y hay un modo **"Línea en vivo"** que dibuja el precio
+  por segundos como IQ Option. **Forex/acciones** usan APIs gratuitas limitadas
+  (Alpha Vantage ~25 llamadas/día), por lo que se actualizan de forma manual.
+- **Temporalidades y zoom**: selector de 1m a 1M y botones de zoom temporal
+  (15m/1H/4H/1D/1S/Todo) + scroll/arrastre sobre el gráfico, como en TradingView.
+- **Alertas en paralelo**: mientras observas, el sistema detecta patrones y acumula
+  un feed de **🔔 alertas en vivo** de señales fuertes. Para vigilancia 24/7 de TODOS
+  los activos a la vez, usa el escáner (`scanner.py`).
 - **Lectura del experto**: explicación concisa de por qué se da la señal.
 - **Registrar operación**: botones que guardan tu decisión en la base de datos.
 - **Noticias**: titulares recientes del activo con sentimiento coloreado.
@@ -142,13 +148,15 @@ Gmail) y `EMAIL_TO`. El sistema enviará un correo cuando aparezca una señal fu
 
 ---
 
-## 🧠 Cerebro IA (Claude) — opcional
-Con tu `ANTHROPIC_API_KEY` en `.env`, la pestaña **Cerebro IA** usa Claude
-(Opus 4.8) para **razonar la operación** del activo en lenguaje natural (lectura,
-escenario probable y gestión de riesgo, siempre en probabilidades) y para
-**procesar contenido que le adjuntes**: pegas texto o una **URL de YouTube**
-(analiza la *transcripción*) y extrae resumen, sesgo, ideas accionables y banderas
-rojas. Tiene coste por uso de la API.
+## 🧠 Cerebro IA (modelo open-source local, GRATIS) — opcional
+Usa un modelo local vía **Ollama** (https://ollama.com) — sin ninguna API de pago.
+Instálalo y descarga un modelo: `ollama pull llama3.1`. Con Ollama abierto, la
+pestaña **Cerebro IA** puede **razonar la operación** del activo en lenguaje natural
+(lectura, escenario probable y gestión de riesgo, siempre en probabilidades) y
+**procesar contenido que le adjuntes**: pegas texto o una **URL de YouTube** (analiza
+la *transcripción*) y extrae resumen, sesgo, ideas accionables y banderas rojas.
+También soporta cualquier servidor local compatible con OpenAI (LM Studio) mediante
+`LLM_PROVIDER=openai_compatible`. Config en `.env`: `LLM_PROVIDER`, `LLM_MODEL`.
 
 ## 🤖 Aprendizaje (apoyo probabilístico, no predice el futuro)
 - **Autoaprendizaje del histórico** (`analysis/auto_learn.py`): aprende solo, sin

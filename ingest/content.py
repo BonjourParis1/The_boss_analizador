@@ -4,9 +4,9 @@ ingest/content.py — Ingesta de contenido que TÚ aportas.
 * Texto pegado (artículos, notas de estrategia).
 * URL de YouTube -> baja la transcripción (lo que se DICE en el video).
 
-Luego el cerebro IA (brain.llm.analyze_content) extrae resumen, sesgo, ideas
-accionables y banderas rojas. También calculamos un sentimiento rápido con VADER
-para tener una señal aunque no haya API de Claude.
+Luego el cerebro IA (brain.llm.analyze_content, modelo local open-source) extrae
+resumen, sesgo, ideas accionables y banderas rojas. También calculamos un sentimiento
+rápido con VADER para tener una señal aunque el modelo local no esté disponible.
 
 Nota honesta: NO "vemos" el video; analizamos su transcripción de texto. Si el video
 no tiene subtítulos/transcripción disponible, no se puede procesar.
@@ -28,7 +28,7 @@ class Ingested:
     kind: str            # "texto" | "youtube"
     text: str            # contenido en crudo (transcripción o texto)
     sentiment: float     # -1..1 (VADER)
-    analysis: str        # análisis del experto (Claude) o aviso si no hay API
+    analysis: str        # análisis del experto (modelo local) o aviso si no hay IA
 
 
 def _vader(text: str) -> float:
@@ -56,7 +56,7 @@ def fetch_youtube_transcript(url: str, languages=("es", "en")) -> str:
 
 def ingest_text(text: str, source: str = "texto pegado") -> Ingested:
     analysis = (llm.analyze_content(text, source) if llm.is_available()
-                else "ℹ️ Configura ANTHROPIC_API_KEY para el análisis con IA. "
+                else "ℹ️ Inicia un modelo local (Ollama) para el análisis con IA. "
                      "Por ahora solo se calcula el sentimiento.")
     return Ingested(source, "texto", text, round(_vader(text), 3), analysis)
 
@@ -64,6 +64,6 @@ def ingest_text(text: str, source: str = "texto pegado") -> Ingested:
 def ingest_youtube(url: str) -> Ingested:
     text = fetch_youtube_transcript(url)
     analysis = (llm.analyze_content(text, f"YouTube: {url}") if llm.is_available()
-                else "ℹ️ Configura ANTHROPIC_API_KEY para el análisis con IA. "
+                else "ℹ️ Inicia un modelo local (Ollama) para el análisis con IA. "
                      "Por ahora solo se calcula el sentimiento de la transcripción.")
     return Ingested(url, "youtube", text, round(_vader(text), 3), analysis)

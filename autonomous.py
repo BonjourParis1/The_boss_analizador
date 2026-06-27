@@ -41,13 +41,41 @@ class _State:
         self.interval_seconds = 300
         self.min_confidence = 65.0
         self.timeframe = "5m"
+        # Auto-investigación de señales fuertes (contexto de noticias/YouTube)
+        self.research: dict = {}          # symbol_key -> {t, label, action, text}
+        self._research_cooldown: dict = {}  # symbol_key -> epoch del último estudio
 
 
 _S = _State()
 
 
+_RESEARCH_COOLDOWN_S = 900   # no reinvestigar el mismo activo en 15 min
+_MAX_RESEARCH_PER_CYCLE = 2  # acota el tiempo del ciclo (la IA puede ser lenta)
+
+
+def _maybe_research(symbol, plan, done_count: int) -> int:
+    """Investiga (noticias + YouTube + IA) un activo con señal fuerte, con cooldown."""
+    import time as _t
+    if done_count >= _MAX_RESEARCH_PER_CYCLE:
+        return done_count
+    if _t.time() - _S._research_cooldown.get(symbol.key, 0) < _RESEARCH_COOLDOWN_S:
+        return done_count
+    try:
+        from ingest.content import auto_research
+        text = auto_research(symbol)
+        with _S.lock:
+            _S.research[symbol.key] = {
+                "t": datetime.now().strftime("%H:%M:%S"), "label": symbol.label,
+                "action": plan.action_label, "icon": plan.icon, "text": text}
+            _S._research_cooldown[symbol.key] = _t.time()
+        return done_count + 1
+    except Exception:
+        return done_count
+
+
 def _scan_cycle(stop_event: threading.Event, min_conf: float, timeframe: str) -> int:
     found = 0
+    researched = 0
     has_model = auto_learn.model_exists()
     for s in SYMBOLS:
         if stop_event.is_set():
@@ -79,6 +107,8 @@ def _scan_cycle(stop_event: threading.Event, min_conf: float, timeframe: str) ->
                         "price": sig.price,
                     })
                 found += 1
+                # Auto-investigación del contexto de esta señal fuerte
+                researched = _maybe_research(s, plan, researched)
         except Exception:
             pass
         # Pausa breve, interrumpible (cortesía con las APIs)
@@ -149,4 +179,5 @@ def snapshot() -> dict:
             "min_confidence": _S.min_confidence,
             "results": list(_S.results),
             "log": list(_S.log),
+            "research": list(_S.research.values()),
         }

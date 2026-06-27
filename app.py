@@ -458,6 +458,13 @@ with tab_auto:
             st.info("Aún sin señales fuertes. El motor sigue analizando…"
                     if snap["running"] else "Motor detenido. Enciéndelo a la izquierda.")
 
+        research = snap.get("research", [])
+        if research:
+            st.markdown("#### 🔎 Contexto investigado de las señales (noticias + IA)")
+            for r in sorted(research, key=lambda x: x["t"], reverse=True)[:6]:
+                with st.expander(f"{r['icon']} {r['label']} · {r['action']} · {r['t']}"):
+                    st.markdown(r["text"])
+
         with st.expander("📋 Registro del motor"):
             for line in snap["log"]:
                 st.text(line)

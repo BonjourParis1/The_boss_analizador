@@ -1,16 +1,22 @@
 # ===== Guía Experto de Trading — dependencias =====
 # Instalar con:  pip install -r requirements.txt
-# Probado en Python 3.11+
+# Probado en Python 3.11 – 3.13
 
-streamlit==1.39.0          # Dashboard interactivo
+streamlit==1.39.0          # Dashboard interactivo (usa st.fragment para tiempo real)
 pandas==2.2.3              # Manejo de datos
 numpy==2.1.3               # Cálculo numérico
-plotly==5.24.1             # Gráficos en tiempo real
+plotly==5.24.1             # Gráficos profesionales (velas, volumen, gauges)
 requests==2.32.3           # Conexión a APIs REST
-SQLAlchemy==2.0.36         # ORM / base de datos (SQLite y PostgreSQL)
 yfinance==0.2.50           # Acciones, índices y commodities (Yahoo Finance)
 scikit-learn==1.5.2        # Modelo de Machine Learning supervisado
+joblib==1.4.2              # Persistencia del modelo ML
 python-dotenv==1.0.1       # Carga de variables de entorno (.env)
-ta==0.11.0                 # Indicadores técnicos (opcional; el motor también
-                           # trae implementación propia en pandas/numpy)
-psycopg2-binary==2.9.10    # Driver PostgreSQL (solo si usas producción)
+ta==0.11.0                 # Indicadores técnicos (opcional; hay implementación propia)
+
+# ----- Base de datos -----
+SQLAlchemy==2.0.36         # ORM (fallback SQLite si no hay Supabase)
+supabase==2.9.1            # Cliente oficial de Supabase (backend por defecto)
+
+# ----- Noticias y sentimiento -----
+feedparser==6.0.11         # Lectura de feeds RSS de noticias financieras
+vaderSentiment==3.3.2      # Análisis de sentimiento (sin descargas pesadas)

@@ -1,140 +1,136 @@
 # 📊 Guía Experto de Trading
 
-Analista personal y mentor digital de trading **en tiempo real**. Analiza
-decenas de mercados (Forex, criptomonedas, acciones, índices y commodities),
-calcula indicadores técnicos y te da recomendaciones claras
-(**📈 Compra / 📉 Venta / ⏸ Mantener**) que puedes replicar manualmente en
-IQ Option u otro bróker.
+Terminal profesional de análisis y recomendaciones de trading **en tiempo real**,
+con estética tipo TradingView / IQ Option. Analiza Forex, criptomonedas, acciones,
+índices y commodities; combina **análisis técnico + sentimiento de noticias + un
+modelo que aprende de tus decisiones**, y te entrega señales claras
+(**📈 Compra / 📉 Venta / ⏸ Mantener**) que replicas manualmente en tu bróker.
 
-> ⚠️ **Aviso**: Esta herramienta es educativa y de apoyo a la decisión. No es
-> asesoramiento financiero ni garantiza resultados. Operar conlleva riesgo de
-> pérdida. Las decisiones son siempre tuyas.
+> ⚠️ **Aviso honesto e importante**: esto es una herramienta de **apoyo a la
+> decisión**, no asesoramiento financiero. **Ningún sistema predice el mercado de
+> forma fiable.** Las señales son probabilísticas; el sentimiento de noticias es
+> contexto, no una bola de cristal. Operar conlleva riesgo de pérdida. Las
+> decisiones —y la responsabilidad— son siempre tuyas.
 
 ---
 
-## 🗂️ Estructura del proyecto
+## 🗂️ Estructura
 
 ```
 THE_BOSS_ANALIZADOR/
-├── app.py                  # Dashboard Streamlit (punto de entrada)
+├── app.py                  # Terminal Streamlit en tiempo real (entrada)
 ├── config.py               # Configuración y catálogo de mercados
 ├── setup_admin.py          # Crea/cambia las 3 claves de administrador
-├── requirements.txt        # Dependencias
-├── .env.example            # Plantilla de variables de entorno
+├── requirements.txt
+├── .env.example            # Plantilla de variables (segura, sí va a git)
 ├── .gitignore
 │
-├── data/                   # Capa de datos (APIs reales + normalización)
-│   ├── connectors.py       #   Binance · exchangerate.host · Yahoo Finance · Alpha Vantage
-│   └── normalizer.py       #   {timestamp, symbol, price, volume}
-│
-├── analysis/               # Motor de análisis
-│   ├── indicators.py       #   RSI, MACD, SMA/EMA, Bollinger, ATR
-│   ├── engine.py           #   Reglas de decisión + gestión de riesgo
-│   └── backtest.py         #   Backtesting de la estrategia
-│
-├── db/                     # Persistencia (SQLAlchemy: SQLite/PostgreSQL)
-│   ├── models.py           #   Tablas: recommendations, user_decisions
-│   └── database.py         #   Sesiones y operaciones
-│
-├── ml/                     # Machine Learning
-│   └── model.py            #   Aprende de tus decisiones (RandomForest)
-│
-├── security/               # Seguridad
-│   └── auth.py             #   Login de triple clave (PBKDF2 + bloqueo)
-│
-└── ui/                     # Presentación
-    ├── auth_ui.py          #   Pantalla de login
-    └── components.py       #   Gráficos Plotly y tarjetas de recomendación
+├── data/                   # APIs reales (Binance, Alpha Vantage, Yahoo Finance)
+├── analysis/               # indicators, engine (motor), news (sentimiento), backtest
+├── db/                     # store (selector) · supabase_store · database (SQLite)
+│   └── supabase_schema.sql #   SQL para crear las tablas en Supabase
+├── ml/                     # Modelo que aprende de tus decisiones
+├── notifications/          # Avisos por correo (SMTP, desactivado por defecto)
+├── security/               # Login de triple clave (PBKDF2 + bloqueo)
+└── ui/                     # theme · components (gráficos pro) · auth_ui
 ```
 
 ---
 
-## 🚀 Puesta en marcha (paso a paso)
+## 🚀 Puesta en marcha
 
-### 1. Requisitos
-- Python **3.11 o superior**.
-
-### 2. Crear entorno virtual e instalar dependencias
-
-**Windows (PowerShell):**
+### 1. Instalar (Python 3.11+)
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
 
-**Linux / macOS:**
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+### 2. Configurar `.env`
+Copia la plantilla y rellena **tus** valores (este archivo NO se sube a git):
+```powershell
+copy .env.example .env
 ```
+- `SUPABASE_URL` y `SUPABASE_SERVICE_KEY` → tu base de datos (ver paso 3).
+- `ALPHA_VANTAGE_API_KEY` → forex/acciones **intradía real** (gratis en
+  alphavantage.co). Sin ella, el forex usa Yahoo Finance (más limitado).
+- `NEWSAPI_KEY` → opcional; sin ella las noticias usan RSS público.
 
-### 3. Configurar variables de entorno (opcional)
-```bash
-cp .env.example .env      # en Windows:  copy .env.example .env
-```
-Sin `.env` el sistema funciona con fuentes de datos **sin API key**
-(Binance, exchangerate.host, Yahoo Finance). Alpha Vantage es opcional para
-forex intradía (rellena `ALPHA_VANTAGE_API_KEY`).
+> **El archivo `.env.example` es solo una plantilla** que documenta qué
+> variables existen, **sin** secretos. El `.env` real con tus claves vive solo
+> en tu PC. Así el repositorio nunca contiene credenciales.
+
+### 3. Crear las tablas en Supabase
+1. supabase.com → tu proyecto → **SQL Editor → New query**.
+2. Pega el contenido de [`db/supabase_schema.sql`](db/supabase_schema.sql) y pulsa **Run**.
+3. Copia tu `service_role key` (Project Settings → API) al `.env`.
+
+Si no configuras Supabase, el sistema usa **SQLite local** automáticamente.
 
 ### 4. Crear tus TRES claves de administrador 🔐
-```bash
+```powershell
 python setup_admin.py
 ```
-Te pedirá las tres claves (no se muestran al escribir) y las guardará
-**hasheadas** en `.secrets/admin_keys.json` (ignorado por git).
 
-### 5. Lanzar el dashboard
-```bash
+### 5. Lanzar (solo accesible desde tu equipo)
+```powershell
 streamlit run app.py
 ```
-Se abrirá en `http://localhost:8501`. Introduce tus tres claves para entrar.
+Abre `http://localhost:8501` e introduce tus tres claves.
 
 ---
 
-## 🔐 Seguridad del acceso (triple clave)
+## 🖥️ La terminal
 
-- Tres claves **independientes**; las tres deben ser correctas para entrar.
-- Se almacenan con **PBKDF2-HMAC-SHA256** (260.000 iteraciones) + *salt*
-  aleatorio por clave. Nunca en texto plano.
-- Comparación en **tiempo constante** (anti *timing attack*).
-- **Bloqueo temporal** tras varios intentos fallidos (anti fuerza bruta;
-  configurable con `AUTH_MAX_ATTEMPTS` y `AUTH_LOCKOUT_SECONDS`).
-- Cambia las claves cuando quieras volviendo a ejecutar `python setup_admin.py`.
-
----
-
-## 🧠 Cómo funciona el motor de decisiones
-
-| Indicador | Regla | Señal |
-|-----------|-------|-------|
-| RSI | < 30 sobreventa / > 70 sobrecompra | 📈 / 📉 |
-| Medias móviles (SMA9 vs SMA21) | cruce alcista/bajista | cambio de tendencia |
-| MACD | cruce de su línea de señal | momentum |
-| Bandas de Bollinger | ruptura de banda | volatilidad/breakout |
-| ATR | distancia para Stop Loss / Take Profit | gestión de riesgo |
-
-El motor pondera los votos y produce una acción con **nivel de confianza**.
-Las señales fuertes (confianza ≥ 65%) disparan **alerta visual y sonora**.
+- **Gráfico profesional**: velas + volumen + SMA9/21 + EMA50 + Bandas de Bollinger,
+  con crosshair y zoom (estilo TradingView).
+- **Panel de señal**: acción 📈/📉/⏸, **medidor de confianza**, Stop Loss y Take
+  Profit (por ATR), RSI y sentimiento de noticias.
+- **Tiempo real**: la terminal se auto-refresca cada N segundos (configurable)
+  usando *fragments* de Streamlit, sin recargar toda la página.
+- **Lectura del experto**: explicación concisa de por qué se da la señal.
+- **Registrar operación**: botones que guardan tu decisión en la base de datos.
+- **Noticias**: titulares recientes del activo con sentimiento coloreado.
+- **📡 Radar de mercado**: escanea todos los activos y los ordena por confianza.
+- **⏮ Backtesting** y **🤖 Aprendizaje (ML)**.
 
 ---
 
-## 🗃️ Base de datos
-- **SQLite** por defecto (`db/trading.db`), ideal para prototipo.
-- **PostgreSQL** para producción: solo cambia `DATABASE_URL` en `.env`,
-  sin tocar el código.
+## 🔐 Seguridad
+
+- **Login de triple clave**: tres claves independientes; las tres deben ser
+  correctas. Se guardan **hasheadas** (PBKDF2-HMAC-SHA256, 260 000 iteraciones,
+  salt por clave), nunca en texto plano. Comparación en tiempo constante y
+  **bloqueo temporal** tras varios fallos.
+- **Sin secretos en el repo**: `.env`, `.secrets/` y bases de datos locales están
+  en `.gitignore`.
+- **Solo localhost** por defecto (`.streamlit/config.toml`): el panel no se expone
+  a internet salvo que tú lo cambies.
+- **Supabase**: la `service_role key` se usa **solo en el servidor**; las tablas
+  mantienen RLS activo sin políticas públicas.
+
+> 🔁 Si alguna vez expones una clave (por ejemplo, pegándola en un chat),
+> **rótala de inmediato** en Supabase / Alpha Vantage.
 
 ---
 
-## 🤖 Machine Learning
-Cada decisión que registras guarda el contexto técnico. Con suficientes
-ejemplos, el módulo `ml/model.py` entrena un clasificador que predice qué
-harías **tú** ante un estado de mercado, afinando las recomendaciones.
+## 🧠 Motor de decisiones
+
+| Factor | Regla | Peso |
+|--------|-------|------|
+| RSI | <30 compra / >70 venta | alto |
+| Medias (SMA9 vs SMA21) | cruce de tendencia | alto |
+| MACD | cruce de señal (momentum) | medio |
+| Bollinger | ruptura de banda (volatilidad) | medio |
+| Noticias | sentimiento agregado | secundario |
+| ATR | Stop Loss / Take Profit | gestión de riesgo |
+
+El motor pondera los factores y produce una acción con **nivel de confianza**.
+Señales fuertes (≥65%) disparan alerta visual/sonora y, si lo activas, correo.
 
 ---
 
-## ▶️ Backtesting
-La pestaña *Backtesting* aplica las mismas reglas a los datos históricos
-cargados y muestra nº de operaciones, tasa de acierto, retorno y curva de
-equity.
+## 📧 Avisos por correo (opcional, desactivado)
+En `.env`: `EMAIL_ENABLED=true` + `SMTP_USER`, `SMTP_PASSWORD` (app password de
+Gmail) y `EMAIL_TO`. El sistema enviará un correo cuando aparezca una señal fuerte
+(con anti-repetición).

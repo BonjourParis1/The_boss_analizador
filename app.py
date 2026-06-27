@@ -1,61 +1,56 @@
 """
-app.py — Dashboard Streamlit "Guía Experto de Trading".
+app.py — "Guía Experto de Trading" · terminal profesional en tiempo real.
 
-Ejecutar con:
+Ejecutar:
     streamlit run app.py
+Recomendado (solo tu PC, más seguro):
+    streamlit run app.py --server.address=localhost
 
-Flujo:
-  1) Login de administrador con triple clave (ui/auth_ui.py).
-  2) Selección de mercado e intervalo.
-  3) Descarga de datos reales -> indicadores -> motor de decisiones.
-  4) Visualización en tiempo real (auto-refresh configurable).
-  5) Registro de tus decisiones en la base de datos.
-  6) Historial, estadísticas, backtesting y aprendizaje ML.
+Flujo: login triple clave -> selección de activo -> datos reales -> indicadores
++ noticias -> motor de decisiones -> visualización en vivo (auto-refresco) ->
+registro de decisiones en Supabase -> historial, radar, backtest y ML.
 """
 from __future__ import annotations
 
-import json
-import time
-
-import numpy as np
 import streamlit as st
 
 from analysis.backtest import run_backtest
 from analysis.engine import BUY, HOLD, SELL, analyze
 from analysis.indicators import compute_all
+from analysis.news import get_news
 from config import SYMBOLS, SYMBOLS_BY_KEY, settings
 from data.connectors import fetch_with_retry
-from data.normalizer import latest_tick
-from db.database import (get_history, get_stats, init_db, save_recommendation,
-                         save_user_decision)
+from db.store import (BACKEND, get_history, get_stats, init_db,
+                      save_recommendation, save_user_decision)
 from ml import model as ml_model
-from ui import components
+from notifications import email_alerts
+from ui import components as C
+from ui import theme as T
 from ui.auth_ui import is_authenticated, logout, render_login
 
 st.set_page_config(page_title="Guía Experto de Trading", page_icon="📊",
                    layout="wide", initial_sidebar_state="expanded")
-
-# Estilo propio (no genérico)
-st.markdown("""
-<style>
-  .stApp { background: #0b0e14; }
-  section[data-testid="stSidebar"] { background: #11151f; }
-  h1, h2, h3 { color: #e6edf3; }
-  div[data-testid="stMetricValue"] { color: #16c784; }
-</style>
-""", unsafe_allow_html=True)
+st.markdown(T.CSS, unsafe_allow_html=True)
 
 
-# ----------------------- Cache de datos (TTL = refresco) -------------------
+# --------------------------- Cache de datos --------------------------------
 @st.cache_data(show_spinner=False, ttl=settings.refresh_seconds)
 def load_market(symbol_key: str, interval: str, limit: int):
-    symbol = SYMBOLS_BY_KEY[symbol_key]
-    df = fetch_with_retry(symbol, interval=interval, limit=limit)
+    df = fetch_with_retry(SYMBOLS_BY_KEY[symbol_key], interval=interval, limit=limit)
     return compute_all(df)
 
 
+@st.cache_data(show_spinner=False, ttl=300)  # noticias: refresco cada 5 min
+def load_news(symbol_key: str):
+    return get_news(SYMBOLS_BY_KEY[symbol_key])
+
+
 # --------------------------------- Login -----------------------------------
-init_db()
+try:
+    init_db()
+except Exception as e:  # noqa: BLE001
+    st.sidebar.warning(f"Aviso base de datos ({BACKEND}): {e}")
+
 if not is_authenticated():
     render_login()
     st.stop()
@@ -63,123 +58,166 @@ if not is_authenticated():
 
 # ------------------------------- Barra lateral ------------------------------
 with st.sidebar:
-    st.markdown("## 📊 Guía Experto")
-    st.caption("Analista personal de trading en tiempo real")
+    st.markdown(f"<h2 style='color:{T.BLUE};margin-bottom:0;'>📊 GUÍA EXPERTO</h2>"
+                f"<div class='gx-tag'>Terminal de trading · {BACKEND}</div><br>",
+                unsafe_allow_html=True)
 
-    symbol_key = st.selectbox(
-        "Mercado", options=[s.key for s in SYMBOLS],
-        format_func=lambda k: SYMBOLS_BY_KEY[k].label,
+    st.session_state["symbol_key"] = st.selectbox(
+        "Activo", options=[s.key for s in SYMBOLS],
+        format_func=lambda k: f"{SYMBOLS_BY_KEY[k].label}  ·  {SYMBOLS_BY_KEY[k].type}",
+        index=[s.key for s in SYMBOLS].index(st.session_state.get("symbol_key", SYMBOLS[0].key)),
     )
-    interval = st.selectbox("Intervalo", ["1m", "5m", "15m", "1h", "1d"], index=1)
-    limit = st.slider("Velas a cargar", 60, 500, 200, step=20)
-    beginner = st.toggle("🔰 Modo principiante", value=True)
-    auto = st.toggle("🔄 Auto-refresco", value=True)
-    refresh_s = st.number_input("Refresco (segundos)", 3, 120,
-                                value=settings.refresh_seconds)
-
+    st.session_state["interval"] = st.selectbox("Temporalidad", ["1m", "5m", "15m", "1h", "1d"],
+                                                index=1)
+    st.session_state["limit"] = st.slider("Velas", 60, 500, 200, step=20)
+    st.session_state["live"] = st.toggle("🔴 Tiempo real", value=True)
+    st.session_state["refresh"] = st.number_input("Refresco (seg)", 3, 120,
+                                                   value=settings.refresh_seconds)
+    if not settings.alpha_vantage_key:
+        st.caption("⚠️ Sin ALPHA_VANTAGE_API_KEY: el forex usa Yahoo Finance "
+                   "(menos intradía). Añádela en .env para datos pro.")
     st.divider()
     if st.button("🚪 Cerrar sesión", use_container_width=True):
         logout()
         st.rerun()
 
-symbol = SYMBOLS_BY_KEY[symbol_key]
-tab_live, tab_hist, tab_back, tab_ml = st.tabs(
-    ["📈 En vivo", "📜 Historial", "⏮ Backtesting", "🤖 Aprendizaje (ML)"]
+
+tab_live, tab_radar, tab_hist, tab_back, tab_ml = st.tabs(
+    ["🖥️ Terminal", "📡 Radar de mercado", "📜 Historial", "⏮ Backtesting", "🤖 Aprendizaje"]
 )
 
 
-# ============================== TAB: EN VIVO ===============================
-with tab_live:
+# ============================== TAB: TERMINAL (tiempo real) =================
+def render_terminal():
+    sk = st.session_state["symbol_key"]
+    interval = st.session_state["interval"]
+    limit = st.session_state["limit"]
+    symbol = SYMBOLS_BY_KEY[sk]
+
     try:
-        df = load_market(symbol_key, interval, limit)
+        df = load_market(sk, interval, limit)
     except Exception as e:  # noqa: BLE001
         st.error(f"No se pudieron obtener datos de {symbol.label}: {e}")
-        st.stop()
+        return
 
-    sig = analyze(symbol_key, df)
-    tick = latest_tick(symbol_key, df)
+    digest = load_news(sk)
+    sig = analyze(sk, df, news_score=digest.score)
 
-    col_main, col_side = st.columns([3, 1.4])
+    # Encabezado tipo ticker
+    st.markdown(C.ticker_header(symbol.label, df, symbol.type), unsafe_allow_html=True)
 
-    with col_main:
-        st.plotly_chart(components.price_chart(symbol.label, df),
-                        use_container_width=True)
-        st.plotly_chart(components.indicator_panel(df), use_container_width=True)
+    col_chart, col_side = st.columns([3, 1.25], gap="medium")
+    with col_chart:
+        st.plotly_chart(C.pro_chart(symbol.label, df), use_container_width=True,
+                        config={"scrollZoom": True, "displayModeBar": False})
+        st.plotly_chart(C.indicator_panel(df), use_container_width=True,
+                        config={"displayModeBar": False})
 
     with col_side:
-        st.markdown(components.recommendation_html(sig, symbol.label),
-                    unsafe_allow_html=True)
+        st.markdown(C.signal_html(sig, symbol.label), unsafe_allow_html=True)
+        st.plotly_chart(C.confidence_gauge(sig), use_container_width=True,
+                        config={"displayModeBar": False})
 
-        # Alerta visual + sonora para señales fuertes
         if sig.is_strong:
-            st.toast(f"{sig.icon} Señal FUERTE de {sig.action} en {symbol.label}!",
-                     icon="🔔")
-            st.markdown(
-                "<audio autoplay><source "
-                "src='https://actions.google.com/sounds/v1/alarms/beep_short.ogg'"
-                " type='audio/ogg'></audio>", unsafe_allow_html=True)
+            st.toast(f"{sig.icon} Señal FUERTE de {sig.action} en {symbol.label}", icon="🔔")
+            st.markdown("<audio autoplay><source "
+                        "src='https://actions.google.com/sounds/v1/alarms/beep_short.ogg'"
+                        " type='audio/ogg'></audio>", unsafe_allow_html=True)
+            if email_alerts.is_enabled():
+                email_alerts.send_signal_alert(sig, symbol.label)
 
-        st.markdown("#### 🧠 Razones técnicas")
-        for r in sig.reasons:
-            st.markdown(f"- {r}")
-
-        if beginner:
-            st.markdown("#### 🔰 Explicación sencilla")
+        with st.expander("🧠 Lectura del experto", expanded=True):
+            for r in sig.reasons:
+                st.markdown(f"- {r}")
             for n in sig.beginner_notes:
-                st.info(n)
+                st.caption(n)
 
-        # --- Registrar mi decisión ---
-        st.markdown("#### ✍️ Registrar mi decisión")
-        note = st.text_input("Nota (opcional)", key="decision_note")
-        c1, c2, c3 = st.columns(3)
+        # Registro de decisión
+        st.markdown("<div class='gx-tag'>Registrar mi operación</div>", unsafe_allow_html=True)
+        note = st.text_input("Nota", key="decision_note", label_visibility="collapsed",
+                             placeholder="Nota (opcional)")
+        b1, b2, b3 = st.columns(3)
 
-        def _record(user_action: str):
-            rec_id = save_recommendation(sig)
-            save_user_decision(rec_id, symbol_key, user_action,
-                               sig.action, sig.price, st.session_state.get("decision_note", ""))
-            st.success(f"Registrado: {user_action} en {symbol.label}.")
+        def _record(action: str):
+            try:
+                rec_id = save_recommendation(sig)
+                save_user_decision(rec_id, sk, action, sig.action, sig.price,
+                                   st.session_state.get("decision_note", ""))
+                st.success(f"Registrado: {action}")
+            except Exception as e:  # noqa: BLE001
+                st.error(f"No se pudo guardar: {e}")
 
-        if c1.button("📈 Compré", use_container_width=True):
+        if b1.button("📈 Compré", use_container_width=True):
             _record(BUY)
-        if c2.button("📉 Vendí", use_container_width=True):
+        if b2.button("📉 Vendí", use_container_width=True):
             _record(SELL)
-        if c3.button("⏸ Mantuve", use_container_width=True):
+        if b3.button("⏸ Mantuve", use_container_width=True):
             _record(HOLD)
 
-    st.caption(f"Último dato: {tick['timestamp']} · precio {tick['price']} · "
-               f"volumen {tick['volume']:.2f}")
+        st.markdown(C.news_html(digest), unsafe_allow_html=True)
+
+
+with tab_live:
+    # El fragmento se auto-refresca cada N seg solo si "Tiempo real" está activo.
+    _run_every = st.session_state["refresh"] if st.session_state.get("live") else None
+    _live_fragment = st.fragment(run_every=_run_every)(render_terminal)
+    _live_fragment()
+
+
+# ============================== TAB: RADAR =================================
+with tab_radar:
+    st.subheader("📡 Radar de mercado — escanea todos los activos")
+    st.caption("Calcula la señal del experto para cada activo y los ordena por confianza.")
+    if st.button("🔍 Escanear ahora"):
+        rows = []
+        prog = st.progress(0.0)
+        for i, s in enumerate(SYMBOLS):
+            try:
+                d = load_market(s.key, st.session_state["interval"], 120)
+                sg = analyze(s.key, d)
+                rows.append({"Activo": s.label, "Tipo": s.type, "Señal": f"{sg.icon} {sg.action}",
+                             "Confianza %": sg.confidence, "Precio": sg.price, "RSI": sg.rsi})
+            except Exception:
+                rows.append({"Activo": s.label, "Tipo": s.type, "Señal": "—",
+                             "Confianza %": 0, "Precio": None, "RSI": None})
+            prog.progress((i + 1) / len(SYMBOLS))
+        import pandas as pd
+        df_radar = pd.DataFrame(rows).sort_values("Confianza %", ascending=False)
+        st.dataframe(df_radar, use_container_width=True, hide_index=True)
 
 
 # ============================== TAB: HISTORIAL =============================
 with tab_hist:
     st.subheader("📜 Historial de decisiones")
-    stats = get_stats()
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Recomendaciones", stats["recomendaciones_generadas"])
-    m2.metric("Mis decisiones", stats["decisiones_registradas"])
-    m3.metric("Coincidencias con bot", stats["coincidencias_con_bot"])
-    m4.metric("Tasa de coincidencia", f"{stats['tasa_coincidencia_pct']}%")
-
-    hist = get_history(limit=300)
-    if hist.empty:
-        st.info("Aún no hay decisiones registradas. Ve a la pestaña 'En vivo'.")
-    else:
-        st.dataframe(hist, use_container_width=True, hide_index=True)
+    try:
+        stats = get_stats()
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Recomendaciones", stats["recomendaciones_generadas"])
+        m2.metric("Mis decisiones", stats["decisiones_registradas"])
+        m3.metric("Coincidencias", stats["coincidencias_con_bot"])
+        m4.metric("Tasa coincidencia", f"{stats['tasa_coincidencia_pct']}%")
+        hist = get_history(limit=300)
+        if hist.empty:
+            st.info("Aún no hay decisiones registradas. Ve a la pestaña Terminal.")
+        else:
+            st.dataframe(hist, use_container_width=True, hide_index=True)
+    except Exception as e:  # noqa: BLE001
+        st.error(f"No se pudo leer el historial ({BACKEND}): {e}")
 
 
 # ============================== TAB: BACKTESTING ===========================
 with tab_back:
     st.subheader("⏮ Backtesting de la estrategia")
-    st.caption("Aplica las mismas reglas del motor sobre los datos históricos cargados.")
-    if st.button("▶ Ejecutar backtest", use_container_width=False):
+    if st.button("▶ Ejecutar backtest"):
         try:
-            df_bt = load_market(symbol_key, interval, limit)
-            res = run_backtest(symbol_key, df_bt)
+            df_bt = load_market(st.session_state["symbol_key"],
+                                st.session_state["interval"], st.session_state["limit"])
+            res = run_backtest(st.session_state["symbol_key"], df_bt)
             b1, b2, b3, b4 = st.columns(4)
             b1.metric("Operaciones", res.trades)
             b2.metric("Aciertos", res.wins)
             b3.metric("Tasa de acierto", f"{res.win_rate}%")
-            b4.metric("Retorno total", f"{res.total_return_pct}%")
+            b4.metric("Retorno", f"{res.total_return_pct}%")
             if not res.equity_curve.empty:
                 st.line_chart(res.equity_curve)
             if not res.trade_log.empty:
@@ -191,19 +229,16 @@ with tab_back:
 # ============================== TAB: ML ====================================
 with tab_ml:
     st.subheader("🤖 Aprendizaje a partir de tus decisiones")
-    st.caption("Entrena un modelo que aprende qué harías TÚ según los indicadores. "
-               "Necesita al menos 10 decisiones registradas para entrenar.")
-
-    pred, proba = ml_model.predict(load_market(symbol_key, interval, limit)) \
-        if ml_model.model_exists() else (None, None)
-    if pred:
-        st.success(f"El modelo cree que tú elegirías: **{pred}** "
-                   f"(confianza {proba}%) para {symbol.label}.")
+    st.caption("Un modelo aprende qué harías TÚ según los indicadores. Necesita al "
+               "menos 10 decisiones registradas. Es apoyo, no una predicción garantizada.")
+    if ml_model.model_exists():
+        try:
+            pred, proba = ml_model.predict(load_market(
+                st.session_state["symbol_key"], st.session_state["interval"],
+                st.session_state["limit"]))
+            if pred:
+                st.success(f"El modelo cree que elegirías: **{pred}** (confianza {proba}%).")
+        except Exception as e:  # noqa: BLE001
+            st.warning(f"No se pudo predecir: {e}")
     else:
-        st.info("Todavía no hay un modelo entrenado.")
-
-    if st.button("🎓 Entrenar con mi historial"):
-        st.warning(
-            "El entrenamiento usa los indicadores guardados con cada decisión. "
-            "En este prototipo se recomienda acumular decisiones reales antes de "
-            "entrenar. (Hook listo en ml/model.py para conectar tu dataset.)")
+        st.info("Todavía no hay modelo entrenado. Registra decisiones y entrénalo.")

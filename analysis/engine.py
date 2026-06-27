@@ -27,12 +27,13 @@ class Signal:
     action: str                 # COMPRA | VENTA | MANTENER
     confidence: float           # 0..100
     price: float
-    reasons: list[str] = field(default_factory=list)        # técnicas
-    beginner_notes: list[str] = field(default_factory=list)  # explicación simple
+    reasons: list[str] = field(default_factory=list)         # lectura técnica del experto
+    beginner_notes: list[str] = field(default_factory=list)  # comentario del analista
     stop_loss: float | None = None
     take_profit: float | None = None
     rsi: float | None = None
     atr: float | None = None
+    news_score: float | None = None  # sentimiento de noticias (-1..1)
 
     @property
     def icon(self) -> str:
@@ -52,12 +53,18 @@ def _cross_down(prev_a, prev_b, a, b) -> bool:
     return prev_a >= prev_b and a < b
 
 
-def analyze(symbol_key: str, df_ind: pd.DataFrame) -> Signal:
-    """Genera la señal a partir del DataFrame con indicadores ya calculados."""
+def analyze(symbol_key: str, df_ind: pd.DataFrame,
+            news_score: float | None = None) -> Signal:
+    """Genera la señal a partir del DataFrame con indicadores ya calculados.
+
+    `news_score` (sentimiento de noticias en -1..1) es un factor SECUNDARIO:
+    refuerza o suaviza la señal técnica, nunca la sustituye.
+    """
     if len(df_ind) < 2:
         last = df_ind.iloc[-1]
         return Signal(symbol_key, HOLD, 0.0, float(last["close"]),
-                      ["Datos insuficientes."], ["Esperando más datos del mercado."])
+                      ["Datos insuficientes."], ["Esperando más datos del mercado."],
+                      news_score=news_score)
 
     last = df_ind.iloc[-1]
     prev = df_ind.iloc[-2]
@@ -113,6 +120,17 @@ def analyze(symbol_key: str, df_ind: pd.DataFrame) -> Signal:
         reasons.append("Precio por encima de la banda superior de Bollinger.")
         notes.append("El precio rompió la banda superior: posible corrección a la baja.")
 
+    # --- 5) Sentimiento de noticias (factor secundario) ---
+    if news_score is not None:
+        if news_score > 0.08:
+            buy_votes += 0.6
+            reasons.append(f"Noticias con sentimiento positivo ({news_score:+.2f}).")
+            notes.append("El flujo de noticias recientes es favorable; acompaña a la compra.")
+        elif news_score < -0.08:
+            sell_votes += 0.6
+            reasons.append(f"Noticias con sentimiento negativo ({news_score:+.2f}).")
+            notes.append("El flujo de noticias recientes es adverso; prudencia con las compras.")
+
     # --- Decisión final ---
     total = buy_votes + sell_votes
     if total == 0:
@@ -151,4 +169,5 @@ def analyze(symbol_key: str, df_ind: pd.DataFrame) -> Signal:
         take_profit=take_profit,
         rsi=round(rsi_val, 1),
         atr=round(atr_val, 6),
+        news_score=news_score,
     )

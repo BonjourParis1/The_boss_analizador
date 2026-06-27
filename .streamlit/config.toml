@@ -1,11 +1,17 @@
 [theme]
 base = "dark"
-primaryColor = "#16c784"
-backgroundColor = "#0b0e14"
-secondaryBackgroundColor = "#11151f"
-textColor = "#e6edf3"
+primaryColor = "#2962ff"
+backgroundColor = "#0b0e16"
+secondaryBackgroundColor = "#131722"
+textColor = "#d1d4dc"
 font = "sans serif"
 
 [server]
 headless = true
 runOnSave = true
+# Seguridad: por defecto el panel solo es accesible desde TU equipo (localhost).
+# Si quieres exponerlo en tu red local, cambia a "0.0.0.0" bajo tu propio riesgo.
+address = "localhost"
+
+[browser]
+gatherUsageStats = false

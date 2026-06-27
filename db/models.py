@@ -34,6 +34,7 @@ class Recommendation(Base):
     atr: Mapped[float] = mapped_column(Float, nullable=True)
     stop_loss: Mapped[float] = mapped_column(Float, nullable=True)
     take_profit: Mapped[float] = mapped_column(Float, nullable=True)
+    news_score: Mapped[float] = mapped_column(Float, nullable=True)
     reasons: Mapped[str] = mapped_column(Text, nullable=True)
 
     decisions: Mapped[list["UserDecision"]] = relationship(

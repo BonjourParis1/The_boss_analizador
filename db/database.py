@@ -39,6 +39,7 @@ def save_recommendation(sig: Signal) -> int:
             atr=sig.atr,
             stop_loss=sig.stop_loss,
             take_profit=sig.take_profit,
+            news_score=getattr(sig, "news_score", None),
             reasons=json.dumps(sig.reasons, ensure_ascii=False),
         )
         s.add(rec)

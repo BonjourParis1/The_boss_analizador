@@ -16,11 +16,14 @@ from datetime import datetime
 
 import streamlit as st
 
+from analysis import auto_learn
 from analysis.backtest import run_backtest
 from analysis.engine import BUY, HOLD, SELL, analyze
 from analysis.indicators import compute_all
 from analysis.news import get_news
 from analysis.patterns import read_candles
+from brain import llm
+from ingest import content as ingest
 from config import SYMBOLS, SYMBOLS_BY_KEY, settings
 from data.connectors import fetch_with_retry
 from data.realtime import fast_quote, is_realtime
@@ -86,8 +89,9 @@ with st.sidebar:
         st.rerun()
 
 
-tab_live, tab_radar, tab_hist, tab_back, tab_ml = st.tabs(
-    ["🖥️ Terminal", "📡 Radar de mercado", "📜 Historial", "⏮ Backtesting", "🤖 Aprendizaje"]
+tab_live, tab_radar, tab_brain, tab_hist, tab_back, tab_ml = st.tabs(
+    ["🖥️ Terminal", "📡 Radar de mercado", "🧠 Cerebro IA",
+     "📜 Historial", "⏮ Backtesting", "🤖 Aprendizaje"]
 )
 
 
@@ -206,6 +210,62 @@ with tab_radar:
         st.dataframe(df_radar, use_container_width=True, hide_index=True)
 
 
+# ============================== TAB: CEREBRO IA ============================
+with tab_brain:
+    st.subheader("🧠 Cerebro IA — razonamiento con Claude")
+    if not llm.is_available():
+        st.info("Para activar el razonamiento en lenguaje natural y el análisis de "
+                "contenido, añade tu **ANTHROPIC_API_KEY** en el archivo `.env` "
+                "(tiene coste por uso). El resto del sistema funciona sin ella.")
+    else:
+        st.caption(f"Modelo: {settings.anthropic_model}")
+
+    c_reason, c_ingest = st.columns(2, gap="large")
+
+    with c_reason:
+        st.markdown("#### 🗣️ Que el experto IA analice el activo actual")
+        sk = st.session_state["symbol_key"]
+        if st.button("Analizar con IA", disabled=not llm.is_available()):
+            with st.spinner("Pensando como un analista senior..."):
+                try:
+                    df = load_market(sk, st.session_state["interval"],
+                                     st.session_state["limit"])
+                    reading = read_candles(df)
+                    digest = load_news(sk)
+                    sig = analyze(sk, df, news_score=digest.score, candles=reading)
+                    text = llm.reason_trade(sig, SYMBOLS_BY_KEY[sk].label,
+                                            [i.title for i in digest.items])
+                    st.markdown(text)
+                except Exception as e:  # noqa: BLE001
+                    st.error(f"No se pudo generar el análisis: {e}")
+
+    with c_ingest:
+        st.markdown("#### 📥 Procesar contenido que le adjuntes")
+        kind = st.radio("Tipo", ["Texto", "YouTube (URL)"], horizontal=True,
+                        label_visibility="collapsed")
+        if kind == "Texto":
+            txt = st.text_area("Pega aquí un artículo, notas o estrategia", height=160)
+            if st.button("Analizar contenido"):
+                with st.spinner("Analizando..."):
+                    try:
+                        res = ingest.ingest_text(txt)
+                        st.caption(f"Sentimiento: {res.sentiment:+.2f}")
+                        st.markdown(res.analysis)
+                    except Exception as e:  # noqa: BLE001
+                        st.error(f"Error: {e}")
+        else:
+            url = st.text_input("URL de YouTube", placeholder="https://youtu.be/...")
+            st.caption("Se analiza la **transcripción** (lo que se dice), no la imagen.")
+            if st.button("Analizar video"):
+                with st.spinner("Bajando transcripción y analizando..."):
+                    try:
+                        res = ingest.ingest_youtube(url)
+                        st.caption(f"Sentimiento de la transcripción: {res.sentiment:+.2f}")
+                        st.markdown(res.analysis)
+                    except Exception as e:  # noqa: BLE001
+                        st.error(f"No se pudo procesar el video (¿tiene transcripción?): {e}")
+
+
 # ============================== TAB: HISTORIAL =============================
 with tab_hist:
     st.subheader("📜 Historial de decisiones")
@@ -248,17 +308,55 @@ with tab_back:
 
 # ============================== TAB: ML ====================================
 with tab_ml:
-    st.subheader("🤖 Aprendizaje a partir de tus decisiones")
-    st.caption("Un modelo aprende qué harías TÚ según los indicadores. Necesita al "
-               "menos 10 decisiones registradas. Es apoyo, no una predicción garantizada.")
+    st.subheader("🤖 Aprendizaje")
+    st.caption("Dos modelos complementarios. Ambos son APOYO probabilístico, no "
+               "predicciones garantizadas.")
+
+    st.markdown("### 🧪 Autoaprendizaje del histórico (sin que operes)")
+    st.write("Aprende del mercado: etiqueta cada vela por lo que pasó después y "
+             "entrena un modelo para anticipar SUBE / LATERAL / BAJA.")
+    if st.button("🎓 Entrenar con el histórico de todos los activos"):
+        with st.spinner("Descargando históricos y entrenando..."):
+            try:
+                datasets = []
+                for s in SYMBOLS:
+                    try:
+                        datasets.append(fetch_with_retry(
+                            s, interval=st.session_state["interval"], limit=400))
+                    except Exception:
+                        continue
+                rep = auto_learn.train_from_history(datasets)
+                st.success(f"Entrenado con {rep.samples} ejemplos. "
+                           f"Precisión validada: **{rep.accuracy_cv:.0%}** "
+                           f"(horizonte {rep.horizon} velas).")
+                st.caption(f"Distribución de clases: {rep.class_counts}")
+            except Exception as e:  # noqa: BLE001
+                st.error(f"No se pudo entrenar: {e}")
+
+    if auto_learn.model_exists():
+        try:
+            lbl, proba, hz = auto_learn.predict(load_market(
+                st.session_state["symbol_key"], st.session_state["interval"],
+                st.session_state["limit"]))
+            if lbl:
+                st.info(f"Para **{SYMBOLS_BY_KEY[st.session_state['symbol_key']].label}**, "
+                        f"el autoaprendizaje anticipa **{lbl}** en las próximas {hz} velas "
+                        f"(confianza {proba}%).")
+        except Exception as e:  # noqa: BLE001
+            st.warning(f"No se pudo predecir: {e}")
+
+    st.divider()
+    st.markdown("### 👤 Aprendizaje de tus decisiones")
+    st.caption("Aprende qué harías TÚ según los indicadores (requiere decisiones "
+               "registradas en la pestaña Terminal).")
     if ml_model.model_exists():
         try:
-            pred, proba = ml_model.predict(load_market(
+            pred, p2 = ml_model.predict(load_market(
                 st.session_state["symbol_key"], st.session_state["interval"],
                 st.session_state["limit"]))
             if pred:
-                st.success(f"El modelo cree que elegirías: **{pred}** (confianza {proba}%).")
+                st.success(f"El modelo cree que elegirías: **{pred}** (confianza {p2}%).")
         except Exception as e:  # noqa: BLE001
             st.warning(f"No se pudo predecir: {e}")
     else:
-        st.info("Todavía no hay modelo entrenado. Registra decisiones y entrénalo.")
+        st.info("Todavía no hay modelo de tus decisiones. Registra decisiones y entrénalo.")

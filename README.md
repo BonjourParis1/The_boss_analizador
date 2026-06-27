@@ -139,3 +139,29 @@ Señales fuertes (≥65%) disparan alerta visual/sonora y, si lo activas, correo
 En `.env`: `EMAIL_ENABLED=true` + `SMTP_USER`, `SMTP_PASSWORD` (app password de
 Gmail) y `EMAIL_TO`. El sistema enviará un correo cuando aparezca una señal fuerte
 (con anti-repetición).
+
+---
+
+## 🧠 Cerebro IA (Claude) — opcional
+Con tu `ANTHROPIC_API_KEY` en `.env`, la pestaña **Cerebro IA** usa Claude
+(Opus 4.8) para **razonar la operación** del activo en lenguaje natural (lectura,
+escenario probable y gestión de riesgo, siempre en probabilidades) y para
+**procesar contenido que le adjuntes**: pegas texto o una **URL de YouTube**
+(analiza la *transcripción*) y extrae resumen, sesgo, ideas accionables y banderas
+rojas. Tiene coste por uso de la API.
+
+## 🤖 Aprendizaje (apoyo probabilístico, no predice el futuro)
+- **Autoaprendizaje del histórico** (`analysis/auto_learn.py`): aprende solo, sin
+  que operes — etiqueta cada vela por lo que pasó después y entrena un modelo para
+  anticipar SUBE/LATERAL/BAJA, mostrando su **precisión validada**.
+- **Aprendizaje de tus decisiones** (`ml/model.py`): aprende qué harías **tú** según
+  los indicadores, a partir de las decisiones que registras.
+
+## 🛰️ Escáner autónomo 24/7
+`scanner.py` es un proceso independiente que escanea **todos** los activos cada N
+minutos (`SCAN_INTERVAL_MINUTES`), guarda recomendaciones y, si activas el correo,
+avisa de señales fuertes aunque no tengas el navegador abierto:
+```powershell
+python scanner.py            # bucle continuo
+python scanner.py --once     # una sola pasada (para cron/pruebas)
+```

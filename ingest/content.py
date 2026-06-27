@@ -1,0 +1,69 @@
+"""
+ingest/content.py — Ingesta de contenido que TÚ aportas.
+
+* Texto pegado (artículos, notas de estrategia).
+* URL de YouTube -> baja la transcripción (lo que se DICE en el video).
+
+Luego el cerebro IA (brain.llm.analyze_content) extrae resumen, sesgo, ideas
+accionables y banderas rojas. También calculamos un sentimiento rápido con VADER
+para tener una señal aunque no haya API de Claude.
+
+Nota honesta: NO "vemos" el video; analizamos su transcripción de texto. Si el video
+no tiene subtítulos/transcripción disponible, no se puede procesar.
+"""
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+
+from brain import llm
+
+_YT_RE = re.compile(
+    r"(?:youtube\.com/(?:watch\?v=|live/|shorts/)|youtu\.be/)([A-Za-z0-9_-]{11})")
+
+
+@dataclass
+class Ingested:
+    source: str
+    kind: str            # "texto" | "youtube"
+    text: str            # contenido en crudo (transcripción o texto)
+    sentiment: float     # -1..1 (VADER)
+    analysis: str        # análisis del experto (Claude) o aviso si no hay API
+
+
+def _vader(text: str) -> float:
+    try:
+        from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+        return SentimentIntensityAnalyzer().polarity_scores(text[:5000])["compound"]
+    except Exception:
+        return 0.0
+
+
+def youtube_id(url: str) -> str | None:
+    m = _YT_RE.search(url or "")
+    return m.group(1) if m else None
+
+
+def fetch_youtube_transcript(url: str, languages=("es", "en")) -> str:
+    """Descarga la transcripción de un video de YouTube."""
+    vid = youtube_id(url)
+    if not vid:
+        raise ValueError("URL de YouTube no válida.")
+    from youtube_transcript_api import YouTubeTranscriptApi
+    chunks = YouTubeTranscriptApi.get_transcript(vid, languages=list(languages))
+    return " ".join(c["text"] for c in chunks)
+
+
+def ingest_text(text: str, source: str = "texto pegado") -> Ingested:
+    analysis = (llm.analyze_content(text, source) if llm.is_available()
+                else "ℹ️ Configura ANTHROPIC_API_KEY para el análisis con IA. "
+                     "Por ahora solo se calcula el sentimiento.")
+    return Ingested(source, "texto", text, round(_vader(text), 3), analysis)
+
+
+def ingest_youtube(url: str) -> Ingested:
+    text = fetch_youtube_transcript(url)
+    analysis = (llm.analyze_content(text, f"YouTube: {url}") if llm.is_available()
+                else "ℹ️ Configura ANTHROPIC_API_KEY para el análisis con IA. "
+                     "Por ahora solo se calcula el sentimiento de la transcripción.")
+    return Ingested(url, "youtube", text, round(_vader(text), 3), analysis)

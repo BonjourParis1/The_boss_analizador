@@ -20,3 +20,7 @@ supabase==2.9.1            # Cliente oficial de Supabase (backend por defecto)
 # ----- Noticias y sentimiento -----
 feedparser==6.0.11         # Lectura de feeds RSS de noticias financieras
 vaderSentiment==3.3.2      # Análisis de sentimiento (sin descargas pesadas)
+
+# ----- Cerebro IA (Claude) y ingesta de contenido -----
+anthropic==0.69.0          # SDK oficial de Claude (razonamiento del experto)
+youtube-transcript-api==0.6.3  # Transcripciones de YouTube para ingesta

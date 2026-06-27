@@ -37,6 +37,11 @@ class Settings:
     alpha_vantage_key: str = os.getenv("ALPHA_VANTAGE_API_KEY", "").strip()
     # --- Noticias ---
     newsapi_key: str = os.getenv("NEWSAPI_KEY", "").strip()
+    # --- Cerebro IA (Claude) ---
+    anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "").strip()
+    anthropic_model: str = os.getenv("ANTHROPIC_MODEL", "claude-opus-4-8").strip()
+    # --- Escáner autónomo ---
+    scan_interval_minutes: int = int(os.getenv("SCAN_INTERVAL_MINUTES", "15"))
     # --- Correo ---
     email_enabled: bool = _bool("EMAIL_ENABLED", False)
     smtp_host: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
@@ -53,6 +58,10 @@ class Settings:
     @property
     def use_supabase(self) -> bool:
         return bool(self.supabase_url and self.supabase_service_key)
+
+    @property
+    def has_llm(self) -> bool:
+        return bool(self.anthropic_api_key)
 
 
 settings = Settings()

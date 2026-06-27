@@ -21,6 +21,25 @@ from ui import theme as T
 _ACT_COLOR = {BUY: T.GREEN, SELL: T.RED, "MANTENER": T.GOLD}
 
 
+def header_bar(running: bool) -> str:
+    """Cabecera superior tipo terminal: logo, estado del motor y reloj."""
+    from datetime import datetime
+    status = ("<span class='gx-pill on'>🟢 Autónomo activo</span>" if running
+              else "<span class='gx-pill off'>⚪ Autónomo en pausa</span>")
+    return f"""
+    <div class='gx-top'>
+      <div class='gx-brand'>
+        <span class='logo'>◢ GUÍA EXPERTO</span>
+        <span class='gx-pill'>Terminal de trading</span>
+      </div>
+      <div style='display:flex;gap:12px;align-items:center;'>
+        {status}
+        <span class='gx-clock'>🕒 {datetime.now():%H:%M:%S}</span>
+      </div>
+    </div>
+    """
+
+
 def _fmt(x: float) -> str:
     if x is None:
         return "—"

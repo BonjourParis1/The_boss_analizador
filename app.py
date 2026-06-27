@@ -123,6 +123,8 @@ with st.sidebar:
         st.rerun()
 
 
+st.markdown(C.header_bar(autonomous.is_running()), unsafe_allow_html=True)
+
 tab_live, tab_auto, tab_radar, tab_brain, tab_hist, tab_back, tab_ml = st.tabs(
     ["🖥️ Terminal", "🤖 Autónomo", "📡 Radar de mercado", "🧠 Cerebro IA",
      "📜 Historial", "⏮ Backtesting", "🎓 Aprendizaje"]
@@ -131,6 +133,8 @@ tab_live, tab_auto, tab_radar, tab_brain, tab_hist, tab_back, tab_ml = st.tabs(
 
 # ============================== TAB: TERMINAL (tiempo real) =================
 def render_terminal():
+    if not is_authenticated():       # blindaje: nada se muestra sin sesión activa
+        return
     sk = st.session_state["symbol_key"]
     interval = st.session_state["interval"]
     limit = st.session_state["limit"]
@@ -355,6 +359,8 @@ with tab_auto:
 
     @st.fragment(run_every=(3 if autonomous.is_running() else None))
     def _auto_panel():
+        if not is_authenticated():
+            return
         snap = autonomous.snapshot()
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("Estado", "🟢 Activo" if snap["running"] else "⚪ Detenido")

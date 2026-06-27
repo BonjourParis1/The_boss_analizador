@@ -31,51 +31,47 @@ def render_login() -> bool:
     _ensure_state()
     guard: LoginGuard = st.session_state["login_guard"]
 
-    st.markdown(
-        "<h1 style='text-align:center;'>🔐 Guía Experto de Trading</h1>"
-        "<p style='text-align:center;color:#8b9bb4;'>Acceso de administrador — "
-        "seguridad de triple clave</p>",
-        unsafe_allow_html=True,
-    )
+    _, mid, _ = st.columns([1, 1.4, 1])
+    with mid:
+        st.markdown(
+            "<div style='text-align:center;margin-top:6vh;'>"
+            "<div class='logo' style='font-size:2rem;font-weight:700;"
+            "font-family:Space Grotesk;background:linear-gradient(90deg,#36c2ff,#21d07a);"
+            "-webkit-background-clip:text;-webkit-text-fill-color:transparent;'>"
+            "◢ GUÍA EXPERTO</div>"
+            "<div style='color:#7e8ca3;margin:4px 0 18px;'>Terminal de trading · "
+            "acceso de administrador (triple clave)</div></div>",
+            unsafe_allow_html=True)
 
-    if not admin_keys_exist():
-        st.error(
-            "⚠️ No hay claves configuradas todavía.\n\n"
-            "Ejecuta en la terminal:  **python setup_admin.py**  "
-            "para crear tus tres claves de acceso."
-        )
-        return False
+        if not admin_keys_exist():
+            st.error("⚠️ No hay claves configuradas todavía. Ejecuta en la terminal "
+                     "**python setup_admin.py** para crear tus tres claves de acceso.")
+            return False
 
-    if guard.is_locked:
-        st.error(f"🚫 Demasiados intentos fallidos. Espera {guard.seconds_left()} s.")
-        return False
+        if guard.is_locked:
+            st.error(f"🚫 Demasiados intentos fallidos. Espera {guard.seconds_left()} s.")
+            return False
 
-    with st.form("login_form", clear_on_submit=False):
-        st.text_input("Clave 1", type="password", key="k1",
-                      placeholder="Primera clave")
-        st.text_input("Clave 2", type="password", key="k2",
-                      placeholder="Segunda clave")
-        st.text_input("Clave 3", type="password", key="k3",
-                      placeholder="Tercera clave")
-        submitted = st.form_submit_button("Ingresar", use_container_width=True)
+        with st.form("login_form", clear_on_submit=False):
+            st.text_input("Clave 1", type="password", key="k1", placeholder="Primera clave")
+            st.text_input("Clave 2", type="password", key="k2", placeholder="Segunda clave")
+            st.text_input("Clave 3", type="password", key="k3", placeholder="Tercera clave")
+            submitted = st.form_submit_button("Ingresar →", use_container_width=True,
+                                              type="primary")
 
-    if submitted:
-        result = verify_triple(
-            st.session_state.get("k1", ""),
-            st.session_state.get("k2", ""),
-            st.session_state.get("k3", ""),
-        )
-        if result.ok:
-            guard.register_success()
-            st.session_state["authenticated"] = True
-            # Limpiamos las claves de la memoria de sesión
-            for k in ("k1", "k2", "k3"):
-                st.session_state.pop(k, None)
-            st.success("✅ Acceso concedido.")
-            st.rerun()
-        else:
-            guard.register_failure()
-            restantes = max(0, settings.auth_max_attempts - guard.failed)
-            st.error(f"❌ {result.message} Intentos restantes antes del bloqueo: {restantes}.")
+        if submitted:
+            result = verify_triple(st.session_state.get("k1", ""),
+                                   st.session_state.get("k2", ""),
+                                   st.session_state.get("k3", ""))
+            if result.ok:
+                guard.register_success()
+                st.session_state["authenticated"] = True
+                for k in ("k1", "k2", "k3"):
+                    st.session_state.pop(k, None)
+                st.rerun()
+            else:
+                guard.register_failure()
+                restantes = max(0, settings.auth_max_attempts - guard.failed)
+                st.error(f"❌ {result.message} Intentos restantes: {restantes}.")
 
     return is_authenticated()

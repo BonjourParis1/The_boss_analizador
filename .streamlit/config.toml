@@ -8,7 +8,7 @@ font = "sans serif"
 
 [server]
 headless = true
-runOnSave = true
+runOnSave = false
 # Seguridad: por defecto el panel solo es accesible desde TU equipo (localhost).
 # Si quieres exponerlo en tu red local, cambia a "0.0.0.0" bajo tu propio riesgo.
 address = "localhost"

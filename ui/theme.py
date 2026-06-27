@@ -1,97 +1,135 @@
 """
-ui/theme.py — Estilo visual profesional (terminal de trading tipo TradingView/IQ Option).
+ui/theme.py — Estilo visual profesional (terminal de trading).
 
-Paleta:
-  fondo       #0b0e16   paneles #131722 / #1c2230
-  alza/verde  #26a69a   baja/rojo #ef5350   acento #2962ff   texto #d1d4dc
+Estética propia (no genérica): casi-negro con un sutil degradado, acentos
+verde/rojo de mercado y cian eléctrico, tipografía display 'Space Grotesk',
+números monoespaciados 'JetBrains Mono' (look financiero), tarjetas con borde y
+sombra suave. Evita el aspecto "plantilla de IA".
 """
 from __future__ import annotations
 
-# Colores reutilizables
-BG = "#0b0e16"
-PANEL = "#131722"
-PANEL_2 = "#1c2230"
-GREEN = "#26a69a"
-RED = "#ef5350"
-BLUE = "#2962ff"
-TEXT = "#d1d4dc"
-MUTED = "#7a8499"
-GOLD = "#f0b90b"
+# Paleta
+BG = "#070a10"
+BG2 = "#0c111b"
+PANEL = "#0f1622"
+PANEL_2 = "#16202f"
+BORDER = "#1d2a3a"
+GREEN = "#21d07a"
+RED = "#ff4d5e"
+BLUE = "#36c2ff"
+TEXT = "#e8eef6"
+MUTED = "#7e8ca3"
+GOLD = "#f5b942"
 
 CSS = f"""
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500;700&family=Inter:wght@400;500;600&display=swap');
+
   :root {{
-    --bg: {BG}; --panel: {PANEL}; --panel2: {PANEL_2};
-    --green: {GREEN}; --red: {RED}; --blue: {BLUE};
-    --text: {TEXT}; --muted: {MUTED};
+    --bg:{BG}; --panel:{PANEL}; --panel2:{PANEL_2}; --border:{BORDER};
+    --green:{GREEN}; --red:{RED}; --blue:{BLUE}; --text:{TEXT}; --muted:{MUTED};
   }}
-  .stApp {{ background: {BG}; color: {TEXT}; }}
-  #MainMenu, footer, header {{ visibility: hidden; }}
-  .block-container {{ padding-top: 1rem; padding-bottom: 1rem; max-width: 100%; }}
 
-  /* Evitar el ATENUADO/parpadeo durante los auto-refrescos (fragments).
-     Streamlit baja la opacidad y muestra un indicador de "ejecutando";
-     lo desactivamos para que la interfaz se vea nítida y estable. */
-  [data-testid="stStatusWidget"] {{ display: none !important; }}
+  .stApp {{
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(54,194,255,0.06), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(33,208,122,0.05), transparent 55%),
+      {BG};
+    color:{TEXT};
+    font-family:'Inter','Segoe UI',sans-serif;
+  }}
+  #MainMenu, footer, header {{ visibility:hidden; }}
+  .block-container {{ padding-top:0.6rem; padding-bottom:1rem; max-width:100%; }}
+
+  /* Sin atenuado/parpadeo durante auto-refrescos */
+  [data-testid="stStatusWidget"] {{ display:none !important; }}
   [data-testid="stAppViewContainer"], [data-testid="stAppViewBlockContainer"],
-  .stApp, .main, .element-container, [data-testid="stVerticalBlock"] {{
-    opacity: 1 !important; filter: none !important; transition: none !important;
-  }}
-  [data-stale="true"], .stApp [data-stale="true"] {{ opacity: 1 !important; }}
+  .stApp, .main, .element-container, [data-testid="stVerticalBlock"],
+  [data-stale="true"] {{ opacity:1 !important; filter:none !important; transition:none !important; }}
 
-  /* Panel lateral compacto (deja más espacio al gráfico, estilo terminal) */
+  h1,h2,h3,h4 {{ font-family:'Space Grotesk',sans-serif; color:#f2f6fb; letter-spacing:-0.2px; }}
+
+  /* ---------- Barra lateral ---------- */
   section[data-testid="stSidebar"] {{
-    background: {PANEL}; border-right: 1px solid #2a3142;
-    width: 215px !important; min-width: 215px !important;
+    background:linear-gradient(180deg,{PANEL} 0%,{BG2} 100%);
+    border-right:1px solid {BORDER}; width:222px !important; min-width:222px !important;
   }}
-  section[data-testid="stSidebar"] .block-container {{ padding-top: 0.8rem; }}
-  section[data-testid="stSidebar"] label {{ font-size: 0.82rem; }}
-  h1, h2, h3, h4 {{ color: #e8eaed; font-family: 'Segoe UI', sans-serif; }}
+  section[data-testid="stSidebar"] .block-container {{ padding-top:0.8rem; }}
+  section[data-testid="stSidebar"] label {{ font-size:0.8rem; color:{MUTED}; }}
 
-  /* Tabs estilo terminal */
-  button[data-baseweb="tab"] {{
-    font-weight: 600; color: {MUTED};
+  /* ---------- Cabecera superior ---------- */
+  .gx-top {{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 18px; margin:-0.6rem -1rem 12px -1rem;
+    background:linear-gradient(90deg,{PANEL} 0%,{BG2} 100%);
+    border-bottom:1px solid {BORDER};
   }}
-  button[data-baseweb="tab"][aria-selected="true"] {{ color: {BLUE}; }}
+  .gx-brand {{ display:flex; align-items:center; gap:10px; }}
+  .gx-brand .logo {{ font-size:1.25rem; font-weight:700; font-family:'Space Grotesk';
+    background:linear-gradient(90deg,{BLUE},{GREEN}); -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent; }}
+  .gx-pill {{ font-size:0.72rem; font-weight:700; padding:4px 10px; border-radius:999px;
+    border:1px solid {BORDER}; color:{MUTED}; }}
+  .gx-pill.on {{ color:{GREEN}; border-color:rgba(33,208,122,0.4); background:rgba(33,208,122,0.08); }}
+  .gx-pill.off {{ color:{MUTED}; }}
+  .gx-clock {{ font-family:'JetBrains Mono',monospace; color:{TEXT}; font-size:0.95rem; }}
 
-  /* Tarjetas */
+  /* ---------- Tabs estilo terminal ---------- */
+  button[data-baseweb="tab"] {{ font-weight:600; color:{MUTED}; font-family:'Space Grotesk'; }}
+  button[data-baseweb="tab"][aria-selected="true"] {{ color:{BLUE}; }}
+  [data-baseweb="tab-highlight"] {{ background:{BLUE} !important; }}
+
+  /* ---------- Tarjetas ---------- */
   .gx-card {{
-    background: {PANEL}; border: 1px solid #2a3142; border-radius: 12px;
-    padding: 14px 16px; margin-bottom: 12px;
-    overflow: hidden; word-break: break-word; overflow-wrap: anywhere;
+    background:linear-gradient(180deg,{PANEL} 0%,{BG2} 100%);
+    border:1px solid {BORDER}; border-radius:14px; padding:14px 16px; margin-bottom:12px;
+    box-shadow:0 6px 22px rgba(0,0,0,0.35); overflow:hidden;
+    word-break:break-word; overflow-wrap:anywhere;
   }}
-  .gx-card * {{ overflow-wrap: anywhere; }}
-  .gx-ticker {{
-    display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;
-  }}
-  .gx-symbol {{ font-size: 1.6rem; font-weight: 800; color:#e8eaed; }}
-  .gx-price  {{ font-size: 2.2rem; font-weight: 800; letter-spacing:-1px; }}
-  .gx-delta  {{ font-size: 1.05rem; font-weight: 700; padding:2px 10px; border-radius:6px; }}
-  .gx-up   {{ color:{GREEN}; background: rgba(38,166,154,0.12); }}
-  .gx-down {{ color:{RED};   background: rgba(239,83,80,0.12); }}
-  .gx-tag  {{ font-size:0.72rem; color:{MUTED}; text-transform:uppercase; letter-spacing:1px; }}
+  .gx-card * {{ overflow-wrap:anywhere; }}
+  .gx-ticker {{ display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }}
+  .gx-symbol {{ font-size:1.5rem; font-weight:700; font-family:'Space Grotesk'; color:#f2f6fb; }}
+  .gx-price  {{ font-size:2rem; font-weight:700; font-family:'JetBrains Mono',monospace;
+    letter-spacing:-1px; }}
+  .gx-delta  {{ font-size:1rem; font-weight:700; font-family:'JetBrains Mono'; padding:2px 10px; border-radius:8px; }}
+  .gx-up   {{ color:{GREEN}; background:rgba(33,208,122,0.12); }}
+  .gx-down {{ color:{RED};   background:rgba(255,77,94,0.12); }}
+  .gx-tag  {{ font-size:0.7rem; color:{MUTED}; text-transform:uppercase; letter-spacing:1.5px; font-weight:700; }}
 
-  .gx-news {{ border-bottom:1px solid #232a3a; padding:8px 0; }}
-  .gx-news a {{ color:{TEXT}; text-decoration:none; font-size:0.92rem; }}
+  .gx-news {{ border-bottom:1px solid {BORDER}; padding:8px 0; }}
+  .gx-news a {{ color:{TEXT}; text-decoration:none; font-size:0.9rem; }}
   .gx-news a:hover {{ color:{BLUE}; }}
 
-  /* Botones de decisión */
-  div[data-testid="stButton"] button {{ border-radius:10px; font-weight:700; }}
+  div[data-testid="stButton"] button {{ border-radius:10px; font-weight:700; border:1px solid {BORDER}; }}
+  div[data-testid="stButton"] button:hover {{ border-color:{BLUE}; color:{BLUE}; }}
 
-  /* Métricas */
-  div[data-testid="stMetricValue"] {{ font-size:1.4rem; }}
+  /* Métricas con números monoespaciados */
+  div[data-testid="stMetricValue"] {{ font-family:'JetBrains Mono',monospace; font-size:1.35rem; }}
+  div[data-testid="stMetricLabel"] {{ color:{MUTED}; }}
+
+  /* Dataframe más sobrio */
+  [data-testid="stDataFrame"] {{ border:1px solid {BORDER}; border-radius:12px; }}
 
   /* Indicador EN VIVO pulsante */
   .gx-live {{ display:inline-flex; align-items:center; gap:6px; font-size:0.72rem;
-              font-weight:700; color:{RED}; letter-spacing:1px; }}
+    font-weight:700; color:{RED}; letter-spacing:1px; }}
   .gx-live .dot {{ width:9px; height:9px; border-radius:50%; background:{RED};
-                   animation: gxpulse 1.1s infinite; }}
+    animation:gxpulse 1.1s infinite; }}
   @keyframes gxpulse {{
-    0%   {{ box-shadow:0 0 0 0 rgba(239,83,80,0.6); }}
-    70%  {{ box-shadow:0 0 0 8px rgba(239,83,80,0); }}
-    100% {{ box-shadow:0 0 0 0 rgba(239,83,80,0); }}
+    0% {{ box-shadow:0 0 0 0 rgba(255,77,94,0.6); }}
+    70% {{ box-shadow:0 0 0 8px rgba(255,77,94,0); }}
+    100% {{ box-shadow:0 0 0 0 rgba(255,77,94,0); }}
   }}
   .gx-chip {{ display:inline-block; font-size:0.74rem; font-weight:700; padding:3px 9px;
-              border-radius:6px; margin:2px 4px 2px 0; }}
+    border-radius:8px; margin:2px 4px 2px 0; }}
+
+  /* ---------- Login premium ---------- */
+  .gx-login-wrap {{ display:flex; justify-content:center; margin-top:4vh; }}
+  .gx-login {{ width:min(420px,92vw); background:linear-gradient(180deg,{PANEL},{BG2});
+    border:1px solid {BORDER}; border-radius:18px; padding:28px 30px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.5); }}
+  .gx-login .logo {{ font-size:1.7rem; font-weight:700; font-family:'Space Grotesk';
+    background:linear-gradient(90deg,{BLUE},{GREEN}); -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent; }}
 </style>
 """

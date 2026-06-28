@@ -73,6 +73,20 @@ def _earnings_cached(symbol_key: str):
     return earnings_soon(SYMBOLS_BY_KEY[symbol_key])
 
 
+@st.cache_data(show_spinner=False, ttl=300)   # sentimiento social/de mercado
+def _social_cached(symbol_key: str):
+    from analysis import social
+    s = social.market_sentiment(SYMBOLS_BY_KEY[symbol_key])
+    return ({"score": s.score, "label": s.label, "source": s.source,
+             "emoji": s.emoji, "detail": s.detail} if s else None)
+
+
+@st.cache_data(show_spinner=False, ttl=900)   # calendario económico macro
+def _macro_cached():
+    from data.calendar import economic_events, major_event_soon
+    return {"events": economic_events(), "major": major_event_soon()}
+
+
 @st.cache_data(show_spinner=False, ttl=600)  # backtest: pesado, cache 10 min
 def _backtest_cached(symbol_key: str, interval: str, limit: int) -> dict:
     df_bt = load_market(symbol_key, interval, max(limit, 200))
@@ -303,8 +317,13 @@ def render_strip():
     symbol = SYMBOLS_BY_KEY[sk]
     duration = st.session_state.get("duration", "1m")
     digest = load_news(sk)
+    social = _social_cached(sk)
+    # Sentimiento combinado (noticias + social) que SÍ influye en el plan
+    combined = digest.score
+    if social:
+        combined = round((digest.score + social["score"]) / 2, 3)
     try:
-        plan, sig_main, reading, remaining = compute_locked_plan(sk, duration, digest.score)
+        plan, sig_main, reading, remaining = compute_locked_plan(sk, duration, combined)
     except Exception:
         st.info(f"Cargando datos de {symbol.label}…")
         return
@@ -323,7 +342,7 @@ def render_strip():
             if email_alerts.is_enabled():
                 email_alerts.send_signal_alert(sig_main, symbol.label)
 
-    opportunities = _opportunities(sk, duration, digest.score)
+    opportunities = _opportunities(sk, duration, combined)
     snap = autonomous.snapshot()
     market_rows = ""
     if snap.get("results"):
@@ -335,20 +354,34 @@ def render_strip():
             market_rows += (f"<div class='gx-news'>{r['icon']} <b>{r['symbol']}</b> · "
                             f"{r['dur']} · {r['conf']:.0f}%</div>")
 
-    # Guardia de eventos: reporte de resultados próximo (alta volatilidad)
+    # Guardias de eventos (alta volatilidad): earnings del activo y macro global
     try:
         _earn = _earnings_cached(sk)
     except Exception:
         _earn = None
+    try:
+        _macro = _macro_cached()
+    except Exception:
+        _macro = {"events": [], "major": None}
+    _warn = []
     if _earn:
+        _warn.append(f"Reporte de resultados de {symbol.label} el <b>{_earn}</b>")
+    if _macro.get("major"):
+        mj = _macro["major"]
+        _warn.append(f"Evento macro <b>{mj['event']}</b> ({mj['country']}) {mj['date']}")
+    if _warn:
         st.markdown(f"<div class='gx-card' style='border-color:{T.GOLD};margin-bottom:6px;'>"
-                    f"<div class='gx-tag' style='color:{T.GOLD};'>⚠️ Evento próximo</div>"
-                    f"Reporte de resultados de {symbol.label} el <b>{_earn}</b>: alta "
-                    f"volatilidad. Opera con cautela o espera a que pase.</div>",
+                    f"<div class='gx-tag' style='color:{T.GOLD};'>⚠️ Evento de alto impacto</div>"
+                    + "".join(f"<div>{w}</div>" for w in _warn) +
+                    f"<div style='font-size:0.78rem;color:{T.MUTED};margin-top:4px;'>"
+                    f"Alta volatilidad: opera con cautela o espera a que pase.</div></div>",
                     unsafe_allow_html=True)
 
     color = T.GREEN if plan.direction == "SUBE" else T.RED if plan.direction == "BAJA" else T.GOLD
     venc = f"vence en {remaining}s" if remaining else "—"
+    _sent = (f"<div style='font-size:0.8rem;color:{T.MUTED};margin-top:4px;'>"
+             f"Sentimiento mercado: {social['emoji']} {social['label']} "
+             f"<span style='opacity:.7;'>({social['detail']})</span></div>") if social else ""
     s = st.columns([1.8, 1.5, 1.4])
     with s[0]:
         st.markdown(
@@ -357,7 +390,7 @@ def render_strip():
             f"<div style='display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;'>"
             f"<span style='font-size:1.7rem;font-weight:800;color:{color};'>{plan.icon} {plan.action_label}</span>"
             f"<span style='font-size:1.15rem;font-weight:700;'>{plan.confidence:.0f}%</span>"
-            f"<span style='font-size:0.85rem;color:{T.MUTED};'>{venc}</span></div></div>",
+            f"<span style='font-size:0.85rem;color:{T.MUTED};'>{venc}</span></div>{_sent}</div>",
             unsafe_allow_html=True)
     with s[1]:
         if opportunities:
@@ -476,6 +509,16 @@ def render_details():
             st.markdown(C.news_html(load_news(sk)), unsafe_allow_html=True)
         except Exception:
             pass
+        try:
+            _ev = _macro_cached().get("events", [])
+        except Exception:
+            _ev = []
+        if _ev:
+            rows = "".join(
+                f"<div class='gx-news'><b>{e['date']}</b> · {e['country']} · {e['event']} "
+                f"{'🔴' * e['importance']}</div>" for e in _ev[:6])
+            st.markdown(f"<div class='gx-card'><div class='gx-tag'>📅 Calendario económico</div>"
+                        f"{rows}</div>", unsafe_allow_html=True)
 
 
 def _side_refresh(symbol) -> int:

@@ -52,13 +52,25 @@ CSS = f"""
   /* ---------- Barra lateral ---------- */
   section[data-testid="stSidebar"] {{
     background:linear-gradient(180deg,{PANEL} 0%,{BG2} 100%);
-    border-right:1px solid {BORDER}; width:200px !important; min-width:200px !important;
+    border-right:1px solid {BORDER}; width:208px !important; min-width:208px !important;
   }}
-  section[data-testid="stSidebar"] .block-container {{ padding-top:0.6rem; }}
-  section[data-testid="stSidebar"] label {{ font-size:0.76rem; color:{MUTED}; margin-bottom:1px; }}
-  section[data-testid="stSidebar"] .stSelectbox, section[data-testid="stSidebar"] .stToggle,
-  section[data-testid="stSidebar"] .stNumberInput {{ margin-bottom:-6px; }}
-  section[data-testid="stSidebar"] [data-testid="stExpander"] {{ margin-top:2px; }}
+  /* Eliminar el hueco superior del panel izquierdo */
+  section[data-testid="stSidebar"] [data-testid="stSidebarHeader"] {{
+    padding:0 !important; height:8px !important; min-height:0 !important; }}
+  section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {{ padding-top:0 !important; }}
+  section[data-testid="stSidebar"] .block-container {{ padding-top:0.35rem !important;
+    padding-bottom:0.6rem !important; }}
+  section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {{ gap:0.35rem !important; }}
+  section[data-testid="stSidebar"] label {{ font-size:0.74rem; color:{MUTED}; margin-bottom:0; }}
+  section[data-testid="stSidebar"] hr {{ margin:0.4rem 0 !important; }}
+  /* Botones compactos (watchlist) */
+  section[data-testid="stSidebar"] div[data-testid="stButton"] button {{
+    padding:3px 8px; font-size:0.8rem; min-height:0; line-height:1.25;
+    justify-content:space-between; }}
+  section[data-testid="stSidebar"] [data-testid="stExpander"] summary {{ font-size:0.8rem; }}
+  .gx-wl {{ display:flex; justify-content:space-between; align-items:center;
+    padding:4px 8px; border:1px solid {BORDER}; border-radius:8px; margin-bottom:4px;
+    background:rgba(255,255,255,0.015); font-size:0.82rem; }}
 
   /* ---------- Cabecera superior ---------- */
   .gx-top {{

@@ -85,11 +85,46 @@ for _k, _v in {"grp": "Todos", "symbol_key": SYMBOLS[0].key, "interval": "5m",
     st.session_state.setdefault(_k, _v)
 
 
-# ------------------------------- Barra lateral (mínima) ---------------------
+# ------------------------------- Barra lateral (herramientas) ---------------
 with st.sidebar:
-    st.markdown(f"<h2 style='color:{T.BLUE};margin-bottom:0;'>📊 GUÍA EXPERTO</h2>"
-                f"<div class='gx-tag'>Terminal · {BACKEND}</div><br>",
+    st.markdown(f"<div style='font-family:Space Grotesk;font-weight:700;font-size:1.05rem;"
+                f"background:linear-gradient(90deg,{T.BLUE},{T.GREEN});"
+                f"-webkit-background-clip:text;-webkit-text-fill-color:transparent;'>"
+                f"◢ GUÍA EXPERTO</div>", unsafe_allow_html=True)
+
+    # --- Motor autónomo 24/7 (arranca solo; se puede apagar para descansar) ---
+    st.session_state.setdefault("auto_interval", max(60, settings.scan_interval_minutes * 60))
+    st.session_state.setdefault("auto_minconf", 65)
+    auto_on = st.toggle("🤖 Autónomo 24/7", value=True, key="auto_on",
+                        help="Analiza todos los mercados en segundo plano. Apágalo "
+                             "para descansar y no gastar recursos.")
+    if auto_on and not autonomous.is_running():
+        autonomous.start(interval_seconds=st.session_state["auto_interval"],
+                         min_confidence=st.session_state["auto_minconf"],
+                         timeframe=st.session_state.get("interval", "5m"))
+    elif not auto_on and autonomous.is_running():
+        autonomous.stop()
+
+    # --- Watchlist: activos del mercado elegido con su señal del motor ---
+    _grp = st.session_state.get("grp", "Todos")
+    _wl = [s for s in SYMBOLS if _grp == "Todos" or s.group == _grp]
+    if _grp == "Todos":
+        _wl = _wl[:12]
+    _snap = autonomous.snapshot()
+    _sig = {}
+    for _r in _snap.get("results", []):
+        if _r["symbol"] not in _sig or _r["conf"] > _sig[_r["symbol"]]["conf"]:
+            _sig[_r["symbol"]] = _r
+    st.markdown(f"<div class='gx-tag' style='margin-top:2px;'>⭐ Watchlist · {_grp}</div>",
                 unsafe_allow_html=True)
+    for _s in _wl:
+        _info = _sig.get(_s.label)
+        _badge = f"{_info['icon']} {_info['conf']:.0f}%" if _info else "·"
+        _sel = "🔹" if _s.key == st.session_state.get("symbol_key") else ""
+        if st.button(f"{_sel}{_s.label}　{_badge}", key=f"wl_{_s.key}",
+                     use_container_width=True):
+            st.session_state["symbol_key"] = _s.key
+            st.rerun()
 
     with st.expander("⚙️ Indicadores y opciones", expanded=False):
         st.session_state["show_ma"] = st.checkbox("Medias móviles (SMA/EMA)", value=True)
@@ -99,24 +134,10 @@ with st.sidebar:
         st.session_state["limit"] = st.slider("Velas a cargar", 60, 500, 200, step=20)
         st.session_state["refresh"] = st.number_input("Refresco (seg)", 1, 120,
                                                        value=settings.refresh_seconds)
+        st.session_state["auto_minconf"] = st.slider("Confianza mín. autónomo %", 50, 90,
+                                                     int(st.session_state["auto_minconf"]))
 
-    st.divider()
-    # --- Motor autónomo 24/7 (arranca solo; se puede apagar para descansar) ---
-    st.session_state.setdefault("auto_interval", max(60, settings.scan_interval_minutes * 60))
-    st.session_state.setdefault("auto_minconf", 65)
-    auto_on = st.toggle("🤖 Autónomo 24/7", value=True, key="auto_on",
-                        help="Analiza todos los mercados en segundo plano y genera "
-                             "operaciones sugeridas. Apágalo para descansar y no gastar recursos.")
-    if auto_on and not autonomous.is_running():
-        autonomous.start(interval_seconds=st.session_state["auto_interval"],
-                         min_confidence=st.session_state["auto_minconf"],
-                         timeframe=st.session_state.get("interval", "5m"))
-    elif not auto_on and autonomous.is_running():
-        autonomous.stop()
-    st.caption("🟢 Analizando en segundo plano" if autonomous.is_running()
-               else "⚪ Detenido (sin consumo)")
-
-    st.divider()
+    st.caption("🟢 Motor activo" if autonomous.is_running() else "⚪ Motor detenido")
     if st.button("🚪 Cerrar sesión", use_container_width=True):
         autonomous.stop()
         logout()

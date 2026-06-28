@@ -87,6 +87,18 @@ def _oai_headers() -> dict:
 
 
 def _chat(system: str, user: str, max_tokens: int = 900) -> str:
+    try:
+        return _chat_raw(system, user, max_tokens)
+    except requests.HTTPError as e:  # nunca exponer la URL/clave en el mensaje
+        code = e.response.status_code if e.response is not None else "?"
+        if code == 429:
+            raise RuntimeError("IA: límite de peticiones alcanzado, espera un momento.")
+        raise RuntimeError(f"IA no disponible (HTTP {code}).")
+    except requests.RequestException:
+        raise RuntimeError("IA no disponible (problema de red).")
+
+
+def _chat_raw(system: str, user: str, max_tokens: int = 900) -> str:
     p = settings.llm_provider
     if p == "gemini":
         model = _gemini_model()

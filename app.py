@@ -67,10 +67,12 @@ def _backtest_cached(symbol_key: str, interval: str, limit: int) -> dict:
 
 
 # --------------------------------- Login -----------------------------------
-try:
-    init_db()
-except Exception as e:  # noqa: BLE001
-    st.sidebar.warning(f"Aviso base de datos ({BACKEND}): {e}")
+if not st.session_state.get("_db_inited"):   # solo una vez por sesión (login rápido)
+    try:
+        init_db()
+    except Exception as e:  # noqa: BLE001
+        st.sidebar.warning(f"Aviso base de datos ({BACKEND}): {e}")
+    st.session_state["_db_inited"] = True
 
 if not is_authenticated():
     render_login()
@@ -165,6 +167,7 @@ def _plan_for_duration(sk: str, dur_tuple, news_score):
     return advisor.build_plan(sg, ap, ac, force_duration=(label, secs)), sg, reading
 
 
+@st.cache_data(show_spinner=False, ttl=20)  # cacheado: panel más rápido y menos llamadas
 def _opportunities(sk: str, chosen: str, news_score):
     """Busca señales fuertes en OTRAS duraciones distintas a la elegida (#7)."""
     out = []
@@ -174,7 +177,8 @@ def _opportunities(sk: str, chosen: str, news_score):
         try:
             p, _, _ = _plan_for_duration(sk, dt, news_score)
             if p.is_actionable and p.confidence >= 70:
-                out.append(p)
+                out.append({"icon": p.icon, "action_label": p.action_label,
+                            "duration_label": p.duration_label, "confidence": p.confidence})
         except Exception:
             pass
     return out
@@ -222,8 +226,8 @@ def render_side_panel():
     # Oportunidades en OTRAS duraciones (#7)
     if opportunities:
         rows = "".join(
-            f"<div class='gx-news'><b>{p.icon} {p.action_label}</b> · vence en "
-            f"<b>{p.duration_label}</b> · {p.confidence:.0f}%</div>"
+            f"<div class='gx-news'><b>{p['icon']} {p['action_label']}</b> · vence en "
+            f"<b>{p['duration_label']}</b> · {p['confidence']:.0f}%</div>"
             for p in opportunities[:4])
         st.markdown(f"<div class='gx-card' style='border-color:{T.GOLD};'>"
                     f"<div class='gx-tag'>⚡ Oportunidades en otras duraciones</div>{rows}"
@@ -305,7 +309,7 @@ def render_terminal():
                                 updated=datetime.now().strftime("%H:%M:%S")),
                 unsafe_allow_html=True)
 
-    col_chart, col_side = st.columns([3.6, 1.3], gap="medium")
+    col_chart, col_side = st.columns([3.4, 1.5], gap="large")
     with col_chart:
         cfg = {"scrollZoom": True, "displayModeBar": False}
         if ctype == "Línea en vivo":
@@ -348,10 +352,10 @@ with tab_live:
     if _stream:
         # Gráfico en streaming (se actualiza SOLO en el navegador, tick a tick) +
         # panel lateral que se auto-refresca sin reiniciar el gráfico.
-        cL, cR = st.columns([3.6, 1.3], gap="medium")
+        cL, cR = st.columns([3.4, 1.5], gap="large")
         with cL:
             components.html(stream_chart_html(_symbol.provider_id,
-                                              st.session_state["interval"], 680), height=706)
+                                              st.session_state["interval"], 460), height=480)
         with cR:
             st.fragment(run_every=(_side_refresh(_symbol) if _live else None))(render_side_panel)()
     else:
@@ -485,7 +489,7 @@ with tab_brain:
     with st.container(border=True):
         st.markdown("#### 🔎 Auto-investigación del mercado")
         ar1, ar2 = st.columns([1, 1])
-        auto_inv = ar1.toggle("Investigar cada 5 min", value=False,
+        auto_inv = ar1.toggle("Investigar cada 10 min", value=False,
                               help="El cerebro consulta noticias (y YouTube si hay clave) "
                                    "del activo actual y las sintetiza solo.")
         if not settings.youtube_api_key:
@@ -496,13 +500,14 @@ with tab_brain:
             with st.spinner("Investigando noticias y videos…"):
                 try:
                     st.markdown(ingest.auto_research(SYMBOLS_BY_KEY[sk]))
-                except Exception as e:  # noqa: BLE001
-                    st.error(f"No se pudo investigar: {e}")
+                except Exception:  # noqa: BLE001 — sin exponer detalles/claves
+                    st.warning("No se pudo completar la investigación ahora "
+                               "(posible límite de la IA). Inténtalo más tarde.")
 
         if ar2.button("🔎 Investigar ahora"):
             _do_research()
         if auto_inv:
-            @st.fragment(run_every=300)
+            @st.fragment(run_every=600)
             def _auto_research_frag():
                 if is_authenticated():
                     _do_research()

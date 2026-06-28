@@ -15,7 +15,7 @@ _WS_OK = {"1s", "1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "12h",
           "1d", "3d", "1w", "1M"}
 
 
-def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 680) -> str:
+def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 460) -> str:
     """HTML autocontenido con el gráfico en vivo. Úsalo con st.components.v1.html."""
     iv = interval if interval in _WS_OK else "1m"
     sym = binance_symbol.upper()

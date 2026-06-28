@@ -100,9 +100,13 @@ def auto_research(symbol) -> str:
     except Exception:
         pass
     material = "\n\n".join(bits) or "Sin material disponible."
+    resumen_fuentes = "**Fuentes consultadas:**\n\n" + material[:1500]
     if llm.is_available():
-        return llm.analyze_content(material, f"Investigación de {symbol.label}")
-    return ("ℹ️ Cerebro IA no disponible; resumen de fuentes:\n\n" + material[:1500])
+        try:
+            return llm.analyze_content(material, f"Investigación de {symbol.label}")
+        except Exception as e:  # noqa: BLE001 — sin exponer claves; mostramos las fuentes
+            return f"⚠️ {e}\n\n{resumen_fuentes}"
+    return "ℹ️ Cerebro IA no disponible ahora.\n\n" + resumen_fuentes
 
 
 def ingest_youtube(url: str) -> Ingested:

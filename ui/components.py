@@ -112,7 +112,7 @@ def pro_chart(symbol_label: str, df: pd.DataFrame,
                                  fill="tonexty", fillcolor="rgba(122,132,153,0.06)"), row=1, col=1)
     if show_ma and "sma_fast" in df:
         fig.add_trace(go.Scatter(x=df.index, y=df["sma_fast"], name="SMA9",
-                                 line=dict(color="#d7f59a", width=1.3)), row=1, col=1)
+                                 line=dict(color="#5aa017", width=1.3)), row=1, col=1)
         fig.add_trace(go.Scatter(x=df.index, y=df["sma_slow"], name="SMA21",
                                  line=dict(color=T.GOLD, width=1.3)), row=1, col=1)
         fig.add_trace(go.Scatter(x=df.index, y=df["ema_50"], name="EMA50",
@@ -141,7 +141,7 @@ def pro_chart(symbol_label: str, df: pd.DataFrame,
                              marker_color=vol_colors, opacity=0.5), row=2, col=1)
 
     fig.update_layout(
-        template="plotly_dark", height=560, paper_bgcolor=T.PANEL, plot_bgcolor=T.PANEL,
+        template="plotly_white", height=560, paper_bgcolor=T.PANEL, plot_bgcolor=T.PANEL,
         margin=dict(l=8, r=8, t=10, b=8), xaxis_rangeslider_visible=False,
         legend=dict(orientation="h", y=1.04, x=0, font=dict(size=10)),
         hovermode="x unified", dragmode="pan",
@@ -161,11 +161,11 @@ def pro_chart(symbol_label: str, df: pd.DataFrame,
             x=0, y=1.02,
         ),
         showspikes=True, spikemode="across", spikethickness=1,
-        spikecolor=T.MUTED, gridcolor="#1e2533", row=1, col=1,
+        spikecolor=T.MUTED, gridcolor="#e3eccf", row=1, col=1,
     )
     if show_volume:
-        fig.update_xaxes(gridcolor="#1e2533", row=2, col=1)
-    fig.update_yaxes(gridcolor="#1e2533", side="right")
+        fig.update_xaxes(gridcolor="#e3eccf", row=2, col=1)
+    fig.update_yaxes(gridcolor="#e3eccf", side="right")
     return fig
 
 
@@ -201,12 +201,12 @@ def seconds_candle_chart(symbol_label: str, df_sec: pd.DataFrame, bin_seconds: i
         up = df_sec["close"].iloc[-1] >= df_sec["open"].iloc[-1]
         fig.add_hline(y=last, line=dict(color=T.GREEN if up else T.RED, width=1, dash="dot"))
     fig.update_layout(
-        template="plotly_dark", height=560, paper_bgcolor=T.PANEL, plot_bgcolor=T.PANEL,
+        template="plotly_white", height=560, paper_bgcolor=T.PANEL, plot_bgcolor=T.PANEL,
         margin=dict(l=8, r=8, t=26, b=8), xaxis_rangeslider_visible=False,
         hovermode="x unified", dragmode="pan",
         title=dict(text=f"{symbol_label} · velas {bin_seconds}s (en vivo)", font=dict(size=12)))
-    fig.update_xaxes(gridcolor="#1e2533")
-    fig.update_yaxes(gridcolor="#1e2533", side="right")
+    fig.update_xaxes(gridcolor="#e3eccf")
+    fig.update_yaxes(gridcolor="#e3eccf", side="right")
     return fig
 
 
@@ -246,12 +246,12 @@ def live_line_chart(symbol_label: str, ticks) -> go.Figure:
     if ys:
         fig.add_hline(y=ys[-1], line=dict(color=color, width=1, dash="dot"))
     fig.update_layout(
-        template="plotly_dark", height=560, paper_bgcolor=T.PANEL, plot_bgcolor=T.PANEL,
+        template="plotly_white", height=560, paper_bgcolor=T.PANEL, plot_bgcolor=T.PANEL,
         margin=dict(l=8, r=8, t=10, b=8), showlegend=False, hovermode="x unified",
         title=dict(text=f"{symbol_label} · línea en vivo (ticks)", font=dict(size=12)))
-    fig.update_yaxes(gridcolor="#1e2533", side="right",
+    fig.update_yaxes(gridcolor="#e3eccf", side="right",
                      range=[min(ys) * 0.999, max(ys) * 1.001] if ys else None)
-    fig.update_xaxes(gridcolor="#1e2533")
+    fig.update_xaxes(gridcolor="#e3eccf")
     return fig
 
 
@@ -266,13 +266,13 @@ def indicator_panel(df: pd.DataFrame) -> go.Figure:
     colors = [T.GREEN if v >= 0 else T.RED for v in df["macd_hist"]]
     fig.add_trace(go.Bar(x=df.index, y=df["macd_hist"], name="Hist", marker_color=colors), row=2, col=1)
     fig.add_trace(go.Scatter(x=df.index, y=df["macd"], name="MACD",
-                             line=dict(color="#d7f59a", width=1.2)), row=2, col=1)
+                             line=dict(color="#5aa017", width=1.2)), row=2, col=1)
     fig.add_trace(go.Scatter(x=df.index, y=df["macd_signal"], name="Señal",
                              line=dict(color=T.GOLD, width=1.2)), row=2, col=1)
-    fig.update_layout(template="plotly_dark", height=210, paper_bgcolor=T.PANEL,
+    fig.update_layout(template="plotly_white", height=210, paper_bgcolor=T.PANEL,
                       plot_bgcolor=T.PANEL, margin=dict(l=8, r=8, t=28, b=8), showlegend=False)
-    fig.update_xaxes(gridcolor="#1e2533")
-    fig.update_yaxes(gridcolor="#1e2533", side="right")
+    fig.update_xaxes(gridcolor="#e3eccf")
+    fig.update_yaxes(gridcolor="#e3eccf", side="right")
     return fig
 
 
@@ -286,9 +286,9 @@ def confidence_gauge(sig: Signal) -> go.Figure:
             "bar": {"color": color},
             "bgcolor": T.PANEL_2,
             "steps": [
-                {"range": [0, 40], "color": "#232a3a"},
-                {"range": [40, 65], "color": "#2c3447"},
-                {"range": [65, 100], "color": "#384360"},
+                {"range": [0, 40], "color": "#eef3df"},
+                {"range": [40, 65], "color": "#e2eecb"},
+                {"range": [65, 100], "color": "#d3e9ad"},
             ],
         },
     ))

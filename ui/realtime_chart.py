@@ -62,7 +62,7 @@ def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 5
     layout: {{ background: {{ type:'solid', color:'{T.PANEL}' }}, textColor:'{T.TEXT}',
                fontFamily:'JetBrains Mono, monospace' }},
     // Fondo limpio estilo IQ Option: sin cuadrícula vertical, horizontal muy tenue
-    grid: {{ vertLines: {{ visible:false }}, horzLines: {{ color:'rgba(255,255,255,0.04)' }} }},
+    grid: {{ vertLines: {{ visible:false }}, horzLines: {{ color:'rgba(0,0,0,0.06)' }} }},
     timeScale: {{ timeVisible:true, secondsVisible:{secs}, borderColor:'{T.BORDER}',
                   tickMarkFormatter:(t)=>fmtT(t) }},
     rightPriceScale: {{ borderColor:'{T.BORDER}' }},
@@ -72,7 +72,7 @@ def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 5
   const candle = chart.addCandlestickSeries({{
     upColor:'{T.GREEN}', downColor:'{T.RED}', borderVisible:false,
     wickUpColor:'{T.GREEN}', wickDownColor:'{T.RED}', priceLineColor:'{T.MUTED}' }});
-  const ma9  = chart.addLineSeries({{ color:'#d7f59a', lineWidth:2, priceLineVisible:false, lastValueVisible:false }});
+  const ma9  = chart.addLineSeries({{ color:'#5aa017', lineWidth:2, priceLineVisible:false, lastValueVisible:false }});
   const ma21 = chart.addLineSeries({{ color:'{T.GOLD}', lineWidth:2, priceLineVisible:false, lastValueVisible:false }});
 
   const LEVELS = {levels_json};
@@ -89,7 +89,7 @@ def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 5
     for (let i=0;i<closes.length;i++) {{ const a=smaAt(9,i), b=smaAt(21,i);
       if(a!=null) m9.push({{time:closes[i].time,value:a}}); if(b!=null) m21.push({{time:closes[i].time,value:b}}); }}
     ma9.setData(m9); ma21.setData(m21);
-    if (m9.length&&m21.length) maEl.innerHTML="SMA9 <span style='color:#d7f59a'>"+m9[m9.length-1].value.toFixed(4)+
+    if (m9.length&&m21.length) maEl.innerHTML="SMA9 <span style='color:#5aa017'>"+m9[m9.length-1].value.toFixed(4)+
       "</span>  SMA21 <span style='color:{T.GOLD}'>"+m21[m21.length-1].value.toFixed(4)+"</span>";
   }}
   function paint(c) {{ const up=c.close>=c.open;

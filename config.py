@@ -45,6 +45,8 @@ class Settings:
     openai_base_url: str = os.getenv("OPENAI_BASE_URL", "http://localhost:1234/v1").rstrip("/")
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "").strip()
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "").strip()
+    # Respaldo del cerebro cuando Gemini agota su límite (OpenAI-compatible)
+    deepseek_api_key: str = os.getenv("DEEPSEEK_API_KEY", "").strip()
     # --- Datos en tiempo real adicionales (opcional) ---
     finnhub_api_key: str = os.getenv("FINNHUB_API_KEY", "").strip()
     twelvedata_api_key: str = os.getenv("TWELVEDATA_API_KEY", "").strip()
@@ -72,7 +74,8 @@ class Settings:
 
     @property
     def has_llm(self) -> bool:
-        return self.llm_provider in ("ollama", "openai_compatible", "gemini")
+        return (self.llm_provider in ("ollama", "openai_compatible", "gemini")
+                or bool(self.deepseek_api_key))
 
 
 settings = Settings()

@@ -73,7 +73,9 @@ def _gemini_model() -> str:
 
 
 def is_available() -> bool:
-    """Comprueba si el backend está accesible (ping corto / clave presente)."""
+    """IA disponible si el proveedor responde O hay respaldo DeepSeek configurado."""
+    if settings.deepseek_api_key:
+        return True
     p = settings.llm_provider
     try:
         if p == "gemini":
@@ -88,15 +90,29 @@ def is_available() -> bool:
     return False
 
 
+def _deepseek(system: str, user: str, max_tokens: int, json_mode: bool = False) -> str:
+    """Respaldo OpenAI-compatible con DeepSeek."""
+    body = {"model": "deepseek-chat", "temperature": 0.3, "max_tokens": max_tokens,
+            "messages": [{"role": "system", "content": system},
+                         {"role": "user", "content": user}]}
+    if json_mode:
+        body["response_format"] = {"type": "json_object"}
+    r = requests.post("https://api.deepseek.com/chat/completions", timeout=120,
+                      headers={"Content-Type": "application/json",
+                               "Authorization": f"Bearer {settings.deepseek_api_key}"},
+                      json=body)
+    r.raise_for_status()
+    return r.json()["choices"][0]["message"]["content"].strip()
+
+
 def backend_label() -> str:
     p = settings.llm_provider
-    if p == "gemini":
-        return f"Gemini (free) · {_gemini_model()}"
-    if p == "ollama":
-        return f"Ollama · {settings.llm_model}"
-    if p == "openai_compatible":
-        return f"OpenAI-compat · {settings.llm_model}"
-    return "desactivado"
+    base = {"gemini": f"Gemini · {_gemini_model()}",
+            "ollama": f"Ollama · {settings.llm_model}",
+            "openai_compatible": f"OpenAI-compat · {settings.llm_model}"}.get(p, "DeepSeek")
+    if settings.deepseek_api_key and p != "openai_compatible":
+        base += " (+ DeepSeek respaldo)"
+    return base
 
 
 # --------------------------------- Llamada ---------------------------------
@@ -110,12 +126,17 @@ def _oai_headers() -> dict:
 def _chat(system: str, user: str, max_tokens: int = 900) -> str:
     try:
         return _chat_raw(system, user, max_tokens)
-    except requests.HTTPError as e:  # nunca exponer la URL/clave en el mensaje
-        code = e.response.status_code if e.response is not None else "?"
-        if code == 429:
-            raise RuntimeError("IA: límite de peticiones alcanzado, espera un momento.")
-        raise RuntimeError(f"IA no disponible (HTTP {code}).")
-    except requests.RequestException:
+    except Exception as primary:  # noqa: BLE001
+        # Respaldo: DeepSeek (p.ej. cuando Gemini devuelve 429 por límite)
+        if settings.deepseek_api_key:
+            try:
+                return _deepseek(system, user, max_tokens)
+            except Exception:
+                pass
+        if isinstance(primary, requests.HTTPError) and primary.response is not None:
+            code = primary.response.status_code
+            raise RuntimeError("IA: límite alcanzado, espera un momento." if code == 429
+                               else f"IA no disponible (HTTP {code}).")
         raise RuntimeError("IA no disponible (problema de red).")
 
 
@@ -236,7 +257,8 @@ def _chat_json(system: str, user: str, schema: dict, max_tokens: int = 700) -> s
     raise RuntimeError("LLM desactivado")
 
 
-def structured_verdict(sig, symbol_label: str, news_titles: list[str] | None = None) -> dict:
+def structured_verdict(sig, symbol_label: str, news_titles: list[str] | None = None,
+                       extra_context: str = "") -> dict:
     """Veredicto ESTRUCTURADO del cerebro (JSON): dirección, confianza, resumen,
     riesgos y niveles clave. Útil para mostrar/automatizar de forma fiable."""
     news = "\n".join(f"- {t}" for t in (news_titles or [])[:6]) or "(sin titulares)"
@@ -247,17 +269,24 @@ def structured_verdict(sig, symbol_label: str, news_titles: list[str] | None = N
         f"Soporte: {sig.support}  Resistencia: {sig.resistance}\n"
         f"Stop: {sig.stop_loss}  Objetivo: {sig.take_profit}\n"
         f"Sentimiento noticias: {sig.news_score}\nRazones: {'; '.join(sig.reasons)}\n"
-        f"Titulares:\n{news}\n\n"
+        f"Titulares:\n{news}\n" + (extra_context + "\n" if extra_context else "") + "\n"
         "Devuelve un JSON con: direccion (COMPRA/VENTA/ESPERAR), confianza (0-100), "
         "resumen (1-2 frases), riesgos (1 frase), niveles_clave. Usa SOLO datos del contexto."
     )
+    import json
     try:
-        raw = _chat_json(_SYSTEM, ctx, _VERDICT_SCHEMA)
-        import json
-        return json.loads(raw)
-    except requests.HTTPError as e:  # sin exponer la clave
-        code = e.response.status_code if e.response is not None else "?"
-        raise RuntimeError("IA: límite alcanzado." if code == 429 else f"IA (HTTP {code}).")
+        return json.loads(_chat_json(_SYSTEM, ctx, _VERDICT_SCHEMA))
+    except Exception as primary:  # noqa: BLE001
+        if settings.deepseek_api_key:   # respaldo DeepSeek en JSON
+            try:
+                return json.loads(_deepseek(_SYSTEM, ctx + "\nResponde SOLO JSON.",
+                                            700, json_mode=True))
+            except Exception:
+                pass
+        if isinstance(primary, requests.HTTPError) and primary.response is not None:
+            code = primary.response.status_code
+            raise RuntimeError("IA: límite alcanzado." if code == 429 else f"IA (HTTP {code}).")
+        raise RuntimeError("IA no disponible.")
 
 
 def analyze_content(text: str, source: str = "") -> str:

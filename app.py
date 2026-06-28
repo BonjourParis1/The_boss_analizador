@@ -740,9 +740,22 @@ with tab_brain:
                     sig = analyze(sk, df, news_score=digest.score, candles=reading)
                     titles = [i.title for i in digest.items]
                     label = SYMBOLS_BY_KEY[sk].label
+                    # Contexto extra para el cerebro: sentimiento social + macro
+                    _ex = []
+                    _so = _social_cached(sk)
+                    if _so:
+                        _ex.append(f"Sentimiento social: {_so['label']} ({_so['detail']}).")
+                    try:
+                        _mc = _macro_cached().get("events", [])[:3]
+                        if _mc:
+                            _ex.append("Eventos macro próximos: " +
+                                       "; ".join(f"{e['event']} ({e['country']})" for e in _mc))
+                    except Exception:
+                        pass
+                    extra = "  ".join(_ex)
                     # Resultado ESTRUCTURADO (JSON) y, debajo, explicación en prosa
                     try:
-                        v = llm.structured_verdict(sig, label, titles)
+                        v = llm.structured_verdict(sig, label, titles, extra_context=extra)
                         col = T.GREEN if v.get("direccion") == "COMPRA" else \
                             T.RED if v.get("direccion") == "VENTA" else T.GOLD
                         st.markdown(

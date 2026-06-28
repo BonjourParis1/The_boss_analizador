@@ -45,13 +45,58 @@ def youtube_id(url: str) -> str | None:
 
 
 def fetch_youtube_transcript(url: str, languages=("es", "en")) -> str:
-    """Descarga la transcripción de un video de YouTube."""
+    """Descarga la transcripción de un video de YouTube de forma ROBUSTA.
+
+    Prueba: idiomas preferidos -> cualquier transcripción manual o automática ->
+    traducción a español. Soporta la API clásica y la nueva (1.x).
+    """
     vid = youtube_id(url)
     if not vid:
         raise ValueError("URL de YouTube no válida.")
     from youtube_transcript_api import YouTubeTranscriptApi
-    chunks = YouTubeTranscriptApi.get_transcript(vid, languages=list(languages))
-    return " ".join(c["text"] for c in chunks)
+
+    def _join(chunks):
+        # admite dicts {"text":..} o snippets con .text
+        out = []
+        for c in chunks:
+            out.append(c["text"] if isinstance(c, dict) else getattr(c, "text", ""))
+        return " ".join(t for t in out if t).strip()
+
+    # 1) Camino directo con idiomas preferidos (API clásica)
+    try:
+        return _join(YouTubeTranscriptApi.get_transcript(vid, languages=list(languages)))
+    except Exception:
+        pass
+    # 2) Listar todas y elegir la mejor disponible (manual/auto/traducida)
+    try:
+        tl = YouTubeTranscriptApi.list_transcripts(vid)
+        # idioma preferido
+        for lang in languages:
+            try:
+                return _join(tl.find_transcript([lang]).fetch())
+            except Exception:
+                pass
+        # cualquiera y, si se puede, traducir a español
+        for t in tl:
+            try:
+                if getattr(t, "is_translatable", False):
+                    try:
+                        return _join(t.translate("es").fetch())
+                    except Exception:
+                        pass
+                return _join(t.fetch())
+            except Exception:
+                continue
+    except Exception:
+        pass
+    # 3) API nueva (instancia) por si la versión instalada la usa
+    try:
+        api = YouTubeTranscriptApi()
+        return _join(api.fetch(vid, languages=list(languages)))
+    except Exception:
+        pass
+    raise RuntimeError("Este video no tiene transcripción accesible "
+                       "(o está restringida). Prueba con otro video.")
 
 
 def ingest_text(text: str, source: str = "texto pegado") -> Ingested:

@@ -292,6 +292,30 @@ def _consensus_for(sk: str, duration: str, news_score):
     return plan, sig_main, reading
 
 
+@st.cache_data(show_spinner=False, ttl=180)  # veredicto IA: máx 1 cálculo/3min por activo
+def _ia_verdict_cached(sk: str, duration: str):
+    """Veredicto estructurado del cerebro (Gemini/DeepSeek) con TODO el contexto."""
+    if not llm.is_available():
+        return None
+    try:
+        digest = load_news(sk)
+        _, sig_main, _ = _consensus_for(sk, duration, digest.score)
+        ex = []
+        so = _social_cached(sk)
+        if so:
+            ex.append(f"Sentimiento social: {so['label']} ({so['detail']}).")
+        try:
+            mc = _macro_cached().get("events", [])[:3]
+            if mc:
+                ex.append("Eventos macro: " + "; ".join(e["event"] for e in mc))
+        except Exception:
+            pass
+        return llm.structured_verdict(sig_main, SYMBOLS_BY_KEY[sk].label,
+                                      [i.title for i in digest.items], "  ".join(ex))
+    except Exception:
+        return None
+
+
 def compute_locked_plan(sk: str, duration: str, news_score):
     """Multi-TF + BLOQUEO: mantiene el plan durante la duración salvo reversión fuerte."""
     import time as _t
@@ -390,15 +414,32 @@ def render_strip():
     _sent = (f"<div style='font-size:0.8rem;color:{T.MUTED};margin-top:4px;'>"
              f"Sentimiento mercado: {social['emoji']} {social['label']} "
              f"<span style='opacity:.7;'>({social['detail']})</span></div>") if social else ""
+
+    # --- Fusión con el cerebro IA (confirma / discrepa) ---
+    ia = _ia_verdict_cached(sk, duration)
+    ia_html = ""
+    if ia:
+        _map = {"COMPRA": "SUBE", "VENTA": "BAJA", "ESPERAR": "ESPERAR"}
+        ia_dir = _map.get(str(ia.get("direccion", "")).upper(), "ESPERAR")
+        if plan.direction in ("SUBE", "BAJA") and ia_dir == plan.direction:
+            badge = f"<span style='color:{T.GREEN};font-weight:700;'>✓ IA confirma</span>"
+        elif plan.direction in ("SUBE", "BAJA") and ia_dir in ("SUBE", "BAJA"):
+            badge = f"<span style='color:{T.RED};font-weight:700;'>⚠ IA discrepa</span>"
+        else:
+            badge = f"<span style='color:{T.MUTED};'>IA: {ia.get('direccion','')}</span>"
+        ia_html = (f"<div style='margin-top:6px;border-top:1px solid {T.BORDER};padding-top:6px;"
+                   f"font-size:0.82rem;'>🧠 {badge} · {ia.get('confianza','—')}% — "
+                   f"{ia.get('resumen','')}</div>")
+
     s = st.columns([1.8, 1.5, 1.4])
     with s[0]:
         st.markdown(
             f"<div class='gx-card' style='border:2px solid {color};margin-bottom:6px;'>"
-            f"<div class='gx-tag'>🎯 Plan · {symbol.label} · inversión {duration}</div>"
+            f"<div class='gx-tag'>🎯 Plan consolidado · {symbol.label} · inversión {duration}</div>"
             f"<div style='display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;'>"
             f"<span style='font-size:1.7rem;font-weight:800;color:{color};'>{plan.icon} {plan.action_label}</span>"
             f"<span style='font-size:1.15rem;font-weight:700;'>{plan.confidence:.0f}%</span>"
-            f"<span style='font-size:0.85rem;color:{T.MUTED};'>{venc}</span></div>{_sent}</div>",
+            f"<span style='font-size:0.85rem;color:{T.MUTED};'>{venc}</span></div>{_sent}{ia_html}</div>",
             unsafe_allow_html=True)
     with s[1]:
         if opportunities:

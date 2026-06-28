@@ -110,7 +110,7 @@ def pro_chart(symbol_label: str, df: pd.DataFrame,
                                  fill="tonexty", fillcolor="rgba(122,132,153,0.06)"), row=1, col=1)
     if show_ma and "sma_fast" in df:
         fig.add_trace(go.Scatter(x=df.index, y=df["sma_fast"], name="SMA9",
-                                 line=dict(color="#4d9fff", width=1.3)), row=1, col=1)
+                                 line=dict(color="#d7f59a", width=1.3)), row=1, col=1)
         fig.add_trace(go.Scatter(x=df.index, y=df["sma_slow"], name="SMA21",
                                  line=dict(color=T.GOLD, width=1.3)), row=1, col=1)
         fig.add_trace(go.Scatter(x=df.index, y=df["ema_50"], name="EMA50",
@@ -257,7 +257,7 @@ def indicator_panel(df: pd.DataFrame) -> go.Figure:
     colors = [T.GREEN if v >= 0 else T.RED for v in df["macd_hist"]]
     fig.add_trace(go.Bar(x=df.index, y=df["macd_hist"], name="Hist", marker_color=colors), row=2, col=1)
     fig.add_trace(go.Scatter(x=df.index, y=df["macd"], name="MACD",
-                             line=dict(color="#4d9fff", width=1.2)), row=2, col=1)
+                             line=dict(color="#d7f59a", width=1.2)), row=2, col=1)
     fig.add_trace(go.Scatter(x=df.index, y=df["macd_signal"], name="Señal",
                              line=dict(color=T.GOLD, width=1.2)), row=2, col=1)
     fig.update_layout(template="plotly_dark", height=210, paper_bgcolor=T.PANEL,

@@ -49,7 +49,7 @@ def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 4
     upColor:'{T.GREEN}', downColor:'{T.RED}', borderVisible:false,
     wickUpColor:'{T.GREEN}', wickDownColor:'{T.RED}',
     priceLineColor:'{T.MUTED}' }});
-  const ma9  = chart.addLineSeries({{ color:'#4d9fff', lineWidth:2, priceLineVisible:false, lastValueVisible:false }});
+  const ma9  = chart.addLineSeries({{ color:'#d7f59a', lineWidth:2, priceLineVisible:false, lastValueVisible:false }});
   const ma21 = chart.addLineSeries({{ color:'{T.GOLD}', lineWidth:2, priceLineVisible:false, lastValueVisible:false }});
   const priceEl = document.getElementById('gxprice');
   const maEl = document.getElementById('gxma');
@@ -69,7 +69,7 @@ def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 4
     }}
     ma9.setData(m9); ma21.setData(m21);
     if (m9.length && m21.length)
-      maEl.innerHTML = "SMA9 <span style='color:#4d9fff'>"+m9[m9.length-1].value.toFixed(4)+
+      maEl.innerHTML = "SMA9 <span style='color:#d7f59a'>"+m9[m9.length-1].value.toFixed(4)+
         "</span>  SMA21 <span style='color:{T.GOLD}'>"+m21[m21.length-1].value.toFixed(4)+"</span>";
   }}
   function paint(c) {{

@@ -36,7 +36,7 @@ def render_login() -> bool:
         st.markdown(
             "<div style='text-align:center;margin-top:6vh;'>"
             "<div class='logo' style='font-size:2rem;font-weight:700;"
-            "font-family:Space Grotesk;background:linear-gradient(90deg,#36c2ff,#21d07a);"
+            "font-family:Space Grotesk;background:linear-gradient(90deg,#aef07a,#21d07a);"
             "-webkit-background-clip:text;-webkit-text-fill-color:transparent;'>"
             "◢ GUÍA EXPERTO</div>"
             "<div style='color:#7e8ca3;margin:4px 0 18px;'>Terminal de trading · "

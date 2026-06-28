@@ -16,7 +16,9 @@ PANEL_2 = "#16202f"
 BORDER = "#1d2a3a"
 GREEN = "#21d07a"
 RED = "#ff4d5e"
-BLUE = "#36c2ff"
+# Acento principal: verde lima claro, suave y brillante (sustituye al azul)
+BLUE = "#aef07a"
+LIME = "#aef07a"
 TEXT = "#e8eef6"
 MUTED = "#7e8ca3"
 GOLD = "#f5b942"
@@ -32,7 +34,7 @@ CSS = f"""
 
   .stApp {{
     background:
-      radial-gradient(1200px 600px at 80% -10%, rgba(54,194,255,0.06), transparent 60%),
+      radial-gradient(1200px 600px at 80% -10%, rgba(174,240,122,0.07), transparent 60%),
       radial-gradient(900px 500px at -10% 110%, rgba(33,208,122,0.05), transparent 55%),
       {BG};
     color:{TEXT};

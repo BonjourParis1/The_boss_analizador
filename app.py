@@ -17,7 +17,7 @@ from datetime import datetime
 import streamlit as st
 
 import autonomous
-from analysis import advisor, auto_learn, levels as levels_mod
+from analysis import advisor, auto_learn, levels as levels_mod, tracker
 from analysis.backtest import run_backtest
 from analysis.engine import BUY, HOLD, SELL, analyze
 from analysis.indicators import compute_all
@@ -285,9 +285,14 @@ def _consensus_for(sk: str, duration: str, news_score):
         except Exception:
             ap = None
     try:
-        wr = _backtest_cached(sk, dtuple[2], 200)["win_rate"]
+        bt = _backtest_cached(sk, dtuple[2], 200)
+        wr = bt["win_rate"] if bt["trades"] > 0 else None
     except Exception:
         wr = None
+    # Aprende de resultados REALES: mezcla la precisión en vivo con el backtest
+    lw = tracker.live_winrate(sk)
+    if lw is not None:
+        wr = round((wr + lw) / 2, 1) if wr is not None else lw
     plan = advisor.consensus_plan(per_tf, (dtuple[0], dtuple[1]), ap, ac, wr)
     return plan, sig_main, reading
 
@@ -362,6 +367,14 @@ def render_strip():
     st.session_state["_cur"] = {"reasons": plan.rationale,
                                 "sig_action": sig_main.action, "price": sig_main.price}
 
+    # Aprendizaje por resultados: registra la señal y evalúa las vencidas con precio real
+    try:
+        if plan.is_actionable:
+            tracker.record(sk, plan.direction, plan.expiry_seconds, sig_main.price, "terminal")
+        tracker.evaluate(sk, sig_main.price)
+    except Exception:
+        pass
+
     if plan.is_actionable:
         tag = f"{sk}:{plan.direction}:{duration}"
         if st.session_state.get("_last_tag") != tag:
@@ -414,6 +427,12 @@ def render_strip():
     _sent = (f"<div style='font-size:0.8rem;color:{T.MUTED};margin-top:4px;'>"
              f"Sentimiento mercado: {social['emoji']} {social['label']} "
              f"<span style='opacity:.7;'>({social['detail']})</span></div>") if social else ""
+    # Precisión aprendida (global y del activo) a partir de resultados reales
+    _g = tracker.stats()
+    _ps = tracker.stats(sk)
+    _acc = (f"<div style='font-size:0.8rem;color:{T.MUTED};margin-top:4px;'>"
+            f"🎯 Precisión sistema: <b>{_g['accuracy']:.0f}%</b> ({_g['n']}) · "
+            f"{symbol.label}: <b>{_ps['accuracy']:.0f}%</b> ({_ps['n']})</div>") if _g['n'] else ""
 
     # --- Fusión con el cerebro IA (confirma / discrepa) ---
     ia = _ia_verdict_cached(sk, duration)
@@ -439,7 +458,7 @@ def render_strip():
             f"<div style='display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;'>"
             f"<span style='font-size:1.7rem;font-weight:800;color:{color};'>{plan.icon} {plan.action_label}</span>"
             f"<span style='font-size:1.15rem;font-weight:700;'>{plan.confidence:.0f}%</span>"
-            f"<span style='font-size:0.85rem;color:{T.MUTED};'>{venc}</span></div>{_sent}{ia_html}</div>",
+            f"<span style='font-size:0.85rem;color:{T.MUTED};'>{venc}</span></div>{_sent}{_acc}{ia_html}</div>",
             unsafe_allow_html=True)
     with s[1]:
         if opportunities:
@@ -565,6 +584,17 @@ def render_details():
             _record(SELL)
         if bb[2].button("⏸", use_container_width=True, help="Registrar MANTENER"):
             _record(HOLD)
+
+        # Resultado REAL de la última señal (el sistema aprende de aciertos/fallos)
+        st.markdown("<div class='gx-tag' style='margin-top:6px;'>¿Resultado real?</div>",
+                    unsafe_allow_html=True)
+        rb = st.columns(2)
+        if rb[0].button("✅ Acerté", use_container_width=True):
+            tracker.mark_last(sk, True)
+            st.success("Marcado como acierto.")
+        if rb[1].button("❌ Fallé", use_container_width=True):
+            tracker.mark_last(sk, False)
+            st.warning("Marcado como fallo: el sistema lo tendrá en cuenta.")
     with d3:
         try:
             st.markdown(C.news_html(load_news(sk)), unsafe_allow_html=True)

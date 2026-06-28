@@ -18,7 +18,7 @@ import time
 from collections import deque
 from datetime import datetime
 
-from analysis import advisor, auto_learn
+from analysis import advisor, auto_learn, tracker
 from analysis.engine import analyze
 from analysis.indicators import compute_all
 from analysis.patterns import read_candles
@@ -99,6 +99,11 @@ def _scan_cycle(stop_event: threading.Event, min_conf: float, timeframe: str) ->
         try:
             df = compute_all(fetch_with_retry(s, interval=timeframe, limit=150))
             sig = analyze(s.key, df, candles=read_candles(df))
+            # Autoevaluación: marca acierto/fallo de señales vencidas con el precio real
+            try:
+                tracker.evaluate(s.key, float(df["close"].iloc[-1]))
+            except Exception:
+                pass
             ap = ac = None
             if has_model:
                 try:
@@ -123,6 +128,11 @@ def _scan_cycle(stop_event: threading.Event, min_conf: float, timeframe: str) ->
                         "price": sig.price,
                     })
                 found += 1
+                # Registra la señal para medir su acierto/fallo al vencer
+                try:
+                    tracker.record(s.key, plan.direction, plan.expiry_seconds, sig.price, "auto")
+                except Exception:
+                    pass
                 # Verificación IA + investigación del contexto de esta señal fuerte
                 researched = _maybe_research(s, sig, plan, researched)
         except Exception:

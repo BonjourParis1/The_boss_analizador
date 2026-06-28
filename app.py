@@ -188,8 +188,8 @@ with st.sidebar:
 
 st.markdown(C.header_bar(autonomous.is_running()), unsafe_allow_html=True)
 
-tab_live, tab_auto, tab_radar, tab_brain, tab_hist, tab_back, tab_ml = st.tabs(
-    ["🖥️ Terminal", "🤖 Autónomo", "📡 Radar de mercado", "🧠 Cerebro IA",
+tab_live, tab_auto, tab_radar, tab_prec, tab_brain, tab_hist, tab_back, tab_ml = st.tabs(
+    ["🖥️ Terminal", "🤖 Autónomo", "📡 Radar de mercado", "🎯 Precisión", "🧠 Cerebro IA",
      "📜 Historial", "⏮ Backtesting", "🎓 Aprendizaje"]
 )
 
@@ -772,6 +772,49 @@ with tab_auto:
                 st.text(line)
 
     _auto_panel()
+
+
+# ============================== TAB: PRECISIÓN =============================
+with tab_prec:
+    st.subheader("🎯 Precisión del sistema — aprende de aciertos y fallos")
+    st.caption("Cada señal se evalúa con el precio REAL al vencer su duración. Esta "
+               "precisión retroalimenta la confianza del motor para mejorar con el tiempo.")
+    import pandas as pd
+    g = tracker.stats()
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Señales evaluadas", g["n"])
+    m2.metric("Aciertos", g["wins"])
+    m3.metric("Fallos", g["losses"])
+    m4.metric("Precisión global", f"{g['accuracy']:.0f}%")
+
+    cv = tracker.curve()
+    if cv:
+        st.markdown("#### Evolución de la precisión")
+        st.line_chart(pd.DataFrame(cv).set_index("señal"))
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("#### Por activo")
+            bs = tracker.breakdown_symbol()
+            if bs:
+                rows = [{"Activo": SYMBOLS_BY_KEY[k].label if k in SYMBOLS_BY_KEY else k,
+                         "Aciertos": v["aciertos"], "Total": v["total"],
+                         "Precisión %": v["precisión"]}
+                        for k, v in sorted(bs.items(), key=lambda x: -x[1]["precisión"])]
+                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        with c2:
+            st.markdown("#### Por duración")
+            bd = tracker.breakdown_duration()
+            if bd:
+                rows = [{"Duración": k, "Aciertos": v["aciertos"], "Total": v["total"],
+                         "Precisión %": v["precisión"]} for k, v in bd.items()]
+                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+    else:
+        st.info("Aún no hay señales evaluadas. Enciende **🤖 Autónomo 24/7** y deja correr "
+                "el sistema; cuando venzan las señales aparecerá aquí su rendimiento.")
+
+    if st.button("🗑️ Reiniciar historial de precisión"):
+        tracker.reset()
+        st.success("Historial reiniciado.")
 
 
 # ============================== TAB: CEREBRO IA ============================

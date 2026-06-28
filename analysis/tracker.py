@@ -103,3 +103,45 @@ def live_winrate(symbol_key: str, min_samples: int = 8) -> float | None:
     """Precisión por símbolo si hay muestras suficientes (para ajustar confianza)."""
     s = stats(symbol_key)
     return s["accuracy"] if s["n"] >= min_samples else None
+
+
+_DUR_LABEL = {30: "30s", 60: "1m", 180: "3m", 300: "5m", 900: "15m"}
+
+
+def evaluated() -> list:
+    """Señales ya resueltas (acierto/fallo), ordenadas por tiempo."""
+    return sorted([s for s in _load() if s["status"] in ("win", "loss")],
+                  key=lambda s: s["ts"])
+
+
+def curve() -> list:
+    """Curva de precisión acumulada (win-rate) a lo largo de las señales."""
+    out, w = [], 0
+    for i, s in enumerate(evaluated(), 1):
+        if s["status"] == "win":
+            w += 1
+        out.append({"señal": i, "precisión": round(100 * w / i, 1)})
+    return out
+
+
+def _breakdown(keyfn) -> dict:
+    from collections import defaultdict
+    agg = defaultdict(lambda: [0, 0])
+    for s in evaluated():
+        k = keyfn(s)
+        agg[k][0] += 1 if s["status"] == "win" else 0
+        agg[k][1] += 1
+    return {k: {"aciertos": v[0], "total": v[1],
+                "precisión": round(100 * v[0] / v[1], 1)} for k, v in agg.items()}
+
+
+def breakdown_symbol() -> dict:
+    return _breakdown(lambda s: s["symbol"])
+
+
+def breakdown_duration() -> dict:
+    return _breakdown(lambda s: _DUR_LABEL.get(s.get("exp"), str(s.get("exp", "?")) + "s"))
+
+
+def reset() -> None:
+    _save([])

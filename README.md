@@ -93,10 +93,14 @@ Abre `http://localhost:8501` e introduce tus tres claves.
 - **Tiempo real (tipo IQ Option)**: el tipo de gráfico **"🔴 Stream en vivo"** (cripto)
   se conecta por **WebSocket a Binance desde el navegador** y la vela **fluctúa tick a
   tick** de verdad, sin recargas. También hay "Velas 5s/30s" y "Línea en vivo".
-- **⏱️ Duración de la inversión**: eliges 30s/1m/3m/5m/15m y el asesor **analiza para
-  esa duración** y te dice COMPRA/VENTA/ESPERAR; el plan es **estable** (se calcula
-  sobre velas cerradas, no cambia cada segundo). Si hay una oportunidad en **otra
-  duración** distinta a la elegida, te la muestra con su detalle.
+- **⏱️ Duración de la inversión**: eliges 30s/1m/3m/5m/15m y el asesor decide con
+  **análisis MULTI-TEMPORALIDAD**: confirma la señal en varias velas (p.ej. 5m + 15m
+  + 1h + diaria) ponderando más las largas, así capta la tendencia de horas/días. Si
+  las temporalidades **no están alineadas**, recomienda **ESPERAR** en vez de dar una
+  señal dudosa. Además, **bloquea el plan durante la duración elegida** (no cambia de
+  COMPRA a VENTA a los 2 minutos) salvo una reversión fuerte (confianza ≥80%).
+- **Layout tipo IQ Option**: controles compactos en una **franja superior horizontal**,
+  avisos/plan en tarjetas horizontales arriba y **gráfico a pantalla completa** debajo.
 - **Radar y Backtest automáticos**: el Radar se alimenta del motor autónomo (sin
   botón) y el Backtest del activo se ejecuta solo para mostrar la fiabilidad histórica.
 - **Forex** en vivo con Twelve Data; **acciones** con Finnhub; el resto, manual.

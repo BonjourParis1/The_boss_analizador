@@ -57,6 +57,76 @@ DURATIONS = [
 ]
 DURATION_BY_LABEL = {d[0]: d for d in DURATIONS}
 
+# Temporalidades de CONFIRMACIÓN por duración (etiqueta, peso). Las más largas
+# pesan más para captar la tendencia de horas/días/meses y dar estabilidad:
+# así una operación de 5m no cambia cada 2 min, porque la confirma el 1h/4h/1d.
+CONFIRM_TFS = {
+    "30s": [("1m", 1.0), ("15m", 1.6), ("1h", 2.0), ("1d", 1.8)],
+    "1m":  [("1m", 1.0), ("15m", 1.6), ("1h", 2.0), ("1d", 1.8)],
+    "3m":  [("5m", 1.0), ("15m", 1.4), ("1h", 1.8), ("1d", 2.0)],
+    "5m":  [("5m", 1.0), ("15m", 1.4), ("1h", 1.8), ("1d", 2.0)],
+    "15m": [("15m", 1.0), ("1h", 1.6), ("4h", 2.0), ("1d", 2.2)],
+}
+
+
+def consensus_plan(per_tf, force_duration, auto_pred=None, auto_conf=None,
+                   winrate: float | None = None) -> TradePlan:
+    """Decide combinando VARIAS temporalidades (multi-timeframe) para más fiabilidad.
+
+    per_tf: lista de (etiqueta_tf, peso, señal). El consenso ponderado evita que el
+    plan cambie con cada fluctuación: solo opera cuando las temporalidades (incluida
+    la diaria) están alineadas.  winrate = % de acierto del backtest (contexto).
+    """
+    label, secs = force_duration
+    buy_w = sell_w = total = 0.0
+    reads = []
+    for tf, w, sg in per_tf:
+        total += w
+        if sg.action == BUY:
+            buy_w += w; d = "📈"
+        elif sg.action == SELL:
+            sell_w += w; d = "📉"
+        else:
+            d = "⏸"
+        reads.append(f"{tf}:{d}")
+    reasons = ["Multi-temporalidad → " + "  ".join(reads) + "."]
+
+    if total == 0:
+        return TradePlan("ESPERAR", "ESPERAR", "⏸", "—", 0, 30.0, reasons)
+
+    align = max(buy_w, sell_w) / total
+    if align >= 0.60 and buy_w > sell_w:
+        direction = "SUBE"
+    elif align >= 0.60 and sell_w > buy_w:
+        direction = "BAJA"
+    else:
+        direction = "ESPERAR"
+        reasons.append("Temporalidades NO alineadas: lo fiable es ESPERAR.")
+
+    conf = 40 + align * 52    # 0.6 -> ~71 ; 1.0 -> ~92
+    if direction == "ESPERAR":
+        conf = min(conf, 45)
+
+    if auto_pred in ("SUBE", "BAJA") and direction in ("SUBE", "BAJA"):
+        if auto_pred == direction:
+            conf = min(96, conf + 8)
+            reasons.append(f"Autoaprendizaje histórico confirma {direction}.")
+        else:
+            conf = max(0, conf - 15)
+            reasons.append("Autoaprendizaje histórico discrepa: cautela.")
+    if winrate is not None:
+        if winrate >= 55:
+            conf = min(97, conf + 5)
+            reasons.append(f"Backtest: {winrate:.0f}% de acierto histórico.")
+        elif 0 < winrate < 45:
+            conf = max(0, conf - 8)
+            reasons.append(f"Backtest bajo ({winrate:.0f}%): menos fiable.")
+
+    action_label, icon, _ = _DIR[direction]
+    act_dur = label if direction != "ESPERAR" else "—"
+    act_secs = secs if direction != "ESPERAR" else 0
+    return TradePlan(direction, action_label, icon, act_dur, act_secs, round(conf, 1), reasons)
+
 
 def build_plan(sig, auto_pred: str | None = None, auto_conf: float | None = None,
                force_duration: tuple | None = None) -> TradePlan:

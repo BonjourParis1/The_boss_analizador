@@ -185,6 +185,81 @@ def reason_trade(sig, symbol_label: str, news_titles: list[str] | None = None) -
     return _chat(_SYSTEM, ctx)
 
 
+_VERDICT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "direccion": {"type": "string", "enum": ["COMPRA", "VENTA", "ESPERAR"]},
+        "confianza": {"type": "integer"},
+        "resumen": {"type": "string"},
+        "riesgos": {"type": "string"},
+        "niveles_clave": {"type": "string"},
+    },
+    "required": ["direccion", "confianza", "resumen", "riesgos"],
+}
+
+
+def _chat_json(system: str, user: str, schema: dict, max_tokens: int = 700) -> str:
+    """Pide al modelo una respuesta JSON (salida estructurada por proveedor)."""
+    p = settings.llm_provider
+    if p == "gemini":
+        model = _gemini_model()
+        url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
+               f"{model}:generateContent?key={settings.gemini_api_key}")
+        r = requests.post(url, timeout=120, json={
+            "system_instruction": {"parts": [{"text": system}]},
+            "contents": [{"role": "user", "parts": [{"text": user}]}],
+            "generationConfig": {"maxOutputTokens": max_tokens, "temperature": 0.3,
+                                 "responseMimeType": "application/json",
+                                 "responseSchema": schema},
+        })
+        r.raise_for_status()
+        cands = r.json().get("candidates", [])
+        if not cands:
+            raise RuntimeError("Gemini sin respuesta")
+        return "".join(pt.get("text", "") for pt in cands[0]["content"]["parts"]).strip()
+    if p == "ollama":
+        r = requests.post(f"{settings.ollama_url}/api/chat", timeout=180, json={
+            "model": settings.llm_model, "format": "json", "stream": False,
+            "messages": [{"role": "system", "content": system},
+                         {"role": "user", "content": user}]})
+        r.raise_for_status()
+        return r.json()["message"]["content"].strip()
+    if p == "openai_compatible":
+        r = requests.post(f"{settings.openai_base_url}/chat/completions",
+                          headers=_oai_headers(), timeout=180, json={
+            "model": settings.llm_model, "temperature": 0.3,
+            "response_format": {"type": "json_object"},
+            "messages": [{"role": "system", "content": system},
+                         {"role": "user", "content": user}]})
+        r.raise_for_status()
+        return r.json()["choices"][0]["message"]["content"].strip()
+    raise RuntimeError("LLM desactivado")
+
+
+def structured_verdict(sig, symbol_label: str, news_titles: list[str] | None = None) -> dict:
+    """Veredicto ESTRUCTURADO del cerebro (JSON): dirección, confianza, resumen,
+    riesgos y niveles clave. Útil para mostrar/automatizar de forma fiable."""
+    news = "\n".join(f"- {t}" for t in (news_titles or [])[:6]) or "(sin titulares)"
+    ctx = (
+        f"Activo: {symbol_label}\nSeñal del motor: {sig.action} ({sig.confidence}%)\n"
+        f"Precio: {sig.price}\nRSI: {sig.rsi}\nATR: {sig.atr}\nTendencia: {sig.trend}\n"
+        f"Patrones: {', '.join(sig.patterns) or 'ninguno'}\n"
+        f"Soporte: {sig.support}  Resistencia: {sig.resistance}\n"
+        f"Stop: {sig.stop_loss}  Objetivo: {sig.take_profit}\n"
+        f"Sentimiento noticias: {sig.news_score}\nRazones: {'; '.join(sig.reasons)}\n"
+        f"Titulares:\n{news}\n\n"
+        "Devuelve un JSON con: direccion (COMPRA/VENTA/ESPERAR), confianza (0-100), "
+        "resumen (1-2 frases), riesgos (1 frase), niveles_clave. Usa SOLO datos del contexto."
+    )
+    try:
+        raw = _chat_json(_SYSTEM, ctx, _VERDICT_SCHEMA)
+        import json
+        return json.loads(raw)
+    except requests.HTTPError as e:  # sin exponer la clave
+        code = e.response.status_code if e.response is not None else "?"
+        raise RuntimeError("IA: límite alcanzado." if code == 429 else f"IA (HTTP {code}).")
+
+
 def analyze_content(text: str, source: str = "") -> str:
     text = text.strip()
     if len(text) > 16000:

@@ -567,7 +567,7 @@ with tab_live:
         except Exception:
             _slv = None
         components.html(stream_chart_html(_symbol.provider_id, st.session_state["interval"],
-                                          560, levels=_slv), height=584)
+                                          560, levels=_slv), height=624)
     else:
         if _ctype == "🔴 Stream en vivo" and _symbol.type != "cripto":
             st.caption("ℹ️ El stream tick a tick es solo para cripto; aquí se muestran velas.")
@@ -738,9 +738,25 @@ with tab_brain:
                     reading = read_candles(df)
                     digest = load_news(sk)
                     sig = analyze(sk, df, news_score=digest.score, candles=reading)
-                    text = llm.reason_trade(sig, SYMBOLS_BY_KEY[sk].label,
-                                            [i.title for i in digest.items])
-                    st.markdown(text)
+                    titles = [i.title for i in digest.items]
+                    label = SYMBOLS_BY_KEY[sk].label
+                    # Resultado ESTRUCTURADO (JSON) y, debajo, explicación en prosa
+                    try:
+                        v = llm.structured_verdict(sig, label, titles)
+                        col = T.GREEN if v.get("direccion") == "COMPRA" else \
+                            T.RED if v.get("direccion") == "VENTA" else T.GOLD
+                        st.markdown(
+                            f"<div class='gx-card' style='border:2px solid {col};'>"
+                            f"<div class='gx-tag'>Veredicto IA · {label}</div>"
+                            f"<div style='font-size:1.5rem;font-weight:800;color:{col};'>"
+                            f"{v.get('direccion','—')} · {v.get('confianza','—')}%</div>"
+                            f"<div style='margin-top:6px;'>{v.get('resumen','')}</div>"
+                            f"<div style='margin-top:6px;color:{T.MUTED};'>⚠️ {v.get('riesgos','')}</div>"
+                            + (f"<div style='margin-top:4px;color:{T.MUTED};'>Niveles: "
+                               f"{v.get('niveles_clave','')}</div>" if v.get('niveles_clave') else "")
+                            + "</div>", unsafe_allow_html=True)
+                    except Exception:
+                        st.markdown(llm.reason_trade(sig, label, titles))
                 except Exception as e:  # noqa: BLE001
                     st.error(f"No se pudo generar el análisis: {e}")
 

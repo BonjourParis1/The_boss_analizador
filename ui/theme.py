@@ -60,10 +60,15 @@ CSS = f"""
     padding:0 !important; min-height:0 !important; height:6px !important; }}
   section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {{ padding-top:0.2rem !important; }}
   section[data-testid="stSidebar"] .block-container {{ padding:0.4rem 0.7rem 0.7rem !important; }}
-  section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {{ gap:0.45rem !important; }}
+  section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {{ gap:0.5rem !important; }}
   section[data-testid="stSidebar"] label {{ font-size:0.74rem; color:{MUTED}; margin-bottom:0; }}
-  section[data-testid="stSidebar"] hr {{ margin:0.45rem 0 !important; border-color:{BORDER}; }}
+  section[data-testid="stSidebar"] hr {{ margin:0.5rem 0 !important; border-color:{BORDER}; }}
+  /* Título de sección en el panel: bloque propio, sin solaparse con los botones */
+  section[data-testid="stSidebar"] .gx-tag {{ display:block; margin:2px 0 8px;
+    line-height:1.25; }}
+  section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] {{ margin-bottom:0; }}
   /* Botones de watchlist: altura fija, alineados, sin superponerse */
+  section[data-testid="stSidebar"] div[data-testid="stButton"] {{ margin-bottom:2px; }}
   section[data-testid="stSidebar"] div[data-testid="stButton"] button {{
     min-height:34px; padding:5px 10px; font-size:0.82rem; line-height:1.15;
     text-align:left; justify-content:flex-start; border:1px solid {BORDER};

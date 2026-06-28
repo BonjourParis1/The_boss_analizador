@@ -52,7 +52,7 @@ class Settings:
     youtube_api_key: str = os.getenv("YOUTUBE_API_KEY", "").strip()
     lunarcrush_api_key: str = os.getenv("LUNARCRUSH_API_KEY", "").strip()
     # --- Escáner autónomo ---
-    scan_interval_minutes: int = int(os.getenv("SCAN_INTERVAL_MINUTES", "3"))
+    scan_interval_minutes: int = int(os.getenv("SCAN_INTERVAL_MINUTES", "2"))
     # --- Correo ---
     email_enabled: bool = _bool("EMAIL_ENABLED", False)
     smtp_host: str = os.getenv("SMTP_HOST", "smtp.gmail.com")

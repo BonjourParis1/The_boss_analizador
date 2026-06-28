@@ -9,7 +9,8 @@ from __future__ import annotations
 import streamlit as st
 
 from config import settings
-from security.auth import LoginGuard, admin_keys_exist, verify_triple
+from security.auth import (LoginGuard, admin_keys_exist, make_session_token,
+                           verify_session_token, verify_triple)
 
 
 def _ensure_state() -> None:
@@ -19,11 +20,23 @@ def _ensure_state() -> None:
 
 def is_authenticated() -> bool:
     _ensure_state()
-    return bool(st.session_state["authenticated"])
+    if st.session_state["authenticated"]:
+        return True
+    # Mantener sesión tras recargar: token firmado en la URL (solo tu equipo)
+    tok = st.query_params.get("s")
+    if tok and verify_session_token(tok):
+        st.session_state["authenticated"] = True
+        return True
+    return False
 
 
 def logout() -> None:
     st.session_state["authenticated"] = False
+    try:
+        if "s" in st.query_params:
+            del st.query_params["s"]
+    except Exception:
+        pass
 
 
 def render_login() -> bool:
@@ -68,6 +81,7 @@ def render_login() -> bool:
                 st.session_state["authenticated"] = True
                 for k in ("k1", "k2", "k3"):
                     st.session_state.pop(k, None)
+                st.query_params["s"] = make_session_token()   # recordar sesión
                 st.rerun()
             else:
                 guard.register_failure()

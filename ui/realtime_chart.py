@@ -36,6 +36,14 @@ def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 4
        font-weight:700;color:{T.RED};letter-spacing:1px;">● EN VIVO</div>
   <div id="gxma" style="position:absolute;top:40px;left:12px;z-index:5;
        font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:{T.MUTED};"></div>
+  <div style="position:absolute;bottom:34px;right:12px;z-index:6;display:flex;gap:6px;">
+    <button id="gxzoomin"  style="cursor:pointer;width:30px;height:30px;border-radius:8px;
+       border:1px solid {T.BORDER};background:{T.PANEL_2};color:{T.TEXT};font-size:1.1rem;">+</button>
+    <button id="gxzoomout" style="cursor:pointer;width:30px;height:30px;border-radius:8px;
+       border:1px solid {T.BORDER};background:{T.PANEL_2};color:{T.TEXT};font-size:1.1rem;">−</button>
+    <button id="gxfit"     style="cursor:pointer;height:30px;padding:0 10px;border-radius:8px;
+       border:1px solid {T.BORDER};background:{T.PANEL_2};color:{T.TEXT};font-size:0.78rem;">Ajustar</button>
+  </div>
   <div id="gxchart" style="height:{height}px;width:100%;"></div>
 </div>
 <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
@@ -91,6 +99,18 @@ def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 4
     priceEl.style.color = up ? '{T.GREEN}' : '{T.RED}';
   }}
   window.addEventListener('resize', () => chart.applyOptions({{ width: el.clientWidth }}));
+
+  // Zoom in/out y ajustar (como IQ Option) sobre el eje temporal
+  const ts = chart.timeScale();
+  function zoom(factor) {{
+    const r = ts.getVisibleLogicalRange();
+    if (!r) return;
+    const span = r.to - r.from, c = (r.to + r.from) / 2, half = (span * factor) / 2;
+    ts.setVisibleLogicalRange({{ from: c - half, to: c + half }});
+  }}
+  document.getElementById('gxzoomin').onclick  = () => zoom(0.6);
+  document.getElementById('gxzoomout').onclick = () => zoom(1.7);
+  document.getElementById('gxfit').onclick     = () => ts.fitContent();
 
   fetch('https://api.binance.com/api/v3/klines?symbol={sym}&interval={iv}&limit=500')
     .then(r=>r.json()).then(d=>{{

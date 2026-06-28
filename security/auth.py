@@ -22,7 +22,38 @@ import os
 import time
 from dataclasses import dataclass
 
-from config import ADMIN_KEYS_FILE, settings
+from config import ADMIN_KEYS_FILE, SECRETS_DIR, settings
+
+# ----------------- Token de sesión persistente (recargar sin re-login) -------
+_SESSION_SECRET_FILE = SECRETS_DIR / "session_secret"
+
+
+def _session_secret() -> bytes:
+    if not _SESSION_SECRET_FILE.exists():
+        _SESSION_SECRET_FILE.write_bytes(os.urandom(32))
+        try:
+            os.chmod(_SESSION_SECRET_FILE, 0o600)
+        except OSError:
+            pass
+    return _SESSION_SECRET_FILE.read_bytes()
+
+
+def make_session_token(hours: int = 12) -> str:
+    """Token firmado (HMAC) con expiración, para mantener la sesión al recargar."""
+    exp = str(int(time.time()) + hours * 3600)
+    sig = hmac.new(_session_secret(), exp.encode(), hashlib.sha256).hexdigest()[:32]
+    return f"{exp}.{sig}"
+
+
+def verify_session_token(token: str) -> bool:
+    try:
+        exp, sig = token.split(".")
+        if int(exp) < time.time():
+            return False
+        good = hmac.new(_session_secret(), exp.encode(), hashlib.sha256).hexdigest()[:32]
+        return hmac.compare_digest(sig, good)
+    except Exception:
+        return False
 
 # Parámetros del KDF
 _ALGO = "sha256"

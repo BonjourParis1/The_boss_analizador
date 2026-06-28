@@ -141,7 +141,7 @@ def pro_chart(symbol_label: str, df: pd.DataFrame,
                              marker_color=vol_colors, opacity=0.5), row=2, col=1)
 
     fig.update_layout(
-        template="plotly_dark", height=500, paper_bgcolor=T.PANEL, plot_bgcolor=T.PANEL,
+        template="plotly_dark", height=560, paper_bgcolor=T.PANEL, plot_bgcolor=T.PANEL,
         margin=dict(l=8, r=8, t=10, b=8), xaxis_rangeslider_visible=False,
         legend=dict(orientation="h", y=1.04, x=0, font=dict(size=10)),
         hovermode="x unified", dragmode="pan",
@@ -201,7 +201,7 @@ def seconds_candle_chart(symbol_label: str, df_sec: pd.DataFrame, bin_seconds: i
         up = df_sec["close"].iloc[-1] >= df_sec["open"].iloc[-1]
         fig.add_hline(y=last, line=dict(color=T.GREEN if up else T.RED, width=1, dash="dot"))
     fig.update_layout(
-        template="plotly_dark", height=500, paper_bgcolor=T.PANEL, plot_bgcolor=T.PANEL,
+        template="plotly_dark", height=560, paper_bgcolor=T.PANEL, plot_bgcolor=T.PANEL,
         margin=dict(l=8, r=8, t=26, b=8), xaxis_rangeslider_visible=False,
         hovermode="x unified", dragmode="pan",
         title=dict(text=f"{symbol_label} · velas {bin_seconds}s (en vivo)", font=dict(size=12)))
@@ -246,7 +246,7 @@ def live_line_chart(symbol_label: str, ticks) -> go.Figure:
     if ys:
         fig.add_hline(y=ys[-1], line=dict(color=color, width=1, dash="dot"))
     fig.update_layout(
-        template="plotly_dark", height=500, paper_bgcolor=T.PANEL, plot_bgcolor=T.PANEL,
+        template="plotly_dark", height=560, paper_bgcolor=T.PANEL, plot_bgcolor=T.PANEL,
         margin=dict(l=8, r=8, t=10, b=8), showlegend=False, hovermode="x unified",
         title=dict(text=f"{symbol_label} · línea en vivo (ticks)", font=dict(size=12)))
     fig.update_yaxes(gridcolor="#1e2533", side="right",

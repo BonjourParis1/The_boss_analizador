@@ -154,10 +154,18 @@ with st.sidebar:
                          key=f"wl_{_k}", use_container_width=True):
                 st.session_state["symbol_key"] = _k
                 st.rerun()
-    elif autonomous.is_running():
-        st.caption("Analizando el mercado… aparecerán las mejores aquí.")
     else:
-        st.caption("Enciende «Autónomo 24/7» para detectar potenciales.")
+        # Aún sin potenciales: lista clicable de activos del mercado elegido
+        st.caption("Analizando… mientras tanto, tus mercados:" if autonomous.is_running()
+                   else "Enciende «Autónomo 24/7» para rankear potenciales. Tus mercados:")
+        _grp = st.session_state.get("grp", "Todos")
+        _wl = [s for s in SYMBOLS if _grp == "Todos" or s.group == _grp]
+        _wl = _wl[:10]
+        for _s in _wl:
+            _sel = "▸ " if _s.key == st.session_state.get("symbol_key") else ""
+            if st.button(f"{_sel}{_s.label}", key=f"wl_{_s.key}", use_container_width=True):
+                st.session_state["symbol_key"] = _s.key
+                st.rerun()
 
     st.divider()
     with st.expander("⚙️ Indicadores y opciones", expanded=False):
@@ -465,11 +473,23 @@ def render_chart_full():
 
 
 def render_details():
-    """Detalle bajo el gráfico: lectura del experto, registro y noticias."""
+    """Detalle bajo el gráfico: RSI/MACD (en stream), lectura, registro y noticias."""
     if not is_authenticated():
         return
     sk = st.session_state["symbol_key"]
     cur = st.session_state.get("_cur") or {}
+
+    # En modo stream el gráfico es JS (sin panel de indicadores) -> lo añadimos aquí
+    if st.session_state.get("chart_type") == "🔴 Stream en vivo" \
+            and st.session_state.get("show_ind", True):
+        try:
+            _dfp = load_market(sk, st.session_state["interval"],
+                               st.session_state.get("limit", 200))
+            st.plotly_chart(C.indicator_panel(_dfp), use_container_width=True,
+                            config={"displayModeBar": False})
+        except Exception:
+            pass
+
     d1, d2, d3 = st.columns([1.3, 1, 1.5])
     with d1:
         with st.expander("🧠 Lectura del experto (multi-temporalidad)", expanded=True):
@@ -547,7 +567,7 @@ with tab_live:
         except Exception:
             _slv = None
         components.html(stream_chart_html(_symbol.provider_id, st.session_state["interval"],
-                                          520, levels=_slv), height=545)
+                                          560, levels=_slv), height=584)
     else:
         if _ctype == "🔴 Stream en vivo" and _symbol.type != "cripto":
             st.caption("ℹ️ El stream tick a tick es solo para cripto; aquí se muestran velas.")

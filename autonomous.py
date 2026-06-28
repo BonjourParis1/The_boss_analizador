@@ -44,6 +44,7 @@ class _State:
         # Auto-investigación de señales fuertes (contexto de noticias/YouTube)
         self.research: dict = {}          # symbol_key -> {t, label, action, text}
         self._research_cooldown: dict = {}  # symbol_key -> epoch del último estudio
+        self.ia: dict = {}                # symbol_key -> {dir, conf, resumen} (veredicto IA)
 
 
 _S = _State()
@@ -53,24 +54,39 @@ _RESEARCH_COOLDOWN_S = 900   # no reinvestigar el mismo activo en 15 min
 _MAX_RESEARCH_PER_CYCLE = 2  # acota el tiempo del ciclo (la IA puede ser lenta)
 
 
-def _maybe_research(symbol, plan, done_count: int) -> int:
-    """Investiga (noticias + YouTube + IA) un activo con señal fuerte, con cooldown."""
+def _maybe_research(symbol, sig, plan, done_count: int) -> int:
+    """Verifica una señal fuerte con el cerebro IA (veredicto estructurado) e
+    investiga su contexto (noticias/YouTube), con cooldown para no saturar APIs."""
     import time as _t
     if done_count >= _MAX_RESEARCH_PER_CYCLE:
         return done_count
     if _t.time() - _S._research_cooldown.get(symbol.key, 0) < _RESEARCH_COOLDOWN_S:
         return done_count
+    text = None
     try:
         from ingest.content import auto_research
         text = auto_research(symbol)
-        with _S.lock:
+    except Exception:
+        pass
+    ia = None
+    try:
+        from brain import llm
+        if llm.is_available():
+            v = llm.structured_verdict(sig, symbol.label, [], "")
+            _m = {"COMPRA": "SUBE", "VENTA": "BAJA", "ESPERAR": "ESPERAR"}
+            ia = {"dir": _m.get(str(v.get("direccion", "")).upper(), "ESPERAR"),
+                  "conf": v.get("confianza"), "resumen": v.get("resumen", "")}
+    except Exception:
+        ia = None
+    with _S.lock:
+        if text:
             _S.research[symbol.key] = {
                 "t": datetime.now().strftime("%H:%M:%S"), "label": symbol.label,
                 "action": plan.action_label, "icon": plan.icon, "text": text}
-            _S._research_cooldown[symbol.key] = _t.time()
-        return done_count + 1
-    except Exception:
-        return done_count
+        if ia:
+            _S.ia[symbol.key] = ia
+        _S._research_cooldown[symbol.key] = _t.time()
+    return done_count + 1
 
 
 def _scan_cycle(stop_event: threading.Event, min_conf: float, timeframe: str) -> int:
@@ -107,8 +123,8 @@ def _scan_cycle(stop_event: threading.Event, min_conf: float, timeframe: str) ->
                         "price": sig.price,
                     })
                 found += 1
-                # Auto-investigación del contexto de esta señal fuerte
-                researched = _maybe_research(s, plan, researched)
+                # Verificación IA + investigación del contexto de esta señal fuerte
+                researched = _maybe_research(s, sig, plan, researched)
         except Exception:
             pass
         # Pausa breve, interrumpible (cortesía con las APIs)
@@ -180,4 +196,5 @@ def snapshot() -> dict:
             "results": list(_S.results),
             "log": list(_S.log),
             "research": list(_S.research.values()),
+            "ia": dict(_S.ia),
         }

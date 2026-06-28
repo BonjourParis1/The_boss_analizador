@@ -653,16 +653,31 @@ with tab_radar:
 
         results = snap["results"]
         if results:
-            # Mejor oportunidad por activo, ordenadas por confianza
+            # Mejor oportunidad por activo, ordenadas por confianza, con veredicto IA
             best = {}
             for r in results:
                 if r["symbol"] not in best or r["conf"] > best[r["symbol"]]["conf"]:
                     best[r["symbol"]] = r
             rows = sorted(best.values(), key=lambda r: r["conf"], reverse=True)
+            _ia = snap.get("ia", {})
+            _l2k = {s.label: s.key for s in SYMBOLS}
+
+            def _ia_badge(r):
+                v = _ia.get(_l2k.get(r["symbol"], ""))
+                if not v:
+                    return "—"
+                if r["dir"] in ("SUBE", "BAJA") and v["dir"] == r["dir"]:
+                    return f"✓ confirma {v['conf']}%"
+                if r["dir"] in ("SUBE", "BAJA") and v["dir"] in ("SUBE", "BAJA"):
+                    return f"⚠ discrepa {v['conf']}%"
+                return f"IA: {v['dir']}"
+
             table = [{"Activo": r["symbol"], "Señal": f"{r['icon']} {r['action']}",
                       "Duración": r["dur"], "Confianza %": r["conf"],
-                      "Precio": r["price"], "Hora": r["t"]} for r in rows]
+                      "IA": _ia_badge(r), "Precio": r["price"], "Hora": r["t"]} for r in rows]
             st.dataframe(pd.DataFrame(table), use_container_width=True, hide_index=True)
+            st.caption("La columna **IA** muestra el veredicto del cerebro (Gemini/DeepSeek) "
+                       "para las señales fuertes: ✓ confirma o ⚠ discrepa de la técnica.")
         else:
             st.info("El motor aún no ha encontrado señales fuertes. "
                     "Enciende **🤖 Autónomo 24/7** a la izquierda y espera el primer ciclo."

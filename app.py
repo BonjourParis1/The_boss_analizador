@@ -105,27 +105,31 @@ with st.sidebar:
     elif not auto_on and autonomous.is_running():
         autonomous.stop()
 
-    # --- Watchlist: activos del mercado elegido con su señal del motor ---
-    _grp = st.session_state.get("grp", "Todos")
-    _wl = [s for s in SYMBOLS if _grp == "Todos" or s.group == _grp]
-    if _grp == "Todos":
-        _wl = _wl[:12]
-    _snap = autonomous.snapshot()
-    _sig = {}
-    for _r in _snap.get("results", []):
-        if _r["symbol"] not in _sig or _r["conf"] > _sig[_r["symbol"]]["conf"]:
-            _sig[_r["symbol"]] = _r
-    st.markdown(f"<div class='gx-tag' style='margin-top:2px;'>⭐ Watchlist · {_grp}</div>",
+    st.divider()
+    # --- Potenciales para invertir: lo que el motor detecta, por confianza ---
+    st.markdown("<div class='gx-tag'>🎯 Potenciales para invertir</div>",
                 unsafe_allow_html=True)
-    for _s in _wl:
-        _info = _sig.get(_s.label)
-        _badge = f"{_info['icon']} {_info['conf']:.0f}%" if _info else "·"
-        _sel = "🔹" if _s.key == st.session_state.get("symbol_key") else ""
-        if st.button(f"{_sel}{_s.label}　{_badge}", key=f"wl_{_s.key}",
-                     use_container_width=True):
-            st.session_state["symbol_key"] = _s.key
-            st.rerun()
+    _label2key = {s.label: s.key for s in SYMBOLS}
+    _snap = autonomous.snapshot()
+    _best = {}
+    for _r in _snap.get("results", []):
+        if _r["symbol"] not in _best or _r["conf"] > _best[_r["symbol"]]["conf"]:
+            _best[_r["symbol"]] = _r
+    _potentials = sorted(_best.values(), key=lambda r: r["conf"], reverse=True)[:8]
+    if _potentials:
+        for _r in _potentials:
+            _k = _label2key.get(_r["symbol"])
+            _sel = "▸ " if _k == st.session_state.get("symbol_key") else ""
+            if st.button(f"{_sel}{_r['icon']} {_r['symbol']} · {_r['conf']:.0f}% · {_r['dur']}",
+                         key=f"wl_{_k}", use_container_width=True):
+                st.session_state["symbol_key"] = _k
+                st.rerun()
+    elif autonomous.is_running():
+        st.caption("Analizando el mercado… aparecerán las mejores aquí.")
+    else:
+        st.caption("Enciende «Autónomo 24/7» para detectar potenciales.")
 
+    st.divider()
     with st.expander("⚙️ Indicadores y opciones", expanded=False):
         st.session_state["show_ma"] = st.checkbox("Medias móviles (SMA/EMA)", value=True)
         st.session_state["show_bb"] = st.checkbox("Bandas de Bollinger", value=True)

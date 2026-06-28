@@ -52,10 +52,13 @@ CSS = f"""
   /* ---------- Barra lateral ---------- */
   section[data-testid="stSidebar"] {{
     background:linear-gradient(180deg,{PANEL} 0%,{BG2} 100%);
-    border-right:1px solid {BORDER}; width:222px !important; min-width:222px !important;
+    border-right:1px solid {BORDER}; width:200px !important; min-width:200px !important;
   }}
-  section[data-testid="stSidebar"] .block-container {{ padding-top:0.8rem; }}
-  section[data-testid="stSidebar"] label {{ font-size:0.8rem; color:{MUTED}; }}
+  section[data-testid="stSidebar"] .block-container {{ padding-top:0.6rem; }}
+  section[data-testid="stSidebar"] label {{ font-size:0.76rem; color:{MUTED}; margin-bottom:1px; }}
+  section[data-testid="stSidebar"] .stSelectbox, section[data-testid="stSidebar"] .stToggle,
+  section[data-testid="stSidebar"] .stNumberInput {{ margin-bottom:-6px; }}
+  section[data-testid="stSidebar"] [data-testid="stExpander"] {{ margin-top:2px; }}
 
   /* ---------- Cabecera superior ---------- */
   .gx-top {{

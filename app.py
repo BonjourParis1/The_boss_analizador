@@ -235,6 +235,22 @@ def render_side_panel():
                     f"Distintas a tu elección ({duration}). Considera si te conviene operar a ese plazo.</div></div>",
                     unsafe_allow_html=True)
 
+    # Centro de mando: mejores oportunidades de TODO el mercado (motor autónomo)
+    snap = autonomous.snapshot()
+    if snap.get("results"):
+        best = {}
+        for r in snap["results"]:
+            if r["symbol"] not in best or r["conf"] > best[r["symbol"]]["conf"]:
+                best[r["symbol"]] = r
+        top = sorted(best.values(), key=lambda r: r["conf"], reverse=True)[:4]
+        rows = "".join(
+            f"<div class='gx-news'><b>{r['icon']} {r['action']}</b> {r['symbol']} · "
+            f"{r['dur']} · {r['conf']:.0f}%</div>" for r in top)
+        st.markdown(f"<div class='gx-card'><div class='gx-tag'>🏆 Mejores del mercado ahora</div>"
+                    f"{rows}<div style='font-size:0.72rem;color:#7e8ca3;margin-top:6px;'>"
+                    f"Detectadas por el motor autónomo en todos los activos.</div></div>",
+                    unsafe_allow_html=True)
+
     st.markdown(C.candles_html(reading), unsafe_allow_html=True)
 
     feed = st.session_state.get("plan_feed", [])
@@ -309,7 +325,7 @@ def render_terminal():
                                 updated=datetime.now().strftime("%H:%M:%S")),
                 unsafe_allow_html=True)
 
-    col_chart, col_side = st.columns([3.4, 1.5], gap="large")
+    col_chart, col_side = st.columns([4.2, 1.35], gap="large")
     with col_chart:
         cfg = {"scrollZoom": True, "displayModeBar": False}
         if ctype == "Línea en vivo":
@@ -352,7 +368,7 @@ with tab_live:
     if _stream:
         # Gráfico en streaming (se actualiza SOLO en el navegador, tick a tick) +
         # panel lateral que se auto-refresca sin reiniciar el gráfico.
-        cL, cR = st.columns([3.4, 1.5], gap="large")
+        cL, cR = st.columns([4.2, 1.35], gap="large")
         with cL:
             components.html(stream_chart_html(_symbol.provider_id,
                                               st.session_state["interval"], 460), height=480)

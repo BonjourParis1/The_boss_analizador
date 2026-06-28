@@ -82,17 +82,51 @@ def _fetch_rss(query: str, limit: int) -> list[NewsItem]:
     return out
 
 
+def _fetch_finnhub(symbol: Symbol, limit: int) -> list[NewsItem]:
+    """Noticias financieras reales de Finnhub (fuente fiable, en tiempo real)."""
+    from datetime import date, timedelta
+    cat = {"cripto": "crypto", "forex": "forex"}.get(symbol.type)
+    if symbol.type == "stock":
+        to = date.today()
+        frm = to - timedelta(days=7)
+        r = requests.get("https://finnhub.io/api/v1/company-news", timeout=_TIMEOUT,
+                         headers=_HEADERS,
+                         params={"symbol": symbol.provider_id, "from": frm.isoformat(),
+                                 "to": to.isoformat(), "token": settings.finnhub_api_key})
+    else:
+        r = requests.get("https://finnhub.io/api/v1/news", timeout=_TIMEOUT, headers=_HEADERS,
+                         params={"category": cat or "general", "token": settings.finnhub_api_key})
+    r.raise_for_status()
+    out = []
+    for a in r.json()[:limit]:
+        title = a.get("headline") or ""
+        if not title:
+            continue
+        out.append(NewsItem(title, a.get("source", "Finnhub"), a.get("url", ""),
+                            str(a.get("datetime", "")), _score_text(title)))
+    return out
+
+
 def get_news(symbol: Symbol, limit: int = 8) -> NewsDigest:
-    """Devuelve titulares recientes + sentimiento agregado para el símbolo."""
+    """Devuelve titulares recientes + sentimiento agregado para el símbolo.
+
+    Orden de fuentes (de más a menos fiable): Finnhub -> NewsAPI -> RSS.
+    """
     query = symbol.news_query or symbol.label
     items: list[NewsItem] = []
-    try:
-        items = _fetch_newsapi(query, limit) if settings.newsapi_key else _fetch_rss(query, limit)
-    except Exception:
+    if settings.finnhub_api_key:
         try:
-            items = _fetch_rss(query, limit)
+            items = _fetch_finnhub(symbol, limit)
         except Exception:
             items = []
+    if not items:
+        try:
+            items = _fetch_newsapi(query, limit) if settings.newsapi_key else _fetch_rss(query, limit)
+        except Exception:
+            try:
+                items = _fetch_rss(query, limit)
+            except Exception:
+                items = []
 
     if not items:
         return NewsDigest([], 0.0, "Neutral")

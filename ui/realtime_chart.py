@@ -14,12 +14,19 @@ _WS_OK = {"1s", "1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "12h",
           "1d", "3d", "1w", "1M"}
 
 
-def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 460) -> str:
-    """HTML autocontenido. Úsalo con st.components.v1.html(..., height=height+20)."""
+def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 460,
+                      levels: list | None = None) -> str:
+    """HTML autocontenido. Úsalo con st.components.v1.html(..., height=height+20).
+
+    `levels` = lista de {name, value, kind} (máx/mín día-semana-mes, soporte/
+    resistencia) que se dibujan como líneas de precio automáticamente."""
+    import json
     iv = interval if interval in _WS_OK else "1m"
     sym = binance_symbol.upper()
     sym_l = binance_symbol.lower()
     secs = "true" if iv.endswith("s") else "false"
+    levels_json = json.dumps([{"v": l["value"], "n": l["name"], "k": l["kind"]}
+                              for l in (levels or [])])
     return f"""
 <div id="gxwrap" style="position:relative;background:{T.PANEL};border-radius:12px;
      border:1px solid {T.BORDER};overflow:hidden;">
@@ -51,6 +58,12 @@ def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 4
     priceLineColor:'{T.MUTED}' }});
   const ma9  = chart.addLineSeries({{ color:'#d7f59a', lineWidth:2, priceLineVisible:false, lastValueVisible:false }});
   const ma21 = chart.addLineSeries({{ color:'{T.GOLD}', lineWidth:2, priceLineVisible:false, lastValueVisible:false }});
+  // Niveles automáticos (máx/mín día-semana-mes, soporte/resistencia)
+  const LEVELS = {levels_json};
+  LEVELS.forEach(l => candle.createPriceLine({{
+    price: l.v, color: l.k === 'res' ? '{T.RED}' : '{T.GREEN}',
+    lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: l.n }}));
+
   const priceEl = document.getElementById('gxprice');
   const maEl = document.getElementById('gxma');
   let closes = [];   // [{{time, close}}]

@@ -17,7 +17,7 @@ from datetime import datetime
 import streamlit as st
 
 import autonomous
-from analysis import advisor, auto_learn
+from analysis import advisor, auto_learn, levels as levels_mod
 from analysis.backtest import run_backtest
 from analysis.engine import BUY, HOLD, SELL, analyze
 from analysis.indicators import compute_all
@@ -55,6 +55,22 @@ def load_market(symbol_key: str, interval: str, limit: int):
 @st.cache_data(show_spinner=False, ttl=300)  # noticias: refresco cada 5 min
 def load_news(symbol_key: str):
     return get_news(SYMBOLS_BY_KEY[symbol_key])
+
+
+@st.cache_data(show_spinner=False, ttl=30)   # niveles automáticos del gráfico
+def _levels_cached(symbol_key: str, interval: str, limit: int) -> list:
+    intr = load_market(symbol_key, interval, limit)
+    try:
+        daily = load_market(symbol_key, "1d", 90)
+    except Exception:
+        daily = None
+    return levels_mod.compute_levels(intr, daily)
+
+
+@st.cache_data(show_spinner=False, ttl=3600)  # earnings: consultar 1 vez/hora
+def _earnings_cached(symbol_key: str):
+    from data.calendar import earnings_soon
+    return earnings_soon(SYMBOLS_BY_KEY[symbol_key])
 
 
 @st.cache_data(show_spinner=False, ttl=600)  # backtest: pesado, cache 10 min
@@ -319,6 +335,18 @@ def render_strip():
             market_rows += (f"<div class='gx-news'>{r['icon']} <b>{r['symbol']}</b> · "
                             f"{r['dur']} · {r['conf']:.0f}%</div>")
 
+    # Guardia de eventos: reporte de resultados próximo (alta volatilidad)
+    try:
+        _earn = _earnings_cached(sk)
+    except Exception:
+        _earn = None
+    if _earn:
+        st.markdown(f"<div class='gx-card' style='border-color:{T.GOLD};margin-bottom:6px;'>"
+                    f"<div class='gx-tag' style='color:{T.GOLD};'>⚠️ Evento próximo</div>"
+                    f"Reporte de resultados de {symbol.label} el <b>{_earn}</b>: alta "
+                    f"volatilidad. Opera con cautela o espera a que pase.</div>",
+                    unsafe_allow_html=True)
+
     color = T.GREEN if plan.direction == "SUBE" else T.RED if plan.direction == "BAJA" else T.GOLD
     venc = f"vence en {remaining}s" if remaining else "—"
     s = st.columns([1.8, 1.5, 1.4])
@@ -387,11 +415,16 @@ def render_chart_full():
         st.plotly_chart(C.seconds_candle_chart(symbol.label, df_sec, bs),
                         use_container_width=True, config=cfg)
     else:
+        try:
+            _lv = _levels_cached(sk, interval, limit)
+        except Exception:
+            _lv = None
         st.plotly_chart(
             C.pro_chart(symbol.label, df, sig.support, sig.resistance,
                         show_ma=st.session_state.get("show_ma", True),
                         show_bb=st.session_state.get("show_bb", True),
-                        show_volume=st.session_state.get("show_vol", True)),
+                        show_volume=st.session_state.get("show_vol", True),
+                        levels=_lv),
             use_container_width=True, config=cfg)
     if st.session_state.get("show_ind", True):
         st.plotly_chart(C.indicator_panel(df), use_container_width=True,
@@ -466,8 +499,12 @@ with tab_live:
 
     # Gráfico a pantalla completa
     if _stream:
-        components.html(stream_chart_html(_symbol.provider_id,
-                                          st.session_state["interval"], 520), height=545)
+        try:
+            _slv = _levels_cached(_symbol.key, st.session_state["interval"], 200)
+        except Exception:
+            _slv = None
+        components.html(stream_chart_html(_symbol.provider_id, st.session_state["interval"],
+                                          520, levels=_slv), height=545)
     else:
         if _ctype == "🔴 Stream en vivo" and _symbol.type != "cripto":
             st.caption("ℹ️ El stream tick a tick es solo para cripto; aquí se muestran velas.")

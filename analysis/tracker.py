@@ -19,8 +19,9 @@ _DUR_LABEL = {30: "30s", 60: "1m", 180: "3m", 300: "5m", 900: "15m"}
 
 
 def record(symbol_key: str, direction: str, expiry_seconds: int, entry_price: float,
-           source: str = "auto") -> None:
-    """Registra una señal accionable (SUBE/BAJA). Evita duplicar la misma pendiente."""
+           source: str = "auto", features=None) -> None:
+    """Registra una señal accionable (SUBE/BAJA). Evita duplicar la misma pendiente.
+    `features` = foto de indicadores en la entrada (para que el modelo aprenda)."""
     if direction not in ("SUBE", "BAJA") or not entry_price:
         return
     now = time.time()
@@ -29,7 +30,7 @@ def record(symbol_key: str, direction: str, expiry_seconds: int, entry_price: fl
                 and s.get("direction") == direction
                 and now - float(s.get("entry_ts", 0)) < max(expiry_seconds, 30)):
             return  # ya hay una pendiente igual reciente
-    cloud.signal_save(symbol_key, direction, expiry_seconds, entry_price, source)
+    cloud.signal_save(symbol_key, direction, expiry_seconds, entry_price, source, features)
 
 
 def evaluate(symbol_key: str, current_price: float) -> None:

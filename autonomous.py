@@ -128,9 +128,15 @@ def _scan_cycle(stop_event: threading.Event, min_conf: float, timeframe: str) ->
                         "price": sig.price,
                     })
                 found += 1
-                # Registra la señal para medir su acierto/fallo al vencer
+                # Registra la señal CON su foto de indicadores (para autoaprender)
                 try:
-                    tracker.record(s.key, plan.direction, plan.expiry_seconds, sig.price, "auto")
+                    from ml.model import extract_features
+                    _feat = extract_features(df)[0].tolist()
+                except Exception:
+                    _feat = None
+                try:
+                    tracker.record(s.key, plan.direction, plan.expiry_seconds, sig.price,
+                                   "auto", features=_feat)
                 except Exception:
                     pass
                 # Verificación IA + investigación del contexto de esta señal fuerte

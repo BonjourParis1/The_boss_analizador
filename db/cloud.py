@@ -80,10 +80,12 @@ def knowledge_recent(limit: int = 6) -> list:
 
 # --------------------- Señales y resultados (precisión) --------------------
 def signal_save(symbol: str, direction: str, expiry_seconds: int,
-                entry_price: float, source: str = "auto") -> None:
+                entry_price: float, source: str = "auto", features=None) -> None:
     row = {"symbol": symbol, "direction": direction, "expiry_seconds": int(expiry_seconds),
            "entry_price": float(entry_price), "status": "pending", "source": source,
            "entry_ts": time.time()}
+    if features is not None:
+        row["features"] = list(features)
     if settings.use_supabase:
         try:
             _client().table("signals").insert(row).execute()

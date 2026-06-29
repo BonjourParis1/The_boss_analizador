@@ -70,6 +70,8 @@ create table if not exists public.signals (
 );
 create index if not exists idx_signals_symbol_status
     on public.signals (symbol, status);
+-- Foto de indicadores en la entrada (para que el modelo aprenda de resultados reales)
+alter table public.signals add column if not exists features jsonb;
 
 -- Seguridad: como usamos la service_role key SOLO en el backend (servidor),
 -- mantenemos RLS activado y SIN políticas públicas, de modo que ni la anon key

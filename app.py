@@ -336,6 +336,18 @@ def _consensus_for(sk: str, duration: str, news_score):
     if lw is not None:
         wr = round((wr + lw) / 2, 1) if wr is not None else lw
     plan = advisor.consensus_plan(per_tf, (dtuple[0], dtuple[1]), ap, ac, wr)
+    # Ajuste por lo APRENDIDO de resultados reales (probabilidad de acierto del modelo)
+    try:
+        from analysis import self_learn
+        from ml.model import extract_features
+        feat = extract_features(load_market(sk, dtuple[2], 150))[0].tolist()
+        wp = self_learn.win_probability(feat)
+        if wp is not None and plan.is_actionable:
+            plan.confidence = round(0.7 * plan.confidence + 0.3 * wp, 1)
+            plan.rationale = list(plan.rationale) + [
+                f"Autoaprendizaje (resultados reales): probabilidad de acierto {wp:.0f}%"]
+    except Exception:
+        pass
     return plan, sig_main, reading
 
 
@@ -409,10 +421,20 @@ def render_strip():
     st.session_state["_cur"] = {"reasons": plan.rationale,
                                 "sig_action": sig_main.action, "price": sig_main.price}
 
-    # Aprendizaje por resultados: registra la señal y evalúa las vencidas con precio real
+    # Aprendizaje por resultados: registra la señal (con foto de indicadores) y
+    # evalúa las vencidas con el precio real
     try:
         if plan.is_actionable:
-            tracker.record(sk, plan.direction, plan.expiry_seconds, sig_main.price, "terminal")
+            _feat = None
+            try:
+                from ml.model import extract_features
+                _dff = load_market(sk, st.session_state["interval"],
+                                   st.session_state.get("limit", 200))
+                _feat = extract_features(_dff)[0].tolist()
+            except Exception:
+                _feat = None
+            tracker.record(sk, plan.direction, plan.expiry_seconds, sig_main.price,
+                           "terminal", features=_feat)
         tracker.evaluate(sk, sig_main.price)
     except Exception:
         pass
@@ -1034,9 +1056,40 @@ with tab_back:
 # ============================== TAB: ML ====================================
 with tab_ml:
     st.subheader("🤖 Aprendizaje")
-    st.caption("Dos modelos complementarios. Ambos son APOYO probabilístico, no "
-               "predicciones garantizadas.")
+    st.caption("Tres formas de aprender, todas APOYO probabilístico, no garantías.")
 
+    # ---- Aprendizaje de TUS resultados reales (sin que marques nada) ----
+    from analysis import self_learn
+    st.markdown("### 🧠 Aprende de los resultados reales (automático)")
+    st.write("Cada señal se guarda con su foto de indicadores y, al vencer, se marca "
+             "ACIERTO/FALLO con el precio real. El modelo aprende de ESO para estimar la "
+             "probabilidad de acierto y ajustar la confianza del plan. No tienes que hacer nada.")
+    _sl = self_learn.stats()
+    s1, s2, s3, s4 = st.columns(4)
+    s1.metric("Resultados con datos", _sl["n"])
+    s2.metric("Aciertos", _sl["wins"])
+    s3.metric("Tasa de acierto", f"{_sl['win_rate']:.0f}%")
+    s4.metric("Precisión del modelo", f"{_sl['accuracy']:.0f}%" if _sl["trained_n"] else "—")
+    if _sl["n"] < self_learn.MIN_SAMPLES:
+        st.info(f"Acumulando experiencia: {_sl['n']}/{self_learn.MIN_SAMPLES} resultados. "
+                "Deja el sistema corriendo (motor autónomo encendido) y, cuando haya "
+                "suficientes, empezará a aprender solo.")
+    else:
+        if st.button("🧠 Entrenar ahora con resultados reales"):
+            with st.spinner("Aprendiendo de tu historial real…"):
+                rep = self_learn.train()
+            if rep.get("ok"):
+                st.success(f"Aprendido de {rep['n']} resultados · precisión "
+                           f"**{rep['accuracy']:.0%}** · aciertos {rep['win_rate']:.0f}%.")
+                import pandas as pd
+                st.caption("Qué indicadores pesan más para acertar")
+                st.bar_chart(pd.Series(rep["importances"]))
+            else:
+                st.warning(rep.get("msg", "Aún no se puede entrenar."))
+        if self_learn.is_ready():
+            st.caption("✅ El modelo de resultados reales está activo y ajustando la confianza.")
+
+    st.divider()
     st.markdown("### 🧪 Autoaprendizaje del histórico (sin que operes)")
     st.write("Aprende del mercado: etiqueta cada vela por lo que pasó después y "
              "entrena un modelo para anticipar SUBE / LATERAL / BAJA.")

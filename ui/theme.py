@@ -42,8 +42,11 @@ CSS = f"""
   #MainMenu, footer, header {{ visibility:hidden; }}
   /* Usar casi todo el ancho (evita que se recorten pestañas/controles a la derecha) */
   .block-container {{ padding:0.6rem 1rem 1rem 1rem !important; max-width:100% !important; }}
-  /* Pestañas: separadas y que se reacomoden si no caben (sin recortar la última) */
-  [data-baseweb="tab-list"] {{ flex-wrap:wrap; gap:14px; }}
+  /* Pestañas: TODAS en una sola fila, separadas; si no caben, scroll horizontal */
+  [data-baseweb="tab-list"] {{ flex-wrap:nowrap; gap:10px; overflow-x:auto;
+    overflow-y:hidden; scrollbar-width:thin; }}
+  [data-baseweb="tab-list"]::-webkit-scrollbar {{ height:6px; }}
+  [data-baseweb="tab-list"] button[data-baseweb="tab"] {{ flex:0 0 auto; white-space:nowrap; }}
   .stApp, .stApp p, .stApp span, .stApp div, .stApp label {{ color:{TEXT}; }}
 
   /* Sin atenuado/parpadeo durante auto-refrescos */
@@ -95,7 +98,7 @@ CSS = f"""
 
   /* ----------------------------- Tabs ----------------------------- */
   button[data-baseweb="tab"] {{ font-weight:600; color:{MUTED}; font-family:'Space Grotesk';
-    padding:6px 14px; border-radius:9px; }}
+    padding:5px 11px; border-radius:9px; }}
   button[data-baseweb="tab"]:hover {{ background:rgba(90,160,23,0.08); }}
   button[data-baseweb="tab"][aria-selected="true"] {{ background:rgba(90,160,23,0.12); }}
   button[data-baseweb="tab"][aria-selected="true"] {{ color:{LIME}; }}

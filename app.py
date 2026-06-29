@@ -21,7 +21,7 @@ import autonomous
 from analysis import advisor, auto_learn, levels as levels_mod, tracker
 from analysis.backtest import run_backtest
 from analysis.engine import BUY, HOLD, SELL, analyze
-from analysis.indicators import compute_all
+from analysis.indicators import compute_all, snapshot_text
 from analysis.news import get_news
 from analysis.patterns import read_candles
 from brain import llm
@@ -698,6 +698,60 @@ def _side_refresh(symbol) -> int:
     return max(3, st.session_state.get("refresh", 5))         # cripto
 
 
+def render_qa():
+    """Consultas de trading al sistema + retroalimentación que el sistema aprende."""
+    if not is_authenticated():
+        return
+    st.markdown("---")
+    st.markdown("### 💬 Pregúntale al sistema")
+    st.caption("Consulta cualquier duda de trading. Puedes corregir cada respuesta y el "
+               "sistema lo aprende (se guarda en Supabase y lo usa en el futuro).")
+    if not llm.is_available():
+        st.info("La IA no está disponible en este momento para responder.")
+        return
+    sk = st.session_state["symbol_key"]
+    q = st.text_input("Tu pregunta", key="qa_q",
+                      placeholder="¿Conviene comprar EUR/USD ahora? ¿Qué me dice este RSI?")
+    if st.button("Preguntar", key="qa_ask") and q.strip():
+        ctx = [f"Activo en pantalla: {SYMBOLS_BY_KEY[sk].label}"]
+        cur = st.session_state.get("_cur") or {}
+        if cur.get("sig_action"):
+            ctx.append(f"Señal del motor: {cur['sig_action']} (precio {cur.get('price')})")
+        try:
+            _dfq = load_market(sk, st.session_state["interval"], st.session_state.get("limit", 200))
+            ctx.append(snapshot_text(_dfq))
+        except Exception:
+            pass
+        with st.spinner("Pensando…"):
+            try:
+                ans = llm.ask(q, "  ".join(b for b in ctx if b))
+            except Exception:
+                ans = "⚠️ La IA está al límite ahora mismo; vuelve a intentarlo en un momento."
+        hist = st.session_state.setdefault("qa_hist", [])
+        hist.insert(0, {"id": f"{datetime.now().timestamp()}", "q": q.strip(), "a": ans})
+        del hist[10:]
+
+    for qa in st.session_state.get("qa_hist", []):
+        with st.container(border=True):
+            st.markdown(f"**🧑 Tú:** {qa['q']}")
+            st.markdown(f"**🤖 Sistema:** {qa['a']}")
+            with st.expander("✍️ Corregir / afinar (el sistema lo aprende)"):
+                corr = st.text_area("Tu corrección o matiz", key=f"qa_corr_{qa['id']}",
+                                    label_visibility="collapsed")
+                if st.button("Enseñar al sistema", key=f"qa_teach_{qa['id']}") and corr.strip():
+                    try:
+                        from db import cloud as _cloud
+                        dest = _cloud.knowledge_save(
+                            "correccion", f"chat:{SYMBOLS_BY_KEY[sk].label}", 0.0,
+                            f"Corrección del experto a una consulta de trading.\n"
+                            f"Pregunta: {qa['q']}\nRespuesta previa: {qa['a']}\n"
+                            f"Corrección/afinamiento: {corr.strip()}", "")
+                        st.success(f"✅ Aprendido (guardado en {dest}). Lo usaré en próximas "
+                                   "respuestas y análisis.")
+                    except Exception:
+                        st.error("No se pudo guardar la corrección ahora.")
+
+
 with tab_live:
     render_toolbar()
     _symbol = SYMBOLS_BY_KEY[st.session_state["symbol_key"]]
@@ -738,6 +792,9 @@ with tab_live:
 
     # Detalle inferior (auto-refresca)
     st.fragment(run_every=_strip_refresh)(render_details)()
+
+    # Consultas al sistema con aprendizaje por retroalimentación (fuera de auto-refresco)
+    render_qa()
 
 
 
@@ -1035,7 +1092,11 @@ with tab_brain:
                                        "; ".join(f"{e['event']} ({e['country']})" for e in _mc))
                     except Exception:
                         pass
-                    extra = "  ".join(_ex)
+                    try:
+                        _ex.append(snapshot_text(df))
+                    except Exception:
+                        pass
+                    extra = "  ".join(x for x in _ex if x)
                     # Resultado ESTRUCTURADO (JSON) y, debajo, explicación en prosa
                     try:
                         v = llm.structured_verdict(sig, label, titles, extra_context=extra)

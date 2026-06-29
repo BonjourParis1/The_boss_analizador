@@ -50,6 +50,7 @@ class Settings:
     # --- Datos en tiempo real adicionales (opcional) ---
     finnhub_api_key: str = os.getenv("FINNHUB_API_KEY", "").strip()
     twelvedata_api_key: str = os.getenv("TWELVEDATA_API_KEY", "").strip()
+    polygon_api_key: str = os.getenv("POLYGON_API_KEY", "").strip()   # forex/acciones/cripto
     # --- Auto-investigación / sentimiento social (opcional) ---
     youtube_api_key: str = os.getenv("YOUTUBE_API_KEY", "").strip()
     lunarcrush_api_key: str = os.getenv("LUNARCRUSH_API_KEY", "").strip()

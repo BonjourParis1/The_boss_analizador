@@ -311,6 +311,23 @@ def structured_verdict(sig, symbol_label: str, news_titles: list[str] | None = N
         raise RuntimeError("IA no disponible.")
 
 
+_QA_SYSTEM = (
+    "Eres el asesor de trading del usuario, senior y honesto. " + _INDICADORES +
+    "\nResponde preguntas de trading de forma clara, concreta y accionable, en español. "
+    "Usa el contexto del mercado y los indicadores que te den. Si te han enseñado "
+    "correcciones (conocimiento aprendido), respétalas. Hablas en probabilidades y "
+    "gestión de riesgo, nunca de certezas. Si no sabes algo, dilo. No es asesoramiento "
+    "financiero formal."
+)
+
+
+def ask(question: str, context: str = "") -> str:
+    """Responde una consulta de trading del usuario, usando contexto + lo aprendido."""
+    user = (f"Contexto actual:\n{context}\n\n" if context else "") + \
+        _learned() + f"\nPregunta del usuario: {question}\n\nResponde conciso (máx ~200 palabras)."
+    return _chat(_QA_SYSTEM, user, max_tokens=900)
+
+
 def analyze_content(text: str, source: str = "") -> str:
     text = text.strip()
     if len(text) > 16000:

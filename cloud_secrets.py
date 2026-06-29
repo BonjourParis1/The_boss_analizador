@@ -55,6 +55,7 @@ def main() -> None:
     print('FINNHUB_API_KEY = "..."')
     print('TWELVEDATA_API_KEY = "..."')
     print('ALPHA_VANTAGE_API_KEY = "..."')
+    print('POLYGON_API_KEY = "..."   # opcional: respaldo forex/acciones (free 5/min)')
     print('YOUTUBE_API_KEY = "..."')
     print('SCAN_INTERVAL_MINUTES = "2"')
     print("")

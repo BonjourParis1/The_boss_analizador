@@ -134,7 +134,13 @@ def fetch_forex(symbol: Symbol, interval: str = "5m", limit: int = 200) -> pd.Da
             return _fetch_twelvedata(symbol.provider_id, interval, limit)
         except Exception as e:  # noqa: BLE001
             errors.append(f"TwelveData: {e}")
-    # 2) Intradía con Alpha Vantage (si hay clave)
+    # 2) Polygon.io (free, legal, multi-mercado) si hay clave
+    if settings.polygon_api_key:
+        try:
+            return _fetch_polygon(symbol, interval, limit)
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"Polygon: {e}")
+    # 3) Intradía con Alpha Vantage (si hay clave)
     if settings.alpha_vantage_key:
         try:
             return _fetch_forex_av(base, quote, interval, limit)
@@ -197,6 +203,12 @@ def fetch_stock(symbol: Symbol, interval: str = "5m", limit: int = 200) -> pd.Da
                 return _fetch_twelvedata(symbol.provider_id, interval, limit)
             except Exception:
                 pass
+        if settings.polygon_api_key and "=" not in symbol.provider_id \
+                and not symbol.provider_id.startswith("^"):
+            try:
+                return _fetch_polygon(symbol, interval, limit)
+            except Exception:
+                pass
         raise e
 
 
@@ -231,6 +243,50 @@ def _fetch_yf(ticker: str, interval: str, limit: int) -> pd.DataFrame:
     if "volume" not in df:
         df["volume"] = 0.0
     return _finalize(df.tail(limit))
+
+
+# -------------------------------- Polygon.io -------------------------------
+# Free tier: 5 llamadas/min, datos con ~15 min de retraso. Cubre forex (C:EURUSD),
+# acciones (AAPL) y cripto (X:BTCUSD). Útil como respaldo legal y multi-mercado.
+_POLY_TS = {"1m": (1, "minute"), "3m": (3, "minute"), "5m": (5, "minute"),
+            "15m": (15, "minute"), "30m": (30, "minute"), "1h": (1, "hour"),
+            "2h": (2, "hour"), "4h": (4, "hour"), "1d": (1, "day"),
+            "1w": (1, "week"), "1M": (1, "month")}
+
+
+def _polygon_ticker(symbol: Symbol) -> str:
+    if symbol.type == "forex":
+        return "C:" + symbol.provider_id.replace("/", "")
+    if symbol.type == "cripto":
+        base = symbol.provider_id.replace("USDT", "").replace("USD", "")
+        return f"X:{base}USD"
+    return symbol.provider_id  # acción / índice / commodity
+
+
+def _fetch_polygon(symbol: Symbol, interval: str, limit: int) -> pd.DataFrame:
+    if not settings.polygon_api_key:
+        raise RuntimeError("sin POLYGON_API_KEY")
+    mult, span = _POLY_TS.get(interval, (5, "minute"))
+    from datetime import date as _d, timedelta as _td
+    to = _d.today()
+    back = {"minute": 7, "hour": 45, "day": 500, "week": 2000, "month": 4000}.get(span, 7)
+    frm = to - _td(days=back)
+    tk = _polygon_ticker(symbol)
+    url = f"https://api.polygon.io/v2/aggs/ticker/{tk}/range/{mult}/{span}/{frm}/{to}"
+    r = requests.get(url, headers=_HEADERS, timeout=_TIMEOUT,
+                     params={"adjusted": "true", "sort": "desc",
+                             "limit": min(limit, 5000), "apiKey": settings.polygon_api_key})
+    r.raise_for_status()
+    j = r.json()
+    res = j.get("results") or []
+    if not res:
+        raise RuntimeError(f"Polygon sin datos para {tk} ({j.get('status')})")
+    df = pd.DataFrame(res).rename(columns={"t": "timestamp", "o": "open", "h": "high",
+                                           "l": "low", "c": "close", "v": "volume"})
+    df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms", utc=True)
+    if "volume" not in df:
+        df["volume"] = 0.0
+    return _finalize(df)
 
 
 # ------------------------------- Despachador -------------------------------

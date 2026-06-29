@@ -82,6 +82,9 @@ def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 5
       wickUpColor:'{T.GREEN}', wickDownColor:'{T.RED}', priceLineColor:'{T.MUTED}' }});
     const ma9  = chart.addLineSeries({{ color:'#5aa017', lineWidth:2, priceLineVisible:false, lastValueVisible:false }});
     const ma21 = chart.addLineSeries({{ color:'{T.GOLD}', lineWidth:2, priceLineVisible:false, lastValueVisible:false }});
+    // Bandas de Bollinger (20, 2σ) — herramienta extra de análisis
+    const bbU = chart.addLineSeries({{ color:'rgba(90,160,23,0.45)', lineWidth:1, lineStyle:2, priceLineVisible:false, lastValueVisible:false }});
+    const bbL = chart.addLineSeries({{ color:'rgba(90,160,23,0.45)', lineWidth:1, lineStyle:2, priceLineVisible:false, lastValueVisible:false }});
 
     const LEVELS = {levels_json};
     LEVELS.forEach(l => candle.createPriceLine({{
@@ -92,13 +95,18 @@ def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 5
     const maEl = document.getElementById('gxma');
     let closes = [];
     const smaAt = (p,i) => {{ if (i<p-1) return null; let s=0; for(let j=i-p+1;j<=i;j++) s+=closes[j].close; return s/p; }};
+    const bbAt = (i) => {{ if (i<19) return null; let m=smaAt(20,i), s=0;
+      for(let j=i-19;j<=i;j++) s+=(closes[j].close-m)*(closes[j].close-m);
+      const sd=Math.sqrt(s/20); return {{u:m+2*sd, l:m-2*sd}}; }};
     function rebuildMA() {{
-      const m9=[], m21=[];
-      for (let i=0;i<closes.length;i++) {{ const a=smaAt(9,i), b=smaAt(21,i);
-        if(a!=null) m9.push({{time:closes[i].time,value:a}}); if(b!=null) m21.push({{time:closes[i].time,value:b}}); }}
-      ma9.setData(m9); ma21.setData(m21);
+      const m9=[], m21=[], bu=[], bl=[];
+      for (let i=0;i<closes.length;i++) {{ const a=smaAt(9,i), b=smaAt(21,i), bb=bbAt(i);
+        if(a!=null) m9.push({{time:closes[i].time,value:a}}); if(b!=null) m21.push({{time:closes[i].time,value:b}});
+        if(bb!=null) {{ bu.push({{time:closes[i].time,value:bb.u}}); bl.push({{time:closes[i].time,value:bb.l}}); }} }}
+      ma9.setData(m9); ma21.setData(m21); bbU.setData(bu); bbL.setData(bl);
       if (m9.length&&m21.length) maEl.innerHTML="SMA9 <span style='color:#5aa017'>"+m9[m9.length-1].value.toFixed(4)+
-        "</span>  SMA21 <span style='color:{T.GOLD}'>"+m21[m21.length-1].value.toFixed(4)+"</span>";
+        "</span>  SMA21 <span style='color:{T.GOLD}'>"+m21[m21.length-1].value.toFixed(4)+
+        "</span>  <span style='color:rgba(90,160,23,0.8)'>Bollinger 20,2</span>";
     }}
     function paint(c) {{ const up=c.close>=c.open;
       priceEl.textContent=c.close.toLocaleString(undefined,{{maximumFractionDigits:8}});
@@ -131,8 +139,9 @@ def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 5
         candle.update(c);
         if(closes.length&&closes[closes.length-1].time===c.time) closes[closes.length-1].close=c.close;
         else closes.push({{time:c.time,close:c.close}});
-        const i=closes.length-1, a=smaAt(9,i), b=smaAt(21,i);
+        const i=closes.length-1, a=smaAt(9,i), b=smaAt(21,i), bb=bbAt(i);
         if(a!=null) ma9.update({{time:c.time,value:a}}); if(b!=null) ma21.update({{time:c.time,value:b}});
+        if(bb!=null) {{ bbU.update({{time:c.time,value:bb.u}}); bbL.update({{time:c.time,value:bb.l}}); }}
         paint(c);
       }};
       ws.onclose=()=>setTimeout(connect,1500);

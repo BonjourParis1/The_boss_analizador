@@ -82,3 +82,34 @@ def compute_all(df: pd.DataFrame) -> pd.DataFrame:
     out["bb_lower"] = bb_low
     out["atr"] = atr(out)
     return out
+
+
+def snapshot_text(df) -> str:
+    """Resumen compacto de indicadores de la última vela, para dárselo a la IA como
+    herramientas extra de análisis (Bollinger, MACD, %b, cruces de medias, ATR)."""
+    if df is None or len(df) == 0:
+        return ""
+    r = df.iloc[-1]
+    c = float(r["close"])
+    p = []
+    if "rsi" in df:
+        p.append(f"RSI {float(r['rsi']):.0f}")
+    if "macd" in df and "macd_signal" in df:
+        rel = "alcista" if r["macd"] > r["macd_signal"] else "bajista"
+        p.append(f"MACD {rel} (hist {float(r.get('macd_hist', 0)):+.4f})")
+    if "bb_upper" in df and "bb_lower" in df:
+        bu, bl = float(r["bb_upper"]), float(r["bb_lower"])
+        if c >= bu:
+            p.append("precio SOBRE banda Bollinger superior (sobrecompra)")
+        elif c <= bl:
+            p.append("precio BAJO banda Bollinger inferior (sobreventa)")
+        else:
+            p.append(f"Bollinger %b {((c - bl) / (bu - bl) * 100) if bu > bl else 50:.0f}")
+    if "sma_fast" in df and "sma_slow" in df:
+        p.append("SMA9>SMA21 (sesgo alcista)" if r["sma_fast"] > r["sma_slow"]
+                 else "SMA9<SMA21 (sesgo bajista)")
+    if "ema_50" in df:
+        p.append("precio sobre EMA50" if c > float(r["ema_50"]) else "precio bajo EMA50")
+    if "atr" in df:
+        p.append(f"ATR {float(r['atr']):.4f}")
+    return ("Indicadores actuales: " + " · ".join(p) + ".") if p else ""

@@ -103,7 +103,7 @@ def _effective_interval() -> int:
     return base
 
 
-def _maybe_research(symbol, sig, plan, done_count: int) -> int:
+def _maybe_research(symbol, sig, plan, done_count: int, ind_ctx: str = "") -> int:
     """Verifica una señal fuerte con el cerebro IA (veredicto estructurado) e
     investiga su contexto (noticias/YouTube), con cooldown para no saturar APIs."""
     import time as _t
@@ -121,7 +121,7 @@ def _maybe_research(symbol, sig, plan, done_count: int) -> int:
     try:
         from brain import llm
         if llm.is_available():
-            v = llm.structured_verdict(sig, symbol.label, [], "")
+            v = llm.structured_verdict(sig, symbol.label, [], ind_ctx)
             _m = {"COMPRA": "SUBE", "VENTA": "BAJA", "ESPERAR": "ESPERAR"}
             ia = {"dir": _m.get(str(v.get("direccion", "")).upper(), "ESPERAR"),
                   "conf": v.get("confianza"), "resumen": v.get("resumen", "")}
@@ -189,7 +189,12 @@ def _scan_cycle(stop_event: threading.Event, min_conf: float, timeframe: str) ->
                 except Exception:
                     pass
                 # Verificación IA + investigación del contexto de esta señal fuerte
-                researched = _maybe_research(s, sig, plan, researched)
+                try:
+                    from analysis.indicators import snapshot_text
+                    _ind = snapshot_text(df)
+                except Exception:
+                    _ind = ""
+                researched = _maybe_research(s, sig, plan, researched, _ind)
         except Exception:
             pass
         # Pausa breve, interrumpible (cortesía con las APIs)

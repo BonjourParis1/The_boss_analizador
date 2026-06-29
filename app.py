@@ -867,28 +867,70 @@ with tab_prec:
     m3.metric("Fallos", g["losses"])
     m4.metric("Precisión global", f"{g['accuracy']:.0f}%")
 
+    def _style_perf(row):
+        """Verde si rinde bien, rojo si falla más que acierta (con muestra mínima)."""
+        tot = row.get("Total", 0)
+        p = row.get("Precisión %", 0)
+        if tot >= 3 and p < 50:
+            css = "background-color:rgba(225,29,72,0.14);color:#9f1239;font-weight:600;"
+        elif tot >= 3 and p >= 60:
+            css = "background-color:rgba(21,163,74,0.14);color:#14532d;font-weight:600;"
+        else:
+            css = ""
+        return [css] * len(row)
+
+    def _insight(label, items, min_n=5):
+        """Lectura: mejor y peor categoría con muestra suficiente."""
+        elig = [(k, v) for k, v in items if v["total"] >= min_n]
+        if not elig:
+            return None
+        best = max(elig, key=lambda x: x[1]["precisión"])
+        worst = min(elig, key=lambda x: x[1]["precisión"])
+        msg = f"**{label}** — mejor: **{best[0]}** ({best[1]['precisión']:.0f}%)"
+        if worst[0] != best[0]:
+            msg += f" · evitar: **{worst[0]}** ({worst[1]['precisión']:.0f}%)"
+        return msg
+
     cv = tracker.curve()
     if cv:
         st.markdown("#### Evolución de la precisión")
         st.line_chart(pd.DataFrame(cv).set_index("señal"))
+
+        # Lectura estructurada para el asesor (con muestra mínima fiable)
+        bs = tracker.breakdown_symbol()
+        bd = tracker.breakdown_duration()
+        lect = []
+        _ms = _insight("Activos", [(SYMBOLS_BY_KEY[k].label if k in SYMBOLS_BY_KEY else k, v)
+                                   for k, v in bs.items()])
+        _md = _insight("Duraciones", list(bd.items()))
+        if _ms:
+            lect.append(_ms)
+        if _md:
+            lect.append(_md)
+        if lect:
+            st.success("🧭 Lectura del asesor → " + "  ·  ".join(lect))
+        else:
+            st.caption("🧭 Acumula al menos 5 resultados por categoría para una lectura fiable.")
+
         c1, c2 = st.columns(2)
         with c1:
             st.markdown("#### Por activo")
-            bs = tracker.breakdown_symbol()
             if bs:
                 rows = [{"Activo": SYMBOLS_BY_KEY[k].label if k in SYMBOLS_BY_KEY else k,
                          "Aciertos": v["aciertos"], "Fallos": v["total"] - v["aciertos"],
                          "Total": v["total"], "Precisión %": v["precisión"]}
                         for k, v in sorted(bs.items(), key=lambda x: -x[1]["precisión"])]
-                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+                st.dataframe(pd.DataFrame(rows).style.apply(_style_perf, axis=1),
+                             use_container_width=True, hide_index=True)
         with c2:
             st.markdown("#### Por duración")
-            bd = tracker.breakdown_duration()
             if bd:
                 rows = [{"Duración": k, "Aciertos": v["aciertos"],
                          "Fallos": v["total"] - v["aciertos"], "Total": v["total"],
-                         "Precisión %": v["precisión"]} for k, v in bd.items()]
-                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+                         "Precisión %": v["precisión"]}
+                        for k, v in sorted(bd.items(), key=lambda x: -x[1]["precisión"])]
+                st.dataframe(pd.DataFrame(rows).style.apply(_style_perf, axis=1),
+                             use_container_width=True, hide_index=True)
     else:
         st.info("Aún no hay señales evaluadas. Enciende **🤖 Autónomo 24/7** y deja correr "
                 "el sistema; cuando venzan las señales aparecerá aquí su rendimiento.")

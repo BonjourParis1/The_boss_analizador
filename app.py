@@ -877,15 +877,16 @@ with tab_prec:
             bs = tracker.breakdown_symbol()
             if bs:
                 rows = [{"Activo": SYMBOLS_BY_KEY[k].label if k in SYMBOLS_BY_KEY else k,
-                         "Aciertos": v["aciertos"], "Total": v["total"],
-                         "Precisión %": v["precisión"]}
+                         "Aciertos": v["aciertos"], "Fallos": v["total"] - v["aciertos"],
+                         "Total": v["total"], "Precisión %": v["precisión"]}
                         for k, v in sorted(bs.items(), key=lambda x: -x[1]["precisión"])]
                 st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
         with c2:
             st.markdown("#### Por duración")
             bd = tracker.breakdown_duration()
             if bd:
-                rows = [{"Duración": k, "Aciertos": v["aciertos"], "Total": v["total"],
+                rows = [{"Duración": k, "Aciertos": v["aciertos"],
+                         "Fallos": v["total"] - v["aciertos"], "Total": v["total"],
                          "Precisión %": v["precisión"]} for k, v in bd.items()]
                 st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
     else:

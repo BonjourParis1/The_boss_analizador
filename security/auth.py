@@ -148,6 +148,42 @@ def verify_triple(key1: str, key2: str, key3: str) -> AuthResult:
     return AuthResult(False, "Una o más claves son incorrectas.")
 
 
+# ------------- Bloqueo GLOBAL (a nivel de proceso, anti fuerza bruta) -------
+# La sesión de Streamlit se puede limpiar; este contador vive en el proceso del
+# servidor, así que el bloqueo NO se reinicia abriendo otra pestaña o borrando cookies.
+import threading as _threading
+
+_GLOCK = _threading.Lock()
+_g_failed = 0
+_g_locked_until = 0.0
+
+
+def global_is_locked() -> bool:
+    with _GLOCK:
+        return time.time() < _g_locked_until
+
+
+def global_seconds_left() -> int:
+    with _GLOCK:
+        return max(0, int(_g_locked_until - time.time()))
+
+
+def global_register_failure() -> None:
+    global _g_failed, _g_locked_until
+    with _GLOCK:
+        _g_failed += 1
+        if _g_failed >= settings.auth_max_attempts:
+            _g_locked_until = time.time() + settings.auth_lockout_seconds
+            _g_failed = 0
+
+
+def global_register_success() -> None:
+    global _g_failed, _g_locked_until
+    with _GLOCK:
+        _g_failed = 0
+        _g_locked_until = 0.0
+
+
 # ----------------------- Control de bloqueo (anti fuerza bruta) ------------
 class LoginGuard:
     """Lleva la cuenta de intentos fallidos y aplica bloqueo temporal.

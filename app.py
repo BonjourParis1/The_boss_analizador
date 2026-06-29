@@ -511,8 +511,8 @@ def render_strip():
         else:
             badge = f"<span style='color:{T.MUTED};'>IA: {ia.get('direccion','')}</span>"
         ia_html = (f"<div style='margin-top:6px;border-top:1px solid {T.BORDER};padding-top:6px;"
-                   f"font-size:0.82rem;'>🧠 {badge} · {ia.get('confianza','—')}% — "
-                   f"{ia.get('resumen','')}</div>")
+                   f"font-size:0.82rem;'>🧠 {badge} · {C.esc(ia.get('confianza','—'))}% — "
+                   f"{C.esc(ia.get('resumen',''))}</div>")
 
     s = st.columns([1.8, 1.5, 1.4])
     with s[0]:
@@ -713,7 +713,7 @@ with tab_live:
         elif _live:
             _seconds = _ctype in ("Velas 5s", "Velas 30s", "Línea en vivo")
             if _symbol.type == "cripto":
-                _chart_refresh = 1 if _seconds else st.session_state.get("refresh", 5)
+                _chart_refresh = 2 if _seconds else st.session_state.get("refresh", 5)
             elif _symbol.type == "forex":
                 _chart_refresh = max(15, st.session_state.get("refresh", 5))
             else:
@@ -953,13 +953,13 @@ with tab_brain:
                             T.RED if v.get("direccion") == "VENTA" else T.GOLD
                         st.markdown(
                             f"<div class='gx-card' style='border:2px solid {col};'>"
-                            f"<div class='gx-tag'>Veredicto IA · {label}</div>"
+                            f"<div class='gx-tag'>Veredicto IA · {C.esc(label)}</div>"
                             f"<div style='font-size:1.5rem;font-weight:800;color:{col};'>"
-                            f"{v.get('direccion','—')} · {v.get('confianza','—')}%</div>"
-                            f"<div style='margin-top:6px;'>{v.get('resumen','')}</div>"
-                            f"<div style='margin-top:6px;color:{T.MUTED};'>⚠️ {v.get('riesgos','')}</div>"
+                            f"{C.esc(v.get('direccion','—'))} · {C.esc(v.get('confianza','—'))}%</div>"
+                            f"<div style='margin-top:6px;'>{C.esc(v.get('resumen',''))}</div>"
+                            f"<div style='margin-top:6px;color:{T.MUTED};'>⚠️ {C.esc(v.get('riesgos',''))}</div>"
                             + (f"<div style='margin-top:4px;color:{T.MUTED};'>Niveles: "
-                               f"{v.get('niveles_clave','')}</div>" if v.get('niveles_clave') else "")
+                               f"{C.esc(v.get('niveles_clave',''))}</div>" if v.get('niveles_clave') else "")
                             + "</div>", unsafe_allow_html=True)
                     except Exception:
                         st.markdown(llm.reason_trade(sig, label, titles, extra_context=extra))

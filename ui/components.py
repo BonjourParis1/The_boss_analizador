@@ -11,12 +11,25 @@ Estilo terminal de trading (TradingView / IQ Option):
 """
 from __future__ import annotations
 
+import html
+
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from analysis.engine import BUY, SELL, Signal
 from ui import theme as T
+
+
+def esc(text) -> str:
+    """Escapa texto para insertarlo en HTML (anti-XSS de contenido externo/IA)."""
+    return html.escape(str(text or ""))
+
+
+def safe_url(url) -> str:
+    """Solo permite enlaces http/https (evita javascript: y otros esquemas)."""
+    u = str(url or "").strip()
+    return u if u.lower().startswith(("http://", "https://")) else "#"
 
 _ACT_COLOR = {BUY: T.GREEN, SELL: T.RED, "MANTENER": T.GOLD}
 
@@ -361,6 +374,7 @@ def news_html(digest) -> str:
     for it in digest.items[:8]:
         dot = T.GREEN if it.sentiment > 0.08 else T.RED if it.sentiment < -0.08 else T.MUTED
         rows += (f"<div class='gx-news'><span style='color:{dot};'>●</span> "
-                 f"<a href='{it.url}' target='_blank'>{it.title}</a>"
-                 f"<div style='font-size:0.72rem;color:#7a8499;'>{it.source}</div></div>")
+                 f"<a href='{safe_url(it.url)}' target='_blank' rel='noopener noreferrer'>"
+                 f"{esc(it.title)}</a>"
+                 f"<div style='font-size:0.72rem;color:#7a8499;'>{esc(it.source)}</div></div>")
     return f"<div class='gx-card'>{head}{rows}</div>"

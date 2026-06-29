@@ -9,7 +9,9 @@ from __future__ import annotations
 import streamlit as st
 
 from config import settings
-from security.auth import (LoginGuard, admin_keys_exist, make_session_token,
+from security.auth import (LoginGuard, admin_keys_exist, global_is_locked,
+                           global_register_failure, global_register_success,
+                           global_seconds_left, make_session_token,
                            verify_session_token, verify_triple)
 
 
@@ -61,8 +63,9 @@ def render_login() -> bool:
                      "**python setup_admin.py** para crear tus tres claves de acceso.")
             return False
 
-        if guard.is_locked:
-            st.error(f"🚫 Demasiados intentos fallidos. Espera {guard.seconds_left()} s.")
+        if guard.is_locked or global_is_locked():
+            wait = max(guard.seconds_left(), global_seconds_left())
+            st.error(f"🚫 Demasiados intentos fallidos. Espera {wait} s.")
             return False
 
         with st.form("login_form", clear_on_submit=False):
@@ -78,6 +81,7 @@ def render_login() -> bool:
                                    st.session_state.get("k3", ""))
             if result.ok:
                 guard.register_success()
+                global_register_success()
                 st.session_state["authenticated"] = True
                 for k in ("k1", "k2", "k3"):
                     st.session_state.pop(k, None)
@@ -85,6 +89,7 @@ def render_login() -> bool:
                 st.rerun()
             else:
                 guard.register_failure()
+                global_register_failure()
                 restantes = max(0, settings.auth_max_attempts - guard.failed)
                 st.error(f"❌ {result.message} Intentos restantes: {restantes}.")
 

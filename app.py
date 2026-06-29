@@ -759,7 +759,8 @@ with tab_live:
     _symbol = SYMBOLS_BY_KEY[st.session_state["symbol_key"]]
     _ctype = st.session_state.get("chart_type", CHART_TYPES[0])
     _live = st.session_state.get("live", True)
-    _stream = _ctype == "🔴 Stream en vivo" and _symbol.type == "cripto"
+    # La gráfica rica (SMA, Bollinger, niveles, zoom) ahora es para TODOS los mercados
+    _stream = _ctype == "🔴 Stream en vivo"
     _strip_refresh = _side_refresh(_symbol) if _live else None
 
     # Franja superior de avisos (auto-refresca sin reiniciar el gráfico)
@@ -771,11 +772,27 @@ with tab_live:
             _slv = _levels_cached(_symbol.key, st.session_state["interval"], 200)
         except Exception:
             _slv = None
-        components.html(stream_chart_html(_symbol.provider_id, st.session_state["interval"],
-                                          560, levels=_slv), height=624)
+        if _symbol.type == "cripto":
+            # Cripto: tick a tick por WebSocket de Binance
+            components.html(stream_chart_html(_symbol.provider_id, st.session_state["interval"],
+                                              560, levels=_slv, use_ws=True), height=624)
+        else:
+            # Forex/acciones/índices/materias: MISMA gráfica con todas las herramientas,
+            # sembrada con nuestras velas (sin auto-refresco para conservar el zoom).
+            _seed = []
+            try:
+                _dfc = load_market(_symbol.key, st.session_state["interval"],
+                                   st.session_state.get("limit", 200))
+                _seed = [{"time": int(t.timestamp()), "open": float(o), "high": float(h),
+                          "low": float(lo), "close": float(c)}
+                         for t, o, h, lo, c in zip(_dfc.index, _dfc["open"], _dfc["high"],
+                                                   _dfc["low"], _dfc["close"])]
+            except Exception:
+                pass
+            components.html(stream_chart_html(_symbol.provider_id, st.session_state["interval"],
+                                              560, levels=_slv, use_ws=False, seed=_seed),
+                            height=624)
     else:
-        if _ctype == "🔴 Stream en vivo" and _symbol.type != "cripto":
-            st.caption("ℹ️ El stream tick a tick es solo para cripto; aquí se muestran velas.")
         if not is_realtime(_symbol):
             if st.button("🔄 Actualizar"):
                 load_market.clear()

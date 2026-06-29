@@ -15,13 +15,21 @@ _WS_OK = {"1s", "1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "12h",
 
 
 def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 560,
-                      levels: list | None = None) -> str:
-    """HTML autocontenido. Úsalo con st.components.v1.html(..., height=height+56)."""
+                      levels: list | None = None, use_ws: bool = True,
+                      seed: list | None = None) -> str:
+    """Gráfica TradingView con TODAS las herramientas (SMA9/21, Bollinger, niveles, zoom).
+
+    * use_ws=True (cripto): carga de Binance y actualiza tick a tick por WebSocket.
+    * use_ws=False (forex/acciones/índices/materias): se siembra con `seed` (nuestras
+      velas OHLC) para que la MISMA gráfica con herramientas funcione en cualquier mercado.
+    """
     import json
     iv = interval if interval in _WS_OK else "1m"
     sym = binance_symbol.upper()
     sym_l = binance_symbol.lower()
     secs = "true" if iv.endswith("s") else "false"
+    use_ws_js = "true" if use_ws else "false"
+    seed_json = json.dumps(seed or [])
     levels_json = json.dumps([{"v": l["value"], "n": l["name"], "k": l["kind"]}
                               for l in (levels or [])])
     return f"""
@@ -50,6 +58,8 @@ def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 5
 <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 <script>
 (function() {{
+  const USE_WS = {use_ws_js};
+  const SEED = {seed_json};
   const el = document.getElementById('gxchart');
   // Hora LOCAL del navegador (resuelve el desfase con UTC)
   const offMin = -new Date().getTimezoneOffset();
@@ -125,31 +135,40 @@ def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 5
     document.getElementById('gxzoomout').onclick=()=>zoom(1.7);
     document.getElementById('gxfit').onclick=()=>ts.fitContent();
 
-    fetch('https://api.binance.com/api/v3/klines?symbol={sym}&interval={iv}&limit=500')
-      .then(r=>r.json()).then(d=>{{
-        const data=d.map(k=>({{time:k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4]}}));
-        candle.setData(data); closes=data.map(k=>({{time:k.time,close:k.close}})); rebuildMA();
-        if(data.length) paint(data[data.length-1]); fixW();
-        // Mostrar las últimas ~90 velas con buen ancho (no apretujar las 500)
-        const N=data.length; ts.setVisibleLogicalRange({{from:Math.max(0,N-90), to:N+2}});
-      }}).catch(()=>{{}});
-
-    let ws;
-    function connect() {{
-      ws=new WebSocket('wss://stream.binance.com:9443/ws/{sym_l}@kline_{iv}');
-      ws.onmessage=(e)=>{{ const k=JSON.parse(e.data).k;
-        const c={{time:k.t/1000,open:+k.o,high:+k.h,low:+k.l,close:+k.c}};
-        candle.update(c);
-        if(closes.length&&closes[closes.length-1].time===c.time) closes[closes.length-1].close=c.close;
-        else closes.push({{time:c.time,close:c.close}});
-        const i=closes.length-1, a=smaAt(9,i), b=smaAt(21,i), bb=bbAt(i);
-        if(a!=null) ma9.update({{time:c.time,value:a}}); if(b!=null) ma21.update({{time:c.time,value:b}});
-        if(bb!=null) {{ bbU.update({{time:c.time,value:bb.u}}); bbL.update({{time:c.time,value:bb.l}}); }}
-        paint(c);
-      }};
-      ws.onclose=()=>setTimeout(connect,1500);
+    function applyData(data) {{
+      if(!data||!data.length) return;
+      candle.setData(data); closes=data.map(k=>({{time:k.time,close:k.close}})); rebuildMA();
+      paint(data[data.length-1]); fixW();
+      // Mostrar las últimas ~90 velas con buen ancho (no apretujar todo el histórico)
+      const N=data.length; ts.setVisibleLogicalRange({{from:Math.max(0,N-90), to:N+2}});
     }}
-    connect();
+
+    if (USE_WS) {{
+      // Cripto: carga desde el mirror público y actualiza tick a tick por WebSocket
+      fetch('https://data-api.binance.vision/api/v3/klines?symbol={sym}&interval={iv}&limit=500')
+        .then(r=>r.json()).then(d=>{{
+          applyData(d.map(k=>({{time:k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4]}})));
+        }}).catch(()=>{{ applyData(SEED); }});
+      let ws;
+      function connect() {{
+        ws=new WebSocket('wss://stream.binance.com:9443/ws/{sym_l}@kline_{iv}');
+        ws.onmessage=(e)=>{{ const k=JSON.parse(e.data).k;
+          const c={{time:k.t/1000,open:+k.o,high:+k.h,low:+k.l,close:+k.c}};
+          candle.update(c);
+          if(closes.length&&closes[closes.length-1].time===c.time) closes[closes.length-1].close=c.close;
+          else closes.push({{time:c.time,close:c.close}});
+          const i=closes.length-1, a=smaAt(9,i), b=smaAt(21,i), bb=bbAt(i);
+          if(a!=null) ma9.update({{time:c.time,value:a}}); if(b!=null) ma21.update({{time:c.time,value:b}});
+          if(bb!=null) {{ bbU.update({{time:c.time,value:bb.u}}); bbL.update({{time:c.time,value:bb.l}}); }}
+          paint(c);
+        }};
+        ws.onclose=()=>setTimeout(connect,1500);
+      }}
+      connect();
+    }} else {{
+      // Otros mercados: misma gráfica con TODAS las herramientas, sembrada con nuestros datos
+      applyData(SEED);
+    }}
   }}
   start();
 }})();

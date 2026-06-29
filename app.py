@@ -896,21 +896,54 @@ with tab_prec:
         st.markdown("#### Evolución de la precisión")
         st.line_chart(pd.DataFrame(cv).set_index("señal"))
 
-        # Lectura estructurada para el asesor (con muestra mínima fiable)
+        # ---- Rendimiento POR MERCADO (Forex, Cripto, Acciones, Índices, Materias) ----
+        _CAT = ["Forex", "Cripto", "Acciones", "Índices", "Materias"]
+        gm: dict = {}
+        for _s in tracker.evaluated():
+            _sym = _s.get("symbol")
+            _grp = SYMBOLS_BY_KEY[_sym].group if _sym in SYMBOLS_BY_KEY else "Otros"
+            _a = gm.setdefault(_grp, {"aciertos": 0, "total": 0})
+            _a["total"] += 1
+            if _s.get("status") == "win":
+                _a["aciertos"] += 1
+        for _v in gm.values():
+            _v["precisión"] = round(100 * _v["aciertos"] / _v["total"], 1) if _v["total"] else 0.0
+
         bs = tracker.breakdown_symbol()
         bd = tracker.breakdown_duration()
+
+        # Lectura estructurada para el asesor (con muestra mínima fiable)
         lect = []
+        _mk = _insight("Mercado", list(gm.items()), min_n=4)
         _ms = _insight("Activos", [(SYMBOLS_BY_KEY[k].label if k in SYMBOLS_BY_KEY else k, v)
                                    for k, v in bs.items()])
         _md = _insight("Duraciones", list(bd.items()))
-        if _ms:
-            lect.append(_ms)
-        if _md:
-            lect.append(_md)
+        for _x in (_mk, _ms, _md):
+            if _x:
+                lect.append(_x)
         if lect:
             st.success("🧭 Lectura del asesor → " + "  ·  ".join(lect))
         else:
             st.caption("🧭 Acumula al menos 5 resultados por categoría para una lectura fiable.")
+
+        st.markdown("#### 🌐 Por mercado — ¿dónde se gana más fácil?")
+        if gm:
+            mk1, mk2 = st.columns([1.1, 1])
+            with mk1:
+                rows = [{"Mercado": k, "Aciertos": v["aciertos"],
+                         "Fallos": v["total"] - v["aciertos"], "Total": v["total"],
+                         "Precisión %": v["precisión"]}
+                        for k, v in sorted(gm.items(), key=lambda x: -x[1]["precisión"])]
+                st.dataframe(pd.DataFrame(rows).style.apply(_style_perf, axis=1),
+                             use_container_width=True, hide_index=True)
+            with mk2:
+                st.bar_chart(pd.Series({k: v["precisión"] for k, v in gm.items()},
+                                       name="Precisión %"))
+        _missing = [c for c in _CAT if c not in gm]
+        if _missing:
+            st.caption("Sin datos todavía en: **" + ", ".join(_missing) + "**. Se registran "
+                       "cuando el motor autónomo corre (con la página abierta) y en horario "
+                       "de ese mercado (el Forex y las acciones cierran fines de semana).")
 
         c1, c2 = st.columns(2)
         with c1:

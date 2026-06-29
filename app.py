@@ -63,7 +63,9 @@ st.markdown(T.CSS, unsafe_allow_html=True)
 
 
 def _inject_watermark() -> None:
-    """Marca de agua centrada y muy tenue, DETRÁS del contenido (no estorba)."""
+    """Marca de agua a pantalla completa, DETRÁS del contenido. Se pinta como
+    imagen de fondo (no como capa encima), así NO bloquea el scroll ni el layout.
+    La opacidad va horneada en el PNG (alpha tenue)."""
     if not _wm_path:
         return
     import base64
@@ -73,11 +75,10 @@ def _inject_watermark() -> None:
         return
     st.markdown(
         "<style>"
-        ".stApp::before{content:'';position:fixed;inset:0;"
-        f"background:url('data:image/png;base64,{b64}') center 44% no-repeat;"
-        "background-size:min(82vw,1100px);opacity:0.08;z-index:0;pointer-events:none;}"
-        "[data-testid='stAppViewContainer']{position:relative;z-index:1;}"
-        "section[data-testid='stSidebar']{position:relative;z-index:2;}"
+        "[data-testid='stAppViewContainer']{"
+        f"background-image:url('data:image/png;base64,{b64}');"
+        "background-repeat:no-repeat;background-position:center 44%;"
+        "background-size:min(82vw,1100px);background-attachment:fixed;}"
         "</style>", unsafe_allow_html=True)
 
 

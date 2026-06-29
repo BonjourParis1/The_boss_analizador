@@ -60,7 +60,12 @@ CSS = f"""
   /* ----------------- Barra lateral (clara, ordenada) ----------------- */
   section[data-testid="stSidebar"] {{
     background:linear-gradient(180deg,#f7fce9 0%,#eef7d2 100%);
-    border-right:1px solid {BORDER}; width:212px !important; min-width:212px !important;
+    border-right:1px solid {BORDER};
+  }}
+  /* Ancho personalizado SOLO cuando está abierto: así al colapsar se oculta de
+     verdad, el contenido central se estira y no aparece un segundo botón. */
+  section[data-testid="stSidebar"][aria-expanded="true"] {{
+    width:212px !important; min-width:212px !important;
   }}
   section[data-testid="stSidebar"] [data-testid="stSidebarHeader"] {{
     padding:0 !important; min-height:0 !important; height:6px !important; }}

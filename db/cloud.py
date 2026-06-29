@@ -21,6 +21,7 @@ _lock = threading.Lock()
 _KFILE = SECRETS_DIR / "knowledge.json"
 _SFILE = SECRETS_DIR / "signals.json"
 _AFILE = SECRETS_DIR / "access_log.json"
+_SETFILE = SECRETS_DIR / "app_settings.json"
 _cache = {"signals": None, "ts": 0.0}
 
 
@@ -47,6 +48,44 @@ def _lsave(p, data):
 
 def where() -> str:
     return "Supabase (nube)" if settings.use_supabase else "archivo local"
+
+
+# ----------------------- Ajustes del usuario (capital, riesgo) -------------
+def _dict_load(p):
+    if p.exists():
+        try:
+            return json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+    return {}
+
+
+def setting_get(key: str, default=None):
+    if settings.use_supabase:
+        try:
+            r = _client().table("app_settings").select("value").eq("key", key).limit(1).execute()
+            if r.data:
+                return r.data[0]["value"]
+            return default
+        except Exception:
+            pass
+    return _dict_load(_SETFILE).get(key, default)
+
+
+def setting_set(key: str, value) -> None:
+    if settings.use_supabase:
+        try:
+            _client().table("app_settings").upsert({"key": key, "value": value}).execute()
+            return
+        except Exception:
+            pass
+    with _lock:
+        d = _dict_load(_SETFILE)
+        d[key] = value
+        try:
+            _SETFILE.write_text(json.dumps(d), encoding="utf-8")
+        except Exception:
+            pass
 
 
 # ----------------------- Conocimiento (lo que enseñas) ---------------------

@@ -83,6 +83,13 @@ create table if not exists public.access_log (
 );
 create index if not exists idx_access_ts on public.access_log (ts desc);
 
+-- AJUSTES del usuario (capital disponible, riesgo por operación, pago, etc.).
+create table if not exists public.app_settings (
+    key         text primary key,
+    value       jsonb,
+    updated_at  timestamptz not null default now()
+);
+
 -- Seguridad: como usamos la service_role key SOLO en el backend (servidor),
 -- mantenemos RLS activado y SIN políticas públicas, de modo que ni la anon key
 -- ni el navegador puedan leer/escribir estas tablas directamente.
@@ -91,3 +98,4 @@ alter table public.user_decisions  enable row level security;
 alter table public.knowledge        enable row level security;
 alter table public.signals          enable row level security;
 alter table public.access_log       enable row level security;
+alter table public.app_settings     enable row level security;

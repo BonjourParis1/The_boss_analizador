@@ -18,7 +18,7 @@ from pathlib import Path
 import streamlit as st
 
 import autonomous
-from analysis import advisor, auto_learn, levels as levels_mod, tracker
+from analysis import advisor, auto_learn, levels as levels_mod, risk, tracker
 from analysis.backtest import run_backtest
 from analysis.engine import BUY, HOLD, SELL, analyze
 from analysis.indicators import compute_all, snapshot_text
@@ -218,6 +218,35 @@ with st.sidebar:
                           help="El motor escanea TODO el Forex en cada pasada y rota el "
                                "resto de mercados, para no agotar las APIs gratuitas.")
         autonomous.set_forex_focus(_ff)
+
+    with st.expander("💰 Capital y riesgo", expanded=False):
+        from db import cloud as _cloud
+        # Carga inicial (una vez) desde Supabase/local
+        if "capital" not in st.session_state:
+            st.session_state["capital"] = float(_cloud.setting_get("capital", 0) or 0)
+            st.session_state["risk_pct"] = float(_cloud.setting_get("risk_pct", 3) or 3)
+            st.session_state["payout_pct"] = float(_cloud.setting_get("payout_pct", 85) or 85)
+
+        def _save_risk_cfg():
+            try:
+                _cloud.setting_set("capital", float(st.session_state["capital"]))
+                _cloud.setting_set("risk_pct", float(st.session_state["risk_pct"]))
+                _cloud.setting_set("payout_pct", float(st.session_state["payout_pct"]))
+            except Exception:
+                pass
+
+        st.number_input("Capital disponible (USD)", min_value=0.0, step=10.0,
+                        key="capital", on_change=_save_risk_cfg,
+                        help="Tu base financiera. El sistema calcula cuánto invertir por señal.")
+        st.slider("Riesgo máx. por operación %", 1, 15, key="risk_pct",
+                  on_change=_save_risk_cfg,
+                  help="Tope del % del capital a arriesgar en una sola operación.")
+        st.slider("Pago de la opción % (IQ Option)", 60, 95, key="payout_pct",
+                  on_change=_save_risk_cfg,
+                  help="Rentabilidad que paga tu bróker si aciertas (típico 80–90%).")
+        if st.session_state["capital"] > 0:
+            st.caption(f"Base: ${st.session_state['capital']:,.0f} · riesgo ≤ "
+                       f"{st.session_state['risk_pct']:.0f}% · pago {st.session_state['payout_pct']:.0f}%")
 
     with st.expander("🔐 Accesos recientes", expanded=False):
         try:
@@ -512,6 +541,24 @@ def render_strip():
             f"🎯 Precisión sistema: <b>{_g['accuracy']:.0f}%</b> ({_g['n']}) · "
             f"{symbol.label}: <b>{_ps['accuracy']:.0f}%</b> ({_ps['n']})</div>") if _g['n'] else ""
 
+    # --- Gestor de riesgo: cuánto invertir según tu capital y la ventaja ---
+    _risk_html = ""
+    _cap = float(st.session_state.get("capital", 0) or 0)
+    if plan.is_actionable and _cap > 0:
+        _wr = tracker.live_winrate(sk)   # precisión real del activo (si hay muestra)
+        _rk = risk.suggest_stake(_cap, plan.confidence, win_rate=_wr,
+                                 payout=float(st.session_state.get("payout_pct", 85)) / 100.0,
+                                 risk_cap=float(st.session_state.get("risk_pct", 3)) / 100.0)
+        if _rk["trade"]:
+            _risk_html = (f"<div style='margin-top:6px;border-top:1px solid {T.BORDER};"
+                          f"padding-top:6px;font-size:0.9rem;'>💰 <b>Invertir "
+                          f"${_rk['stake']:,.2f}</b> ({_rk['pct']:.1f}% del capital) "
+                          f"<span style='color:{T.MUTED};font-size:0.78rem;'>· prob {_rk['p']:.0f}% "
+                          f"· ventaja {_rk['edge']:+.0f}%</span></div>")
+        else:
+            _risk_html = (f"<div style='margin-top:6px;border-top:1px solid {T.BORDER};"
+                          f"padding-top:6px;font-size:0.84rem;color:{T.GOLD};'>💰 {_rk['advice']}</div>")
+
     # --- Fusión con el cerebro IA (confirma / discrepa) ---
     ia = _ia_verdict_cached(sk, duration)
     ia_html = ""
@@ -536,7 +583,7 @@ def render_strip():
             f"<div style='display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;'>"
             f"<span style='font-size:1.7rem;font-weight:800;color:{color};'>{plan.icon} {plan.action_label}</span>"
             f"<span style='font-size:1.15rem;font-weight:700;'>{plan.confidence:.0f}%</span>"
-            f"<span style='font-size:0.85rem;color:{T.MUTED};'>{venc}</span></div>{_sent}{_acc}{ia_html}</div>",
+            f"<span style='font-size:0.85rem;color:{T.MUTED};'>{venc}</span></div>{_sent}{_acc}{_risk_html}{ia_html}</div>",
             unsafe_allow_html=True)
     with s[1]:
         if opportunities:

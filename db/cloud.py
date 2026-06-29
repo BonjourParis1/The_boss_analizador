@@ -20,6 +20,7 @@ from config import SECRETS_DIR, settings
 _lock = threading.Lock()
 _KFILE = SECRETS_DIR / "knowledge.json"
 _SFILE = SECRETS_DIR / "signals.json"
+_AFILE = SECRETS_DIR / "access_log.json"
 _cache = {"signals": None, "ts": 0.0}
 
 
@@ -118,6 +119,32 @@ def signals_all(ttl: int = 20) -> list:
     _cache["signals"] = data
     _cache["ts"] = now
     return data
+
+
+def access_log_save(event: str, detail: str = "") -> None:
+    """Registra un evento de acceso (ok / fallo / logout) con su hora."""
+    row = {"event": event, "detail": (detail or "")[:200], "ts": time.time()}
+    if settings.use_supabase:
+        try:
+            _client().table("access_log").insert(row).execute()
+            return
+        except Exception:
+            pass
+    with _lock:
+        d = _ljson(_AFILE)
+        d.append(row)
+        _lsave(_AFILE, d)
+
+
+def access_log_recent(limit: int = 12) -> list:
+    if settings.use_supabase:
+        try:
+            r = (_client().table("access_log").select("event,detail,ts")
+                 .order("ts", desc=True).limit(limit).execute())
+            return r.data or []
+        except Exception:
+            pass
+    return list(reversed(_ljson(_AFILE)))[:limit]
 
 
 def signal_update(sig_id, status: str, exit_price: float) -> None:

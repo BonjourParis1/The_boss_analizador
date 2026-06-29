@@ -9,6 +9,7 @@ from __future__ import annotations
 import streamlit as st
 
 from config import settings
+from db import cloud
 from security.auth import (LoginGuard, admin_keys_exist, global_is_locked,
                            global_register_failure, global_register_success,
                            global_seconds_left, make_session_token,
@@ -34,6 +35,10 @@ def is_authenticated() -> bool:
 
 def logout() -> None:
     st.session_state["authenticated"] = False
+    try:
+        cloud.access_log_save("logout")
+    except Exception:
+        pass
     try:
         if "s" in st.query_params:
             del st.query_params["s"]
@@ -82,6 +87,10 @@ def render_login() -> bool:
             if result.ok:
                 guard.register_success()
                 global_register_success()
+                try:
+                    cloud.access_log_save("ok")
+                except Exception:
+                    pass
                 st.session_state["authenticated"] = True
                 for k in ("k1", "k2", "k3"):
                     st.session_state.pop(k, None)
@@ -90,6 +99,10 @@ def render_login() -> bool:
             else:
                 guard.register_failure()
                 global_register_failure()
+                try:
+                    cloud.access_log_save("fallo")
+                except Exception:
+                    pass
                 restantes = max(0, settings.auth_max_attempts - guard.failed)
                 st.error(f"❌ {result.message} Intentos restantes: {restantes}.")
 

@@ -73,6 +73,16 @@ create index if not exists idx_signals_symbol_status
 -- Foto de indicadores en la entrada (para que el modelo aprenda de resultados reales)
 alter table public.signals add column if not exists features jsonb;
 
+-- REGISTRO DE ACCESOS: cada intento de inicio de sesión (correcto/fallido) y cierre.
+create table if not exists public.access_log (
+    id          bigint generated always as identity primary key,
+    created_at  timestamptz not null default now(),
+    ts          double precision,                    -- epoch del evento
+    event       text        not null,                -- ok / fallo / logout
+    detail      text
+);
+create index if not exists idx_access_ts on public.access_log (ts desc);
+
 -- Seguridad: como usamos la service_role key SOLO en el backend (servidor),
 -- mantenemos RLS activado y SIN políticas públicas, de modo que ni la anon key
 -- ni el navegador puedan leer/escribir estas tablas directamente.
@@ -80,3 +90,4 @@ alter table public.recommendations enable row level security;
 alter table public.user_decisions  enable row level security;
 alter table public.knowledge        enable row level security;
 alter table public.signals          enable row level security;
+alter table public.access_log       enable row level security;

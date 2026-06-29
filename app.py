@@ -221,6 +221,19 @@ with st.sidebar:
         st.session_state["auto_minconf"] = st.slider("Confianza mín. autónomo %", 50, 90,
                                                      int(st.session_state["auto_minconf"]))
 
+    with st.expander("🔐 Accesos recientes", expanded=False):
+        from db import cloud as _cloud
+        _ev = _cloud.access_log_recent(10)
+        if not _ev:
+            st.caption("Sin registros todavía.")
+        else:
+            _IC = {"ok": "✅ Entrada", "fallo": "❌ Intento fallido", "logout": "🚪 Salida"}
+            for e in _ev:
+                _t = ""
+                if e.get("ts"):
+                    _t = datetime.fromtimestamp(e["ts"]).strftime("%d/%m %H:%M:%S")
+                st.caption(f"{_IC.get(e.get('event'), e.get('event',''))} · {_t}")
+
     st.caption("🟢 Motor activo" if autonomous.is_running() else "⚪ Motor detenido")
     if st.button("🚪 Cerrar sesión", use_container_width=True):
         autonomous.stop()

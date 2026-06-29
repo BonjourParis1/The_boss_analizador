@@ -78,20 +78,23 @@ def fast_quote(symbol: Symbol) -> dict | None:
         return _twelvedata_quote(symbol)
     if symbol.type != "cripto":
         return None
-    try:
-        r = requests.get("https://api.binance.com/api/v3/ticker/24hr",
-                         params={"symbol": symbol.provider_id},
-                         headers=_HEADERS, timeout=_TIMEOUT)
-        r.raise_for_status()
-        d = r.json()
-        return {
-            "price": float(d["lastPrice"]),
-            "change": float(d["priceChange"]),
-            "change_pct": float(d["priceChangePercent"]),
-            "high": float(d["highPrice"]),
-            "low": float(d["lowPrice"]),
-            "volume": float(d["volume"]),
-            "is_live": True,
-        }
-    except Exception:
-        return None
+    # El mirror data-api.binance.vision evita el geobloqueo (p.ej. Streamlit Cloud en EE.UU.)
+    for base in ("https://data-api.binance.vision", "https://api.binance.com"):
+        try:
+            r = requests.get(base + "/api/v3/ticker/24hr",
+                             params={"symbol": symbol.provider_id},
+                             headers=_HEADERS, timeout=_TIMEOUT)
+            r.raise_for_status()
+            d = r.json()
+            return {
+                "price": float(d["lastPrice"]),
+                "change": float(d["priceChange"]),
+                "change_pct": float(d["priceChangePercent"]),
+                "high": float(d["highPrice"]),
+                "low": float(d["lowPrice"]),
+                "volume": float(d["volume"]),
+                "is_live": True,
+            }
+        except Exception:
+            continue
+    return None

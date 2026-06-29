@@ -74,8 +74,8 @@ def _inject_watermark() -> None:
     st.markdown(
         "<style>"
         ".stApp::before{content:'';position:fixed;inset:0;"
-        f"background:url('data:image/png;base64,{b64}') center 46% no-repeat;"
-        "background-size:min(52vw,640px);opacity:0.06;z-index:0;pointer-events:none;}"
+        f"background:url('data:image/png;base64,{b64}') center 44% no-repeat;"
+        "background-size:min(82vw,1100px);opacity:0.08;z-index:0;pointer-events:none;}"
         "[data-testid='stAppViewContainer']{position:relative;z-index:1;}"
         "section[data-testid='stSidebar']{position:relative;z-index:2;}"
         "</style>", unsafe_allow_html=True)

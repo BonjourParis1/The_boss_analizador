@@ -56,20 +56,34 @@ _BINANCE_INTERVAL = {
 }
 
 
+# El mirror data-api.binance.vision responde desde regiones donde api.binance.com
+# está bloqueado (p.ej. servidores de EE. UU. como los de Streamlit Cloud).
+_BINANCE_HOSTS = ("https://data-api.binance.vision",
+                  "https://api.binance.com",
+                  "https://api1.binance.com")
+
+
 def fetch_crypto(symbol: Symbol, interval: str = "5m", limit: int = 200) -> pd.DataFrame:
-    """Velas de Binance. Endpoint público, sin autenticación."""
-    url = "https://api.binance.com/api/v3/klines"
+    """Velas de Binance (endpoint público). Prueba varios hosts por geobloqueo."""
     params = {"symbol": symbol.provider_id,
               "interval": _BINANCE_INTERVAL.get(interval, "5m"), "limit": limit}
-    r = requests.get(url, params=params, headers=_HEADERS, timeout=_TIMEOUT)
-    r.raise_for_status()
-    df = pd.DataFrame(r.json(), columns=[
-        "open_time", "open", "high", "low", "close", "volume",
-        "close_time", "qav", "trades", "tbb", "tbq", "ignore"])
-    df["timestamp"] = pd.to_datetime(df["open_time"], unit="ms", utc=True)
-    for col in ["open", "high", "low", "close", "volume"]:
-        df[col] = pd.to_numeric(df[col], errors="coerce")
-    return _finalize(df)
+    last = None
+    for base in _BINANCE_HOSTS:
+        try:
+            r = requests.get(base + "/api/v3/klines", params=params,
+                             headers=_HEADERS, timeout=_TIMEOUT)
+            r.raise_for_status()
+            df = pd.DataFrame(r.json(), columns=[
+                "open_time", "open", "high", "low", "close", "volume",
+                "close_time", "qav", "trades", "tbb", "tbq", "ignore"])
+            df["timestamp"] = pd.to_datetime(df["open_time"], unit="ms", utc=True)
+            for col in ["open", "high", "low", "close", "volume"]:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+            return _finalize(df)
+        except Exception as e:  # noqa: BLE001 — probamos el siguiente host
+            last = e
+            continue
+    raise last if last else RuntimeError("Binance no disponible")
 
 
 # ------------------------------- Twelve Data -------------------------------

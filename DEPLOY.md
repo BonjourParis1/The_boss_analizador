@@ -49,34 +49,6 @@ python cloud_secrets.py      # imprime SESSION_SECRET y ADMIN_KEYS_JSON para cop
 
 ---
 
-## Motor autónomo 24/7 (que aprenda aunque no tengas la página abierta)
-
-El dashboard en Streamlit Cloud **se duerme** con inactividad, así que el motor solo
-corre mientras la página está abierta. Para que analice y APRENDA de forma continua,
-ejecuta el motor por separado. Todo se guarda en Supabase; el dashboard lo lee.
-
-### Opción A — GitHub Actions (GRATIS si el repo es público) ⭐
-Ya incluido en `.github/workflows/autonomous.yml`: lanza `worker_once.py` cada 15 min.
-1. GitHub → tu repo → **Settings → Secrets and variables → Actions → New repository secret**
-   y crea: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`,
-   `FINNHUB_API_KEY`, `TWELVEDATA_API_KEY`, `ALPHA_VANTAGE_API_KEY`.
-2. Pestaña **Actions** → habilítalas si te lo pide → puedes lanzar "Run workflow" a mano.
-- **Repo público:** Actions es **gratis e ilimitado** → ideal.
-- **Repo privado:** GitHub da 2000 min/mes gratis; cada pasada tarda ~2 min, así que
-  cada 15 min consume el cupo en ~2 semanas. Si es privado, sube el intervalo del cron
-  (p. ej. `*/30`) o usa la Opción B.
-
-### Opción B — Worker siempre encendido (Render / Railway / Fly.io)
-Para granularidad de minutos sin límite, un proceso permanente con `worker.py`:
-- **Render:** incluido `render.yaml` (New + → Blueprint). El worker es de pago (~7 USD/mes);
-  pega tus claves cuando te las pida.
-- **Railway:** New Project → Deploy from repo → Start command `python worker.py` → añade
-  las variables. Cuesta por uso (~5 USD/mes).
-- **Fly.io:** tiene una franja gratuita que suele alcanzar para un worker pequeño.
-
-> El dashboard sigue en Streamlit Cloud; el worker solo alimenta Supabase. No necesitas
-> ejecutar las dos cosas en el mismo sitio.
-
 ## Notas importantes
 - **Nunca** subas claves a GitHub. Van solo en *Secrets* del hosting o en tu `.env`
   local (ambos ignorados por git).

@@ -43,21 +43,15 @@ from ui.realtime_chart import stream_chart_html
 # OPTIMIZADAS (favicon.png / logo_wm.png) y cae al original si no están. Si no hay
 # imagen, usa un emoji y no muestra marca de agua (sin romper nada).
 _ASSETS = Path(__file__).parent / "assets"
-_FAVICON = _ASSETS / "favicon.png"
 _WATERMARK = _ASSETS / "logo_wm.png"
 _LOGO = _ASSETS / "logo.png"
-_fav_path = _FAVICON if _FAVICON.exists() else (_LOGO if _LOGO.exists() else None)
 _wm_path = _WATERMARK if _WATERMARK.exists() else (_LOGO if _LOGO.exists() else None)
 
-_page_icon = "📊"
-if _fav_path:
-    try:
-        from PIL import Image
-        _page_icon = Image.open(_fav_path)
-    except Exception:
-        _page_icon = "📊"
-
-st.set_page_config(page_title="THE BOSS ANALIZADOR", page_icon=_page_icon,
+# Favicon como EMOJI (no como imagen PIL): pasar una imagen crea un "media file"
+# ligado a la sesión que, tras reiniciar el servidor en la nube, el navegador no
+# encuentra y provoca "Bad message format / SessionInfo before initialized". El toro
+# se mantiene como marca de agua de fondo.
+st.set_page_config(page_title="THE BOSS ANALIZADOR", page_icon="🐂",
                    layout="wide", initial_sidebar_state="expanded")
 st.markdown(T.CSS, unsafe_allow_html=True)
 

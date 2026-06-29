@@ -81,6 +81,28 @@ def set_forex_focus(enabled: bool) -> None:
         _S.forex_focus = bool(enabled)
 
 
+def _forex_open() -> bool:
+    """Aproxima el horario del Forex (abre dom ~21:00 UTC, cierra vie ~21:00 UTC)."""
+    now = datetime.utcnow()
+    wd = now.weekday()  # 0=lun … 6=dom
+    if wd == 5:            # sábado: cerrado
+        return False
+    if wd == 6:            # domingo: abre ~21:00 UTC
+        return now.hour >= 21
+    if wd == 4:            # viernes: cierra ~21:00 UTC
+        return now.hour < 21
+    return True            # lun–jue: abierto
+
+
+def _effective_interval() -> int:
+    """Con Foco Forex y mercado abierto, pasadas más seguidas (60s, respeta 8/min de
+    Twelve Data). En otro caso, el intervalo normal configurado."""
+    base = int(_S.interval_seconds)
+    if _S.forex_focus and _forex_open():
+        return max(60, min(base, 60))
+    return base
+
+
 def _maybe_research(symbol, sig, plan, done_count: int) -> int:
     """Verifica una señal fuerte con el cerebro IA (veredicto estructurado) e
     investiga su contexto (noticias/YouTube), con cooldown para no saturar APIs."""
@@ -184,9 +206,10 @@ def _loop(stop_event: threading.Event, min_conf: float, timeframe: str, interval
             _S.found_total += found
             _S.log.appendleft(f"{_S.last_scan:%H:%M:%S} · pasada {_S.cycles}: "
                               f"{found} señal(es)")
-        # Espera hasta el siguiente ciclo, comprobando parada cada segundo
+        # Espera hasta el siguiente ciclo (más corto si Foco Forex y el mercado abierto)
+        eff = _effective_interval()
         waited = 0
-        while waited < interval_s and not stop_event.is_set():
+        while waited < eff and not stop_event.is_set():
             stop_event.wait(1)
             waited += 1
     with _S.lock:

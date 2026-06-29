@@ -898,9 +898,12 @@ with tab_brain:
                                f"{v.get('niveles_clave','')}</div>" if v.get('niveles_clave') else "")
                             + "</div>", unsafe_allow_html=True)
                     except Exception:
-                        st.markdown(llm.reason_trade(sig, label, titles))
-                except Exception as e:  # noqa: BLE001
-                    st.error(f"No se pudo generar el análisis: {e}")
+                        st.markdown(llm.reason_trade(sig, label, titles, extra_context=extra))
+                except Exception:  # noqa: BLE001 — sin exponer claves
+                    st.error("La IA está al límite ahora mismo (Gemini sin cuota y el "
+                             "respaldo DeepSeek no respondió: revisa su saldo/clave). "
+                             "El sistema y el resto de pestañas siguen funcionando; "
+                             "vuelve a intentarlo en un momento.")
 
     with c_ingest:
         st.markdown("#### 📥 Procesar contenido que le adjuntes")
@@ -909,24 +912,32 @@ with tab_brain:
         if kind == "Texto":
             txt = st.text_area("Pega aquí un artículo, notas o estrategia", height=160)
             if st.button("Analizar contenido"):
-                with st.spinner("Analizando..."):
-                    try:
-                        res = ingest.ingest_text(txt)
-                        st.caption(f"Sentimiento: {res.sentiment:+.2f}")
-                        st.markdown(res.analysis)
-                    except Exception as e:  # noqa: BLE001
-                        st.error(f"Error: {e}")
+                if not (txt or "").strip():
+                    st.warning("Pega primero algún texto para enseñarle al cerebro.")
+                else:
+                    with st.spinner("Guardando y analizando..."):
+                        try:
+                            res = ingest.ingest_text(txt)
+                            st.success(f"✅ Conocimiento guardado en **{res.saved}**.")
+                            st.caption(f"Sentimiento: {res.sentiment:+.2f}")
+                            st.markdown(res.analysis)
+                        except Exception as e:  # noqa: BLE001
+                            st.error(f"Error: {e}")
         else:
             url = st.text_input("URL de YouTube", placeholder="https://youtu.be/...")
             st.caption("Se analiza la **transcripción** (lo que se dice), no la imagen.")
             if st.button("Analizar video"):
-                with st.spinner("Bajando transcripción y analizando..."):
-                    try:
-                        res = ingest.ingest_youtube(url)
-                        st.caption(f"Sentimiento de la transcripción: {res.sentiment:+.2f}")
-                        st.markdown(res.analysis)
-                    except Exception as e:  # noqa: BLE001
-                        st.error(f"No se pudo procesar el video (¿tiene transcripción?): {e}")
+                if not (url or "").strip():
+                    st.warning("Pega primero la URL del video.")
+                else:
+                    with st.spinner("Bajando transcripción, guardando y analizando..."):
+                        try:
+                            res = ingest.ingest_youtube(url)
+                            st.success(f"✅ Conocimiento guardado en **{res.saved}**.")
+                            st.caption(f"Sentimiento de la transcripción: {res.sentiment:+.2f}")
+                            st.markdown(res.analysis)
+                        except Exception as e:  # noqa: BLE001
+                            st.error(f"No se pudo procesar el video (¿tiene transcripción?): {e}")
 
 
 # ============================== TAB: HISTORIAL =============================

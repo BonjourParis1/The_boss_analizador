@@ -16,7 +16,10 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+import requests
+
 from brain import llm
+from db import cloud
 
 _YT_RE = re.compile(
     r"(?:youtube\.com/(?:watch\?v=|live/|shorts/)|youtu\.be/)([A-Za-z0-9_-]{11})")
@@ -29,6 +32,19 @@ class Ingested:
     text: str            # contenido en crudo (transcripción o texto)
     sentiment: float     # -1..1 (VADER)
     analysis: str        # análisis del experto (modelo local) o aviso si no hay IA
+    saved: str = ""      # dónde se guardó el conocimiento ("Supabase"/"local")
+
+
+def _safe_analysis(text: str, source: str) -> str:
+    """Intenta el análisis de la IA; si está al límite, NO bloquea el guardado."""
+    if not llm.is_available():
+        return ("ℹ️ El cerebro IA no está disponible ahora; se guardó el contenido y su "
+                "sentimiento. El análisis completo se hará cuando la IA tenga cuota.")
+    try:
+        return llm.analyze_content(text, source)
+    except Exception as e:  # noqa: BLE001 — sin exponer claves
+        return (f"⚠️ La IA está al límite ahora mismo ({e}). El contenido y su "
+                "sentimiento SÍ quedaron guardados; el análisis se completará luego.")
 
 
 def _vader(text: str) -> float:
@@ -100,10 +116,10 @@ def fetch_youtube_transcript(url: str, languages=("es", "en")) -> str:
 
 
 def ingest_text(text: str, source: str = "texto pegado") -> Ingested:
-    analysis = (llm.analyze_content(text, source) if llm.is_available()
-                else "ℹ️ El cerebro IA no está disponible ahora; se muestra solo el "
-                     "sentimiento. (Análisis completo cuando la IA esté activa.)")
-    return Ingested(source, "texto", text, round(_vader(text), 3), analysis)
+    sent = round(_vader(text), 3)
+    analysis = _safe_analysis(text, source)
+    saved = cloud.knowledge_save("texto", source, sent, analysis, text)
+    return Ingested(source, "texto", text, sent, analysis, saved)
 
 
 def youtube_search(query: str, max_results: int = 3) -> list[dict]:
@@ -146,17 +162,23 @@ def auto_research(symbol) -> str:
         pass
     material = "\n\n".join(bits) or "Sin material disponible."
     resumen_fuentes = "**Fuentes consultadas:**\n\n" + material[:1500]
+    out = "ℹ️ Cerebro IA no disponible ahora.\n\n" + resumen_fuentes
     if llm.is_available():
         try:
-            return llm.analyze_content(material, f"Investigación de {symbol.label}")
+            out = llm.analyze_content(material, f"Investigación de {symbol.label}")
         except Exception as e:  # noqa: BLE001 — sin exponer claves; mostramos las fuentes
-            return f"⚠️ {e}\n\n{resumen_fuentes}"
-    return "ℹ️ Cerebro IA no disponible ahora.\n\n" + resumen_fuentes
+            out = f"⚠️ {e}\n\n{resumen_fuentes}"
+    # Guarda el aprendizaje en la nube para que el cerebro lo recuerde
+    try:
+        cloud.knowledge_save("auto", f"auto:{symbol.label}", _vader(material), out, material)
+    except Exception:
+        pass
+    return out
 
 
 def ingest_youtube(url: str) -> Ingested:
     text = fetch_youtube_transcript(url)
-    analysis = (llm.analyze_content(text, f"YouTube: {url}") if llm.is_available()
-                else "ℹ️ El cerebro IA no está disponible ahora; se muestra solo el "
-                     "sentimiento de la transcripción.")
-    return Ingested(url, "youtube", text, round(_vader(text), 3), analysis)
+    sent = round(_vader(text), 3)
+    analysis = _safe_analysis(text, f"YouTube: {url}")
+    saved = cloud.knowledge_save("youtube", url, sent, analysis, text)
+    return Ingested(url, "youtube", text, sent, analysis, saved)

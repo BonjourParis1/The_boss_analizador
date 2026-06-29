@@ -41,8 +41,40 @@ create table if not exists public.user_decisions (
 create index if not exists idx_dec_time
     on public.user_decisions (created_at desc);
 
+-- CONOCIMIENTO que le enseñas al cerebro (texto/YouTube analizado, auto-investigación).
+-- Esto es "lo que aprende": queda guardado en la NUBE y el cerebro lo reutiliza.
+create table if not exists public.knowledge (
+    id          bigint generated always as identity primary key,
+    created_at  timestamptz not null default now(),
+    kind        text        not null,                 -- texto / youtube / auto
+    source      text,                                 -- url o etiqueta de origen
+    sentiment   double precision default 0,           -- sesgo aprendido (-1..1)
+    summary     text,                                 -- resumen/insight para el cerebro
+    content     text                                  -- contenido bruto (recortado)
+);
+create index if not exists idx_knowledge_time
+    on public.knowledge (created_at desc);
+
+-- SEÑALES y su RESULTADO (acierto/fallo) para medir la precisión del sistema.
+create table if not exists public.signals (
+    id              bigint generated always as identity primary key,
+    created_at      timestamptz not null default now(),
+    entry_ts        double precision not null,         -- epoch de entrada (para vencimiento)
+    symbol          text        not null,
+    direction       text        not null,              -- SUBE / BAJA
+    expiry_seconds  integer     not null,              -- duración de la inversión
+    entry_price     double precision not null,
+    exit_price      double precision,
+    status          text default 'pending',            -- pending / win / loss
+    source          text default 'auto'                -- auto / terminal / manual
+);
+create index if not exists idx_signals_symbol_status
+    on public.signals (symbol, status);
+
 -- Seguridad: como usamos la service_role key SOLO en el backend (servidor),
 -- mantenemos RLS activado y SIN políticas públicas, de modo que ni la anon key
 -- ni el navegador puedan leer/escribir estas tablas directamente.
 alter table public.recommendations enable row level security;
 alter table public.user_decisions  enable row level security;
+alter table public.knowledge        enable row level security;
+alter table public.signals          enable row level security;

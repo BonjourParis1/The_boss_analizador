@@ -188,7 +188,26 @@ def _chat_raw(system: str, user: str, max_tokens: int = 900) -> str:
 
 
 # ----------------------------- Funciones de uso ----------------------------
-def reason_trade(sig, symbol_label: str, news_titles: list[str] | None = None) -> str:
+def _learned(limit: int = 4) -> str:
+    """Trae el conocimiento que se le enseñó (Supabase) para usarlo como contexto."""
+    try:
+        from db import cloud
+        ks = cloud.knowledge_recent(limit)
+        lines = []
+        for k in ks:
+            s = (k.get("summary") or "")[:240].replace("\n", " ").strip()
+            if s:
+                lines.append(f"- ({k.get('kind', '')}) {s}")
+        if lines:
+            return ("Conocimiento aprendido (lo que te he enseñado; tenlo en cuenta):\n"
+                    + "\n".join(lines) + "\n")
+    except Exception:
+        pass
+    return ""
+
+
+def reason_trade(sig, symbol_label: str, news_titles: list[str] | None = None,
+                 extra_context: str = "") -> str:
     news = "\n".join(f"- {t}" for t in (news_titles or [])[:6]) or "(sin titulares)"
     ctx = (
         f"Activo: {symbol_label}\n"
@@ -200,7 +219,9 @@ def reason_trade(sig, symbol_label: str, news_titles: list[str] | None = None) -
         f"Sentimiento de noticias: {sig.news_score}\n"
         f"Razones técnicas:\n- " + "\n- ".join(sig.reasons) + "\n\n"
         f"Titulares recientes:\n{news}\n\n"
-        "Explica qué está pasando y qué escenario es más probable, con gestión de "
+        + (extra_context + "\n\n" if extra_context else "")
+        + _learned() +
+        "\nExplica qué está pasando y qué escenario es más probable, con gestión de "
         "riesgo. Sé conciso (máx ~180 palabras)."
     )
     return _chat(_SYSTEM, ctx)
@@ -269,7 +290,8 @@ def structured_verdict(sig, symbol_label: str, news_titles: list[str] | None = N
         f"Soporte: {sig.support}  Resistencia: {sig.resistance}\n"
         f"Stop: {sig.stop_loss}  Objetivo: {sig.take_profit}\n"
         f"Sentimiento noticias: {sig.news_score}\nRazones: {'; '.join(sig.reasons)}\n"
-        f"Titulares:\n{news}\n" + (extra_context + "\n" if extra_context else "") + "\n"
+        f"Titulares:\n{news}\n" + (extra_context + "\n" if extra_context else "")
+        + _learned() + "\n"
         "Devuelve un JSON con: direccion (COMPRA/VENTA/ESPERAR), confianza (0-100), "
         "resumen (1-2 frases), riesgos (1 frase), niveles_clave. Usa SOLO datos del contexto."
     )

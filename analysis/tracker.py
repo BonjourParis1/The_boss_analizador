@@ -6,35 +6,16 @@ entrada. Al vencer la duración, el sistema compara con el precio REAL y la marc
 ACIERTO o FALLO automáticamente — así "sabe cuándo falló". La precisión resultante se
 muestra y retroalimenta la confianza del motor (aprende con el tiempo).
 
-Persistencia local en .secrets/signal_log.json (ignorado por git).
+Persistencia: SUPABASE (db/cloud.py). Si Supabase no está configurado, cae a un
+archivo local solo como respaldo. La lógica vive aquí; el almacenamiento, en la nube.
 """
 from __future__ import annotations
 
-import json
-import threading
 import time
 
-from config import SECRETS_DIR
+from db import cloud
 
-_FILE = SECRETS_DIR / "signal_log.json"
-_lock = threading.Lock()
-_MAX = 1000
-
-
-def _load() -> list:
-    if _FILE.exists():
-        try:
-            return json.loads(_FILE.read_text(encoding="utf-8"))
-        except Exception:
-            return []
-    return []
-
-
-def _save(data: list) -> None:
-    try:
-        _FILE.write_text(json.dumps(data[-_MAX:]), encoding="utf-8")
-    except Exception:
-        pass
+_DUR_LABEL = {30: "30s", 60: "1m", 180: "3m", 300: "5m", 900: "15m"}
 
 
 def record(symbol_key: str, direction: str, expiry_seconds: int, entry_price: float,
@@ -43,16 +24,12 @@ def record(symbol_key: str, direction: str, expiry_seconds: int, entry_price: fl
     if direction not in ("SUBE", "BAJA") or not entry_price:
         return
     now = time.time()
-    with _lock:
-        data = _load()
-        for s in data:
-            if (s["symbol"] == symbol_key and s["status"] == "pending"
-                    and s["dir"] == direction and now - s["ts"] < max(expiry_seconds, 30)):
-                return  # ya hay una pendiente igual reciente
-        data.append({"symbol": symbol_key, "dir": direction, "exp": int(expiry_seconds),
-                     "entry": float(entry_price), "ts": now, "status": "pending",
-                     "src": source})
-        _save(data)
+    for s in cloud.signals_all():
+        if (s.get("symbol") == symbol_key and s.get("status") == "pending"
+                and s.get("direction") == direction
+                and now - float(s.get("entry_ts", 0)) < max(expiry_seconds, 30)):
+            return  # ya hay una pendiente igual reciente
+    cloud.signal_save(symbol_key, direction, expiry_seconds, entry_price, source)
 
 
 def evaluate(symbol_key: str, current_price: float) -> None:
@@ -60,39 +37,35 @@ def evaluate(symbol_key: str, current_price: float) -> None:
     if not current_price:
         return
     now = time.time()
-    changed = False
-    with _lock:
-        data = _load()
-        for s in data:
-            if s["symbol"] == symbol_key and s["status"] == "pending" \
-                    and now >= s["ts"] + s["exp"]:
-                up = current_price > s["entry"]
-                win = (s["dir"] == "SUBE" and up) or (s["dir"] == "BAJA" and not up)
-                s["status"] = "win" if win else "loss"
-                s["exit"] = float(current_price)
-                changed = True
-        if changed:
-            _save(data)
+    for s in cloud.signals_all():
+        if (s.get("symbol") == symbol_key and s.get("status") == "pending"
+                and now >= float(s.get("entry_ts", 0)) + int(s.get("expiry_seconds", 0))):
+            up = current_price > float(s.get("entry_price", 0))
+            win = (s["direction"] == "SUBE" and up) or (s["direction"] == "BAJA" and not up)
+            cloud.signal_update(s.get("id"), "win" if win else "loss", current_price)
 
 
 def mark_last(symbol_key: str, win: bool) -> bool:
     """Marca manualmente el resultado de la última señal del símbolo (tu resultado real)."""
-    with _lock:
-        data = _load()
-        for s in reversed(data):
-            if s["symbol"] == symbol_key:
-                s["status"] = "win" if win else "loss"
-                s["src"] = "manual"
-                _save(data)
-                return True
+    rows = [s for s in cloud.signals_all()
+            if s.get("symbol") == symbol_key]
+    rows.sort(key=lambda s: float(s.get("entry_ts", 0)), reverse=True)
+    if rows:
+        cloud.signal_update(rows[0].get("id"), "win" if win else "loss",
+                            rows[0].get("entry_price", 0))
+        return True
     return False
+
+
+def _resolved(symbol_key: str | None = None) -> list:
+    return [s for s in cloud.signals_all()
+            if s.get("status") in ("win", "loss")
+            and (symbol_key is None or s.get("symbol") == symbol_key)]
 
 
 def stats(symbol_key: str | None = None) -> dict:
     """Precisión global o por símbolo: aciertos/fallos y % de acierto."""
-    data = _load()
-    rel = [s for s in data if s["status"] in ("win", "loss")
-           and (symbol_key is None or s["symbol"] == symbol_key)]
+    rel = _resolved(symbol_key)
     n = len(rel)
     wins = sum(1 for s in rel if s["status"] == "win")
     return {"n": n, "wins": wins, "losses": n - wins,
@@ -105,13 +78,9 @@ def live_winrate(symbol_key: str, min_samples: int = 8) -> float | None:
     return s["accuracy"] if s["n"] >= min_samples else None
 
 
-_DUR_LABEL = {30: "30s", 60: "1m", 180: "3m", 300: "5m", 900: "15m"}
-
-
 def evaluated() -> list:
     """Señales ya resueltas (acierto/fallo), ordenadas por tiempo."""
-    return sorted([s for s in _load() if s["status"] in ("win", "loss")],
-                  key=lambda s: s["ts"])
+    return sorted(_resolved(), key=lambda s: float(s.get("entry_ts", 0)))
 
 
 def curve() -> list:
@@ -136,12 +105,17 @@ def _breakdown(keyfn) -> dict:
 
 
 def breakdown_symbol() -> dict:
-    return _breakdown(lambda s: s["symbol"])
+    return _breakdown(lambda s: s.get("symbol"))
 
 
 def breakdown_duration() -> dict:
-    return _breakdown(lambda s: _DUR_LABEL.get(s.get("exp"), str(s.get("exp", "?")) + "s"))
+    return _breakdown(
+        lambda s: _DUR_LABEL.get(int(s.get("expiry_seconds", 0)),
+                                 str(s.get("expiry_seconds", "?")) + "s"))
 
 
 def reset() -> None:
-    _save([])
+    """Borra el historial local de respaldo (en Supabase se gestiona desde la consola)."""
+    cloud._lsave(cloud._SFILE, [])
+    cloud._cache["ts"] = 0.0
+    cloud._cache["signals"] = None

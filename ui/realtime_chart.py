@@ -57,75 +57,89 @@ def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 5
   document.getElementById('gxtz').textContent = 'Hora local · UTC' + offH;
   const fmtT = t => new Date(t*1000).toLocaleTimeString([], {{hour:'2-digit', minute:'2-digit', second:({secs}?'2-digit':undefined)}});
 
-  const chart = LightweightCharts.createChart(el, {{
-    width: el.clientWidth, height: {height},
-    layout: {{ background: {{ type:'solid', color:'{T.PANEL}' }}, textColor:'{T.TEXT}',
-               fontFamily:'JetBrains Mono, monospace' }},
-    // Fondo limpio estilo IQ Option: sin cuadrícula vertical, horizontal muy tenue
-    grid: {{ vertLines: {{ visible:false }}, horzLines: {{ color:'rgba(0,0,0,0.06)' }} }},
-    timeScale: {{ timeVisible:true, secondsVisible:{secs}, borderColor:'{T.BORDER}',
-                  tickMarkFormatter:(t)=>fmtT(t) }},
-    rightPriceScale: {{ borderColor:'{T.BORDER}' }},
-    localization: {{ timeFormatter:(t)=>new Date(t*1000).toLocaleString() }},
-    crosshair: {{ mode: 0 }}, handleScroll:true, handleScale:true,
-  }});
-  const candle = chart.addCandlestickSeries({{
-    upColor:'{T.GREEN}', downColor:'{T.RED}', borderVisible:false,
-    wickUpColor:'{T.GREEN}', wickDownColor:'{T.RED}', priceLineColor:'{T.MUTED}' }});
-  const ma9  = chart.addLineSeries({{ color:'#5aa017', lineWidth:2, priceLineVisible:false, lastValueVisible:false }});
-  const ma21 = chart.addLineSeries({{ color:'{T.GOLD}', lineWidth:2, priceLineVisible:false, lastValueVisible:false }});
+  // Al cambiar de activo el iframe se re-monta: esperamos a que la librería esté
+  // cargada y a que el contenedor tenga ancho real (>0) para que el ZOOM funcione.
+  function start() {{
+    if (typeof LightweightCharts === 'undefined' || !el.clientWidth) {{
+      return setTimeout(start, 60);
+    }}
+    const chart = LightweightCharts.createChart(el, {{
+      width: el.clientWidth, height: {height},
+      layout: {{ background: {{ type:'solid', color:'{T.PANEL}' }}, textColor:'{T.TEXT}',
+                 fontFamily:'JetBrains Mono, monospace' }},
+      // Fondo limpio estilo IQ Option: sin cuadrícula vertical, horizontal muy tenue
+      grid: {{ vertLines: {{ visible:false }}, horzLines: {{ color:'rgba(0,0,0,0.06)' }} }},
+      timeScale: {{ timeVisible:true, secondsVisible:{secs}, borderColor:'{T.BORDER}',
+                    rightOffset:4, tickMarkFormatter:(t)=>fmtT(t) }},
+      rightPriceScale: {{ borderColor:'{T.BORDER}' }},
+      localization: {{ timeFormatter:(t)=>new Date(t*1000).toLocaleString() }},
+      crosshair: {{ mode: 0 }},
+      handleScroll: {{ mouseWheel:true, pressedMouseMove:true, horzTouchDrag:true, vertTouchDrag:true }},
+      handleScale: {{ mouseWheel:true, pinch:true, axisPressedMouseMove:true, axisDoubleClickReset:true }},
+    }});
+    const candle = chart.addCandlestickSeries({{
+      upColor:'{T.GREEN}', downColor:'{T.RED}', borderVisible:false,
+      wickUpColor:'{T.GREEN}', wickDownColor:'{T.RED}', priceLineColor:'{T.MUTED}' }});
+    const ma9  = chart.addLineSeries({{ color:'#5aa017', lineWidth:2, priceLineVisible:false, lastValueVisible:false }});
+    const ma21 = chart.addLineSeries({{ color:'{T.GOLD}', lineWidth:2, priceLineVisible:false, lastValueVisible:false }});
 
-  const LEVELS = {levels_json};
-  LEVELS.forEach(l => candle.createPriceLine({{
-    price:l.v, color:l.k==='res'?'{T.RED}':'{T.GREEN}', lineWidth:1, lineStyle:2,
-    axisLabelVisible:true, title:l.n }}));
+    const LEVELS = {levels_json};
+    LEVELS.forEach(l => candle.createPriceLine({{
+      price:l.v, color:l.k==='res'?'{T.RED}':'{T.GREEN}', lineWidth:1, lineStyle:2,
+      axisLabelVisible:true, title:l.n }}));
 
-  const priceEl = document.getElementById('gxprice');
-  const maEl = document.getElementById('gxma');
-  let closes = [];
-  const smaAt = (p,i) => {{ if (i<p-1) return null; let s=0; for(let j=i-p+1;j<=i;j++) s+=closes[j].close; return s/p; }};
-  function rebuildMA() {{
-    const m9=[], m21=[];
-    for (let i=0;i<closes.length;i++) {{ const a=smaAt(9,i), b=smaAt(21,i);
-      if(a!=null) m9.push({{time:closes[i].time,value:a}}); if(b!=null) m21.push({{time:closes[i].time,value:b}}); }}
-    ma9.setData(m9); ma21.setData(m21);
-    if (m9.length&&m21.length) maEl.innerHTML="SMA9 <span style='color:#5aa017'>"+m9[m9.length-1].value.toFixed(4)+
-      "</span>  SMA21 <span style='color:{T.GOLD}'>"+m21[m21.length-1].value.toFixed(4)+"</span>";
+    const priceEl = document.getElementById('gxprice');
+    const maEl = document.getElementById('gxma');
+    let closes = [];
+    const smaAt = (p,i) => {{ if (i<p-1) return null; let s=0; for(let j=i-p+1;j<=i;j++) s+=closes[j].close; return s/p; }};
+    function rebuildMA() {{
+      const m9=[], m21=[];
+      for (let i=0;i<closes.length;i++) {{ const a=smaAt(9,i), b=smaAt(21,i);
+        if(a!=null) m9.push({{time:closes[i].time,value:a}}); if(b!=null) m21.push({{time:closes[i].time,value:b}}); }}
+      ma9.setData(m9); ma21.setData(m21);
+      if (m9.length&&m21.length) maEl.innerHTML="SMA9 <span style='color:#5aa017'>"+m9[m9.length-1].value.toFixed(4)+
+        "</span>  SMA21 <span style='color:{T.GOLD}'>"+m21[m21.length-1].value.toFixed(4)+"</span>";
+    }}
+    function paint(c) {{ const up=c.close>=c.open;
+      priceEl.textContent=c.close.toLocaleString(undefined,{{maximumFractionDigits:8}});
+      priceEl.style.color=up?'{T.GREEN}':'{T.RED}'; }}
+
+    // Mantener el ancho correcto aunque el contenedor cambie de tamaño (re-montajes)
+    const fixW = () => {{ if (el.clientWidth) chart.applyOptions({{ width: el.clientWidth }}); }};
+    window.addEventListener('resize', fixW);
+    try {{ new ResizeObserver(fixW).observe(el); }} catch(e) {{}}
+
+    const ts = chart.timeScale();
+    function zoom(f) {{ const r=ts.getVisibleLogicalRange(); if(!r) return;
+      const span=r.to-r.from, c=(r.to+r.from)/2, h=(span*f)/2; ts.setVisibleLogicalRange({{from:c-h,to:c+h}}); }}
+    document.getElementById('gxzoomin').onclick=()=>zoom(0.6);
+    document.getElementById('gxzoomout').onclick=()=>zoom(1.7);
+    document.getElementById('gxfit').onclick=()=>ts.fitContent();
+
+    fetch('https://api.binance.com/api/v3/klines?symbol={sym}&interval={iv}&limit=500')
+      .then(r=>r.json()).then(d=>{{
+        const data=d.map(k=>({{time:k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4]}}));
+        candle.setData(data); closes=data.map(k=>({{time:k.time,close:k.close}})); rebuildMA();
+        if(data.length) paint(data[data.length-1]); fixW(); chart.timeScale().fitContent();
+      }}).catch(()=>{{}});
+
+    let ws;
+    function connect() {{
+      ws=new WebSocket('wss://stream.binance.com:9443/ws/{sym_l}@kline_{iv}');
+      ws.onmessage=(e)=>{{ const k=JSON.parse(e.data).k;
+        const c={{time:k.t/1000,open:+k.o,high:+k.h,low:+k.l,close:+k.c}};
+        candle.update(c);
+        if(closes.length&&closes[closes.length-1].time===c.time) closes[closes.length-1].close=c.close;
+        else closes.push({{time:c.time,close:c.close}});
+        const i=closes.length-1, a=smaAt(9,i), b=smaAt(21,i);
+        if(a!=null) ma9.update({{time:c.time,value:a}}); if(b!=null) ma21.update({{time:c.time,value:b}});
+        paint(c);
+      }};
+      ws.onclose=()=>setTimeout(connect,1500);
+    }}
+    connect();
   }}
-  function paint(c) {{ const up=c.close>=c.open;
-    priceEl.textContent=c.close.toLocaleString(undefined,{{maximumFractionDigits:8}});
-    priceEl.style.color=up?'{T.GREEN}':'{T.RED}'; }}
-  window.addEventListener('resize', () => chart.applyOptions({{ width: el.clientWidth }}));
-
-  const ts = chart.timeScale();
-  function zoom(f) {{ const r=ts.getVisibleLogicalRange(); if(!r) return;
-    const span=r.to-r.from, c=(r.to+r.from)/2, h=(span*f)/2; ts.setVisibleLogicalRange({{from:c-h,to:c+h}}); }}
-  document.getElementById('gxzoomin').onclick=()=>zoom(0.6);
-  document.getElementById('gxzoomout').onclick=()=>zoom(1.7);
-  document.getElementById('gxfit').onclick=()=>ts.fitContent();
-
-  fetch('https://api.binance.com/api/v3/klines?symbol={sym}&interval={iv}&limit=500')
-    .then(r=>r.json()).then(d=>{{
-      const data=d.map(k=>({{time:k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4]}}));
-      candle.setData(data); closes=data.map(k=>({{time:k.time,close:k.close}})); rebuildMA();
-      if(data.length) paint(data[data.length-1]); chart.timeScale().fitContent();
-    }}).catch(()=>{{}});
-
-  let ws;
-  function connect() {{
-    ws=new WebSocket('wss://stream.binance.com:9443/ws/{sym_l}@kline_{iv}');
-    ws.onmessage=(e)=>{{ const k=JSON.parse(e.data).k;
-      const c={{time:k.t/1000,open:+k.o,high:+k.h,low:+k.l,close:+k.c}};
-      candle.update(c);
-      if(closes.length&&closes[closes.length-1].time===c.time) closes[closes.length-1].close=c.close;
-      else closes.push({{time:c.time,close:c.close}});
-      const i=closes.length-1, a=smaAt(9,i), b=smaAt(21,i);
-      if(a!=null) ma9.update({{time:c.time,value:a}}); if(b!=null) ma21.update({{time:c.time,value:b}});
-      paint(c);
-    }};
-    ws.onclose=()=>setTimeout(connect,1500);
-  }}
-  connect();
+  start();
 }})();
 </script>
 """

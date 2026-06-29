@@ -328,6 +328,17 @@ def ask(question: str, context: str = "") -> str:
     return _chat(_QA_SYSTEM, user, max_tokens=900)
 
 
+def learn_from_correction(question: str, prev_answer: str, correction: str) -> str:
+    """Procesa la corrección del experto y la convierte en una LECCIÓN reutilizable
+    (la IA solo se usa AQUÍ, al corregir; la consulta normal va sin IA)."""
+    system = ("Eres el editor de la base de conocimiento de un asesor de trading. A partir "
+              "de la corrección del experto, redacta una LECCIÓN breve, clara y reutilizable "
+              "(1-3 frases) que el sistema debe recordar y aplicar. Español, sin relleno.")
+    user = (f"Pregunta: {question}\nRespuesta previa: {prev_answer}\n"
+            f"Corrección del experto: {correction}\n\nEscribe solo la lección a recordar.")
+    return _chat(system, user, max_tokens=300)
+
+
 def analyze_content(text: str, source: str = "") -> str:
     text = text.strip()
     if len(text) > 16000:

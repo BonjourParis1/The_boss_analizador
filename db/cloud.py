@@ -67,6 +67,34 @@ def knowledge_save(kind: str, source: str, sentiment: float, summary: str,
     return "local"
 
 
+def knowledge_search(query: str, limit: int = 3) -> list:
+    """Busca en lo APRENDIDO las entradas más relevantes a la consulta (sin IA).
+    Ranking simple por coincidencia de palabras en resumen/origen."""
+    import re
+    items = []
+    if settings.use_supabase:
+        try:
+            r = (_client().table("knowledge")
+                 .select("kind,source,summary,sentiment,created_at")
+                 .order("created_at", desc=True).limit(150).execute())
+            items = r.data or []
+        except Exception:
+            items = []
+    else:
+        items = list(reversed(_ljson(_KFILE)))[:150]
+    words = [w for w in re.findall(r"[a-záéíóúñ0-9]+", (query or "").lower()) if len(w) > 2]
+    if not words:
+        return []
+    scored = []
+    for it in items:
+        text = ((it.get("summary") or "") + " " + (it.get("source") or "")).lower()
+        score = sum(text.count(w) for w in words)
+        if score > 0:
+            scored.append((score, it))
+    scored.sort(key=lambda x: -x[0])
+    return [it for _, it in scored[:limit]]
+
+
 def knowledge_recent(limit: int = 6) -> list:
     if settings.use_supabase:
         try:

@@ -699,34 +699,32 @@ def _side_refresh(symbol) -> int:
 
 
 def render_qa():
-    """Consultas de trading al sistema + retroalimentación que el sistema aprende."""
+    """Consultas al sistema: responde con lo que HA APRENDIDO (sin IA). Al corregir,
+    la IA procesa la corrección y la guarda para aplicarla en el futuro."""
     if not is_authenticated():
         return
+    from db import cloud as _cloud
     st.markdown("---")
     st.markdown("### 💬 Pregúntale al sistema")
-    st.caption("Consulta cualquier duda de trading. Puedes corregir cada respuesta y el "
-               "sistema lo aprende (se guarda en Supabase y lo usa en el futuro).")
-    if not llm.is_available():
-        st.info("La IA no está disponible en este momento para responder.")
-        return
+    st.caption("Responde con lo que ha aprendido. Si lo corriges, la IA procesa tu "
+               "corrección, la guarda en Supabase y la aplica en el futuro.")
     sk = st.session_state["symbol_key"]
     q = st.text_input("Tu pregunta", key="qa_q",
-                      placeholder="¿Conviene comprar EUR/USD ahora? ¿Qué me dice este RSI?")
+                      placeholder="¿Qué has aprendido de EUR/USD? ¿Cómo leo este RSI?")
     if st.button("Preguntar", key="qa_ask") and q.strip():
-        ctx = [f"Activo en pantalla: {SYMBOLS_BY_KEY[sk].label}"]
-        cur = st.session_state.get("_cur") or {}
-        if cur.get("sig_action"):
-            ctx.append(f"Señal del motor: {cur['sig_action']} (precio {cur.get('price')})")
-        try:
-            _dfq = load_market(sk, st.session_state["interval"], st.session_state.get("limit", 200))
-            ctx.append(snapshot_text(_dfq))
-        except Exception:
-            pass
-        with st.spinner("Pensando…"):
-            try:
-                ans = llm.ask(q, "  ".join(b for b in ctx if b))
-            except Exception:
-                ans = "⚠️ La IA está al límite ahora mismo; vuelve a intentarlo en un momento."
+        # Respuesta SOLO desde lo aprendido (búsqueda en la base de conocimiento)
+        hits = _cloud.knowledge_search(q, 3)
+        if hits:
+            partes = []
+            for h in hits:
+                _src = h.get("source", "")
+                _sum = (h.get("summary") or "").strip()
+                if _sum:
+                    partes.append(f"- {_sum[:500]}" + (f"  _(fuente: {_src})_" if _src else ""))
+            ans = "Según lo que he aprendido:\n\n" + "\n\n".join(partes)
+        else:
+            ans = ("Todavía no he aprendido nada específico sobre eso. Enséñame con el "
+                   "recuadro de abajo y lo recordaré para la próxima.")
         hist = st.session_state.setdefault("qa_hist", [])
         hist.insert(0, {"id": f"{datetime.now().timestamp()}", "q": q.strip(), "a": ans})
         del hist[10:]
@@ -734,19 +732,23 @@ def render_qa():
     for qa in st.session_state.get("qa_hist", []):
         with st.container(border=True):
             st.markdown(f"**🧑 Tú:** {qa['q']}")
-            st.markdown(f"**🤖 Sistema:** {qa['a']}")
-            with st.expander("✍️ Corregir / afinar (el sistema lo aprende)"):
+            st.markdown(f"**🧠 Sistema (aprendido):** {qa['a']}")
+            with st.expander("✍️ Corregir / afinar (la IA lo procesa y el sistema lo aprende)"):
                 corr = st.text_area("Tu corrección o matiz", key=f"qa_corr_{qa['id']}",
                                     label_visibility="collapsed")
                 if st.button("Enseñar al sistema", key=f"qa_teach_{qa['id']}") and corr.strip():
+                    leccion = corr.strip()
+                    if llm.is_available():
+                        with st.spinner("La IA procesa tu corrección…"):
+                            try:
+                                leccion = llm.learn_from_correction(qa["q"], qa["a"], corr.strip())
+                            except Exception:
+                                leccion = corr.strip()
                     try:
-                        from db import cloud as _cloud
                         dest = _cloud.knowledge_save(
-                            "correccion", f"chat:{SYMBOLS_BY_KEY[sk].label}", 0.0,
-                            f"Corrección del experto a una consulta de trading.\n"
-                            f"Pregunta: {qa['q']}\nRespuesta previa: {qa['a']}\n"
-                            f"Corrección/afinamiento: {corr.strip()}", "")
-                        st.success(f"✅ Aprendido (guardado en {dest}). Lo usaré en próximas "
+                            "leccion", f"chat:{SYMBOLS_BY_KEY[sk].label}", 0.0,
+                            f"{leccion}\n\n(Consulta original: {qa['q']})", "")
+                        st.success(f"✅ Aprendido (guardado en {dest}). Lo aplicaré en próximas "
                                    "respuestas y análisis.")
                     except Exception:
                         st.error("No se pudo guardar la corrección ahora.")

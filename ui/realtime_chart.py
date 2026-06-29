@@ -70,7 +70,8 @@ def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 5
       // Fondo limpio estilo IQ Option: sin cuadrícula vertical, horizontal muy tenue
       grid: {{ vertLines: {{ visible:false }}, horzLines: {{ color:'rgba(0,0,0,0.06)' }} }},
       timeScale: {{ timeVisible:true, secondsVisible:{secs}, borderColor:'{T.BORDER}',
-                    rightOffset:4, tickMarkFormatter:(t)=>fmtT(t) }},
+                    rightOffset:6, barSpacing:9, minBarSpacing:3,
+                    tickMarkFormatter:(t)=>fmtT(t) }},
       rightPriceScale: {{ borderColor:'{T.BORDER}' }},
       localization: {{ timeFormatter:(t)=>new Date(t*1000).toLocaleString() }},
       crosshair: {{ mode: 0 }},
@@ -128,7 +129,9 @@ def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 5
       .then(r=>r.json()).then(d=>{{
         const data=d.map(k=>({{time:k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4]}}));
         candle.setData(data); closes=data.map(k=>({{time:k.time,close:k.close}})); rebuildMA();
-        if(data.length) paint(data[data.length-1]); fixW(); chart.timeScale().fitContent();
+        if(data.length) paint(data[data.length-1]); fixW();
+        // Mostrar las últimas ~90 velas con buen ancho (no apretujar las 500)
+        const N=data.length; ts.setVisibleLogicalRange({{from:Math.max(0,N-90), to:N+2}});
       }}).catch(()=>{{}});
 
     let ws;

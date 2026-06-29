@@ -7,9 +7,9 @@ legibilidad; acento lima; verde/rojo de mercado. Tipografías no genéricas: Man
 """
 from __future__ import annotations
 
-# Paleta CLARA con identidad lima
-BG = "#e9f7c5"           # fondo de página: verde limón claro, suave, brillante
-BG2 = "#f2fbdd"
+# Paleta CLARA con identidad lima (un toque menos claro)
+BG = "#dff0ab"           # fondo de página: verde limón claro, suave, un poco más vivo
+BG2 = "#e9f6c6"
 PANEL = "#ffffff"        # tarjetas/paneles blancos (legibilidad)
 PANEL_2 = "#f3f9e3"
 BORDER = "#cde39e"
@@ -40,7 +40,10 @@ CSS = f"""
     font-family:'Manrope','Segoe UI',sans-serif;
   }}
   #MainMenu, footer, header {{ visibility:hidden; }}
-  .block-container {{ padding-top:0.6rem; padding-bottom:1rem; max-width:100%; }}
+  /* Usar casi todo el ancho (evita que se recorten pestañas/controles a la derecha) */
+  .block-container {{ padding:0.6rem 1rem 1rem 1rem !important; max-width:100% !important; }}
+  /* Pestañas: permitir scroll suave si no caben, sin recortar la última */
+  [data-baseweb="tab-list"] {{ flex-wrap:wrap; gap:2px; }}
   .stApp, .stApp p, .stApp span, .stApp div, .stApp label {{ color:{TEXT}; }}
 
   /* Sin atenuado/parpadeo durante auto-refrescos */

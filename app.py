@@ -189,8 +189,8 @@ with st.sidebar:
 st.markdown(C.header_bar(autonomous.is_running()), unsafe_allow_html=True)
 
 tab_live, tab_auto, tab_radar, tab_prec, tab_brain, tab_hist, tab_back, tab_ml = st.tabs(
-    ["🖥️ Terminal", "🤖 Autónomo", "📡 Radar de mercado", "🎯 Precisión", "🧠 Cerebro IA",
-     "📜 Historial", "⏮ Backtesting", "🎓 Aprendizaje"]
+    ["🖥️ Terminal", "🤖 Autónomo", "📡 Radar", "🎯 Precisión", "🧠 Cerebro IA",
+     "📜 Historial", "⏮ Backtest", "🎓 Aprendizaje"]
 )
 
 
@@ -237,7 +237,7 @@ DUR_LABELS = ["30s", "1m", "3m", "5m", "15m"]
 
 def render_toolbar():
     """Controles compactos en franja horizontal superior (estilo IQ Option)."""
-    c = st.columns([1.1, 1.7, 1.0, 1.2, 1.1, 0.7])
+    c = st.columns([1.0, 1.5, 0.95, 1.15, 1.0, 0.85])
     grupos = ["Todos"] + GROUPS
     grp = c[0].selectbox("Mercado", grupos,
                          index=grupos.index(st.session_state.get("grp", "Todos")),

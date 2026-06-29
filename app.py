@@ -220,6 +220,10 @@ with st.sidebar:
                                                        value=settings.refresh_seconds)
         st.session_state["auto_minconf"] = st.slider("Confianza mín. autónomo %", 50, 90,
                                                      int(st.session_state["auto_minconf"]))
+        _ff = st.checkbox("🎯 Foco Forex (prioriza tus pares)", value=True,
+                          help="El motor escanea TODO el Forex en cada pasada y rota el "
+                               "resto de mercados, para no agotar las APIs gratuitas.")
+        autonomous.set_forex_focus(_ff)
 
     with st.expander("🔐 Accesos recientes", expanded=False):
         try:

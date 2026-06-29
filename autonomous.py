@@ -45,6 +45,7 @@ class _State:
         self.research: dict = {}          # symbol_key -> {t, label, action, text}
         self._research_cooldown: dict = {}  # symbol_key -> epoch del último estudio
         self.ia: dict = {}                # symbol_key -> {dir, conf, resumen} (veredicto IA)
+        self.forex_focus = True           # priorizar Forex (y rotar el resto de mercados)
 
 
 _S = _State()
@@ -52,6 +53,32 @@ _S = _State()
 
 _RESEARCH_COOLDOWN_S = 900   # no reinvestigar el mismo activo en 15 min
 _MAX_RESEARCH_PER_CYCLE = 2  # acota el tiempo del ciclo (la IA puede ser lenta)
+_OTHERS_PER_CYCLE = 4        # cuántos activos de "otros mercados" se rotan por pasada
+
+
+def _scan_targets():
+    """Lista de activos a analizar esta pasada.
+
+    Modo Foco Forex: SIEMPRE todos los pares de Forex (prioridad para la cuota de
+    datos) + todo el Cripto (gratis por Binance, 24/7), y ROTA los demás mercados
+    (acciones, índices, materias) unos pocos por pasada, para cubrirlos sin agotar
+    las APIs gratuitas. Si se desactiva, analiza todos los activos cada pasada.
+    """
+    if not _S.forex_focus:
+        return list(SYMBOLS)
+    forex = [s for s in SYMBOLS if s.group == "Forex"]
+    cripto = [s for s in SYMBOLS if s.group == "Cripto"]
+    otros = [s for s in SYMBOLS if s.group not in ("Forex", "Cripto")]
+    rot = []
+    if otros:
+        start = (_S.cycles * _OTHERS_PER_CYCLE) % len(otros)
+        rot = [otros[(start + i) % len(otros)] for i in range(min(_OTHERS_PER_CYCLE, len(otros)))]
+    return forex + cripto + rot
+
+
+def set_forex_focus(enabled: bool) -> None:
+    with _S.lock:
+        _S.forex_focus = bool(enabled)
 
 
 def _maybe_research(symbol, sig, plan, done_count: int) -> int:
@@ -93,7 +120,7 @@ def _scan_cycle(stop_event: threading.Event, min_conf: float, timeframe: str) ->
     found = 0
     researched = 0
     has_model = auto_learn.model_exists()
-    for s in SYMBOLS:
+    for s in _scan_targets():
         if stop_event.is_set():
             break
         try:

@@ -13,6 +13,7 @@ registro de decisiones en Supabase -> historial, radar, backtest y ML.
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 
 import streamlit as st
 
@@ -38,9 +39,42 @@ from ui import theme as T
 from ui.auth_ui import is_authenticated, logout, render_login
 from ui.realtime_chart import stream_chart_html
 
-st.set_page_config(page_title="Guía Experto de Trading", page_icon="📊",
+# Logo de marca (THE BOSS ANALIZADOR): favicon + marca de agua. Si el archivo no
+# existe aún, se usa un emoji y no se muestra marca de agua (sin romper nada).
+_LOGO = Path(__file__).parent / "assets" / "logo.png"
+_page_icon = "📊"
+if _LOGO.exists():
+    try:
+        from PIL import Image
+        _page_icon = Image.open(_LOGO)
+    except Exception:
+        _page_icon = "📊"
+
+st.set_page_config(page_title="THE BOSS ANALIZADOR", page_icon=_page_icon,
                    layout="wide", initial_sidebar_state="expanded")
 st.markdown(T.CSS, unsafe_allow_html=True)
+
+
+def _inject_watermark() -> None:
+    """Marca de agua centrada y muy tenue, DETRÁS del contenido (no estorba)."""
+    if not _LOGO.exists():
+        return
+    import base64
+    try:
+        b64 = base64.b64encode(_LOGO.read_bytes()).decode()
+    except Exception:
+        return
+    st.markdown(
+        "<style>"
+        ".stApp::before{content:'';position:fixed;inset:0;"
+        f"background:url('data:image/png;base64,{b64}') center 46% no-repeat;"
+        "background-size:min(52vw,640px);opacity:0.06;z-index:0;pointer-events:none;}"
+        "[data-testid='stAppViewContainer']{position:relative;z-index:1;}"
+        "section[data-testid='stSidebar']{position:relative;z-index:2;}"
+        "</style>", unsafe_allow_html=True)
+
+
+_inject_watermark()
 
 
 # --------------------------- Cache de datos --------------------------------

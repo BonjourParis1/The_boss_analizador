@@ -39,14 +39,21 @@ from ui import theme as T
 from ui.auth_ui import is_authenticated, logout, render_login
 from ui.realtime_chart import stream_chart_html
 
-# Logo de marca (THE BOSS ANALIZADOR): favicon + marca de agua. Si el archivo no
-# existe aún, se usa un emoji y no se muestra marca de agua (sin romper nada).
-_LOGO = Path(__file__).parent / "assets" / "logo.png"
+# Logo de marca (THE BOSS ANALIZADOR): favicon + marca de agua. Usa versiones
+# OPTIMIZADAS (favicon.png / logo_wm.png) y cae al original si no están. Si no hay
+# imagen, usa un emoji y no muestra marca de agua (sin romper nada).
+_ASSETS = Path(__file__).parent / "assets"
+_FAVICON = _ASSETS / "favicon.png"
+_WATERMARK = _ASSETS / "logo_wm.png"
+_LOGO = _ASSETS / "logo.png"
+_fav_path = _FAVICON if _FAVICON.exists() else (_LOGO if _LOGO.exists() else None)
+_wm_path = _WATERMARK if _WATERMARK.exists() else (_LOGO if _LOGO.exists() else None)
+
 _page_icon = "📊"
-if _LOGO.exists():
+if _fav_path:
     try:
         from PIL import Image
-        _page_icon = Image.open(_LOGO)
+        _page_icon = Image.open(_fav_path)
     except Exception:
         _page_icon = "📊"
 
@@ -57,11 +64,11 @@ st.markdown(T.CSS, unsafe_allow_html=True)
 
 def _inject_watermark() -> None:
     """Marca de agua centrada y muy tenue, DETRÁS del contenido (no estorba)."""
-    if not _LOGO.exists():
+    if not _wm_path:
         return
     import base64
     try:
-        b64 = base64.b64encode(_LOGO.read_bytes()).decode()
+        b64 = base64.b64encode(_wm_path.read_bytes()).decode()
     except Exception:
         return
     st.markdown(

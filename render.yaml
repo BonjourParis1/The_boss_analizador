@@ -1,0 +1,38 @@
+# Render Blueprint — motor autónomo 24/7 como "background worker".
+# Cómo usarlo:
+#   1) Crea cuenta en https://render.com y conecta tu repo de GitHub.
+#   2) New + → "Blueprint" → elige este repo (detecta render.yaml).
+#   3) Render te pedirá las variables marcadas (sync:false). Pega tus claves.
+# Nota: el plan "starter" de worker es de pago (~7 USD/mes). El web service del
+# dashboard sigue en Streamlit Cloud (gratis); aquí solo va el motor que corre siempre.
+services:
+  - type: worker
+    name: theboss-worker
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: python worker.py
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: LLM_PROVIDER
+        value: gemini
+      - key: LLM_MODEL
+        value: gemini-2.0-flash
+      - key: SCAN_INTERVAL_MINUTES
+        value: "2"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: FINNHUB_API_KEY
+        sync: false
+      - key: TWELVEDATA_API_KEY
+        sync: false
+      - key: ALPHA_VANTAGE_API_KEY
+        sync: false

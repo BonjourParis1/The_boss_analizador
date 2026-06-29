@@ -25,10 +25,15 @@ from dataclasses import dataclass
 from config import ADMIN_KEYS_FILE, SECRETS_DIR, settings
 
 # ----------------- Token de sesión persistente (recargar sin re-login) -------
+# En la NUBE (Streamlit Cloud, Render, etc.) el disco se borra al redesplegar, así que
+# preferimos la variable de entorno SESSION_SECRET (estable). En local, archivo.
 _SESSION_SECRET_FILE = SECRETS_DIR / "session_secret"
+_SESSION_SECRET_ENV = os.getenv("SESSION_SECRET", "").strip()
 
 
 def _session_secret() -> bytes:
+    if _SESSION_SECRET_ENV:
+        return _SESSION_SECRET_ENV.encode("utf-8")
     if not _SESSION_SECRET_FILE.exists():
         _SESSION_SECRET_FILE.write_bytes(os.urandom(32))
         try:
@@ -102,12 +107,19 @@ def save_admin_keys(passwords: list[str]) -> None:
         pass
 
 
+# En la NUBE se pueden inyectar los hashes (NO las claves en texto) por entorno:
+# ADMIN_KEYS_JSON = {"hashes": ["pbkdf2_sha256$...", "...", "..."], "version": 1}
+_ADMIN_KEYS_JSON_ENV = os.getenv("ADMIN_KEYS_JSON", "").strip()
+
+
 def admin_keys_exist() -> bool:
-    return ADMIN_KEYS_FILE.exists()
+    return bool(_ADMIN_KEYS_JSON_ENV) or ADMIN_KEYS_FILE.exists()
 
 
 def _load_hashes() -> list[str]:
-    if not admin_keys_exist():
+    if _ADMIN_KEYS_JSON_ENV:
+        return json.loads(_ADMIN_KEYS_JSON_ENV)["hashes"]
+    if not ADMIN_KEYS_FILE.exists():
         raise FileNotFoundError(
             "No hay claves configuradas. Ejecuta:  python setup_admin.py"
         )

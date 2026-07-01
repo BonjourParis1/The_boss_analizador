@@ -1166,6 +1166,16 @@ with tab_brain:
                     # Resultado ESTRUCTURADO (JSON) y, debajo, explicación en prosa
                     try:
                         v = llm.structured_verdict(sig, label, titles, extra_context=extra)
+                        # Alimenta el sistema: guarda el análisis del activo en el conocimiento
+                        try:
+                            from db import cloud as _cloud
+                            _cloud.knowledge_save(
+                                "analisis", f"analisis:{label}", 0.0,
+                                f"Veredicto IA {label}: {v.get('direccion','')} "
+                                f"({v.get('confianza','')}%). {v.get('resumen','')} "
+                                f"Riesgos: {v.get('riesgos','')}", extra)
+                        except Exception:
+                            pass
                         col = T.GREEN if v.get("direccion") == "COMPRA" else \
                             T.RED if v.get("direccion") == "VENTA" else T.GOLD
                         st.markdown(

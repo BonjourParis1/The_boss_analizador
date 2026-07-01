@@ -134,6 +134,16 @@ def knowledge_search(query: str, limit: int = 3) -> list:
     return [it for _, it in scored[:limit]]
 
 
+def knowledge_count() -> int:
+    if settings.use_supabase:
+        try:
+            r = _client().table("knowledge").select("id", count="exact").limit(1).execute()
+            return int(r.count or 0)
+        except Exception:
+            pass
+    return len(_ljson(_KFILE))
+
+
 def knowledge_recent(limit: int = 6) -> list:
     if settings.use_supabase:
         try:

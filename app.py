@@ -443,6 +443,40 @@ def compute_locked_plan(sk: str, duration: str, news_score):
     return plan, sig_main, reading, remaining
 
 
+def render_system_status():
+    """Vistazo de que TODO se está alimentando: motor, precisión, aprendizaje, conocimiento."""
+    if not is_authenticated():
+        return
+    from analysis import self_learn
+    from db import cloud as _cloud
+    snap = autonomous.snapshot()
+    ts = tracker.stats()
+    try:
+        sl = self_learn.stats()
+    except Exception:
+        sl = {"n": 0}
+    try:
+        kn = _cloud.knowledge_count()
+    except Exception:
+        kn = 0
+    motor = "🟢 activo" if snap.get("running") else "⚪ detenido"
+    last = snap.get("last_scan")
+    last_s = last.strftime("%H:%M:%S") if last else "—"
+    if self_learn.is_ready():
+        modelo = "✅ activo"
+    else:
+        modelo = f"⏳ {sl.get('n', 0)}/{self_learn.MIN_SAMPLES}"
+    st.markdown(
+        f"<div class='gx-card' style='padding:8px 14px;margin-bottom:8px;'>"
+        f"<span class='gx-tag'>⚙️ Estado del sistema</span>"
+        f"<div style='font-size:0.82rem;margin-top:2px;'>"
+        f"🤖 Motor {motor} · {snap.get('cycles', 0)} pasadas (últ. {last_s}) &nbsp;·&nbsp; "
+        f"🎯 {ts['n']} señales evaluadas ({ts['accuracy']:.0f}%) &nbsp;·&nbsp; "
+        f"🧠 Aprendizaje {modelo} &nbsp;·&nbsp; 📚 {kn} conocimientos &nbsp;·&nbsp; "
+        f"IA: {C.esc(llm.backend_label())}</div></div>",
+        unsafe_allow_html=True)
+
+
 def render_strip():
     """Franja superior horizontal: PLAN + oportunidades + mejores del mercado."""
     if not is_authenticated():
@@ -803,6 +837,7 @@ def render_qa():
 
 with tab_live:
     render_toolbar()
+    render_system_status()
     _symbol = SYMBOLS_BY_KEY[st.session_state["symbol_key"]]
     _ctype = st.session_state.get("chart_type", CHART_TYPES[0])
     _live = st.session_state.get("live", True)

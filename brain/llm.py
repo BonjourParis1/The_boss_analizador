@@ -73,13 +73,13 @@ def _gemini_model() -> str:
 
 
 def is_available() -> bool:
-    """IA disponible si el proveedor responde O hay respaldo DeepSeek configurado."""
-    if settings.deepseek_api_key:
+    """IA disponible si el proveedor responde O hay respaldo (Groq/DeepSeek) configurado."""
+    if settings.groq_api_key or settings.deepseek_api_key:
         return True
     p = settings.llm_provider
     try:
-        if p == "gemini":
-            return bool(settings.gemini_api_key)   # evitamos gastar cuota con un ping
+        if p in ("gemini", "groq"):
+            return bool(settings.gemini_api_key or settings.groq_api_key)
         if p == "ollama":
             return requests.get(f"{settings.ollama_url}/api/tags", timeout=2).ok
         if p == "openai_compatible":
@@ -88,6 +88,21 @@ def is_available() -> bool:
     except Exception:
         return False
     return False
+
+
+def _groq(system: str, user: str, max_tokens: int, json_mode: bool = False) -> str:
+    """Cerebro GRATIS con Groq (OpenAI-compatible, sin coste)."""
+    body = {"model": settings.groq_model, "temperature": 0.3, "max_tokens": max_tokens,
+            "messages": [{"role": "system", "content": system},
+                         {"role": "user", "content": user}]}
+    if json_mode:
+        body["response_format"] = {"type": "json_object"}
+    r = requests.post("https://api.groq.com/openai/v1/chat/completions", timeout=120,
+                      headers={"Content-Type": "application/json",
+                               "Authorization": f"Bearer {settings.groq_api_key}"},
+                      json=body)
+    r.raise_for_status()
+    return r.json()["choices"][0]["message"]["content"].strip()
 
 
 def _deepseek(system: str, user: str, max_tokens: int, json_mode: bool = False) -> str:
@@ -108,10 +123,17 @@ def _deepseek(system: str, user: str, max_tokens: int, json_mode: bool = False) 
 def backend_label() -> str:
     p = settings.llm_provider
     base = {"gemini": f"Gemini · {_gemini_model()}",
+            "groq": f"Groq · {settings.groq_model}",
             "ollama": f"Ollama · {settings.llm_model}",
-            "openai_compatible": f"OpenAI-compat · {settings.llm_model}"}.get(p, "DeepSeek")
-    if settings.deepseek_api_key and p != "openai_compatible":
-        base += " (+ DeepSeek respaldo)"
+            "openai_compatible": f"OpenAI-compat · {settings.llm_model}"}.get(
+                p, "Groq" if settings.groq_api_key else "DeepSeek")
+    extra = []
+    if settings.groq_api_key and p != "groq":
+        extra.append("Groq")
+    if settings.deepseek_api_key:
+        extra.append("DeepSeek")
+    if extra:
+        base += f" (+ {' / '.join(extra)} respaldo)"
     return base
 
 
@@ -127,7 +149,13 @@ def _chat(system: str, user: str, max_tokens: int = 900) -> str:
     try:
         return _chat_raw(system, user, max_tokens)
     except Exception as primary:  # noqa: BLE001
-        # Respaldo: DeepSeek (p.ej. cuando Gemini devuelve 429 por límite)
+        # Respaldo GRATIS: Groq (p.ej. cuando Gemini devuelve 429 por límite)
+        if settings.groq_api_key and settings.llm_provider != "groq":
+            try:
+                return _groq(system, user, max_tokens)
+            except Exception:
+                pass
+        # Respaldo: DeepSeek (si hay saldo)
         if settings.deepseek_api_key:
             try:
                 return _deepseek(system, user, max_tokens)
@@ -157,6 +185,9 @@ def _chat_raw(system: str, user: str, max_tokens: int = 900) -> str:
             raise RuntimeError("Gemini no devolvió respuesta (¿filtro de seguridad o cuota?).")
         parts = cands[0].get("content", {}).get("parts", [])
         return "".join(pt.get("text", "") for pt in parts).strip()
+
+    if p == "groq":
+        return _groq(system, user, max_tokens)
 
     if p == "ollama":
         r = requests.post(
@@ -259,6 +290,8 @@ def _chat_json(system: str, user: str, schema: dict, max_tokens: int = 700) -> s
         if not cands:
             raise RuntimeError("Gemini sin respuesta")
         return "".join(pt.get("text", "") for pt in cands[0]["content"]["parts"]).strip()
+    if p == "groq":
+        return _groq(system, user, max_tokens, json_mode=True)
     if p == "ollama":
         r = requests.post(f"{settings.ollama_url}/api/chat", timeout=180, json={
             "model": settings.llm_model, "format": "json", "stream": False,
@@ -299,6 +332,12 @@ def structured_verdict(sig, symbol_label: str, news_titles: list[str] | None = N
     try:
         return json.loads(_chat_json(_SYSTEM, ctx, _VERDICT_SCHEMA))
     except Exception as primary:  # noqa: BLE001
+        if settings.groq_api_key and settings.llm_provider != "groq":  # respaldo Groq (gratis)
+            try:
+                return json.loads(_groq(_SYSTEM, ctx + "\nResponde SOLO JSON válido.",
+                                        700, json_mode=True))
+            except Exception:
+                pass
         if settings.deepseek_api_key:   # respaldo DeepSeek en JSON
             try:
                 return json.loads(_deepseek(_SYSTEM, ctx + "\nResponde SOLO JSON.",

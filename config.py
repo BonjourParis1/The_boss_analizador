@@ -47,6 +47,9 @@ class Settings:
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "").strip()
     # Respaldo del cerebro cuando Gemini agota su límite (OpenAI-compatible)
     deepseek_api_key: str = os.getenv("DEEPSEEK_API_KEY", "").strip()
+    # Groq: LLM GRATIS (sin tarjeta), rápido y compatible OpenAI. console.groq.com
+    groq_api_key: str = os.getenv("GROQ_API_KEY", "").strip()
+    groq_model: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile").strip()
     # --- Datos en tiempo real adicionales (opcional) ---
     finnhub_api_key: str = os.getenv("FINNHUB_API_KEY", "").strip()
     twelvedata_api_key: str = os.getenv("TWELVEDATA_API_KEY", "").strip()
@@ -75,8 +78,8 @@ class Settings:
 
     @property
     def has_llm(self) -> bool:
-        return (self.llm_provider in ("ollama", "openai_compatible", "gemini")
-                or bool(self.deepseek_api_key))
+        return (self.llm_provider in ("ollama", "openai_compatible", "gemini", "groq")
+                or bool(self.deepseek_api_key) or bool(self.groq_api_key))
 
 
 settings = Settings()

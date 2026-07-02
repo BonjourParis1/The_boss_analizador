@@ -132,6 +132,39 @@ def _backtest_cached(symbol_key: str, interval: str, limit: int) -> dict:
             "equity": res.equity_curve, "trades_df": res.trade_log}
 
 
+@st.cache_data(show_spinner=False, ttl=6 * 3600)  # régimen de fondo: 1 cálculo/6h
+def _regime_cached(symbol_key: str) -> dict:
+    """Contexto de LARGO PLAZO (años): analiza ~5 años de velas semanales para saber
+    la tendencia de fondo y sesgar las señales de corto plazo. Se guarda en Supabase
+    para centralizar el conocimiento (no recalcular en cada refresco)."""
+    import time as _t
+    from analysis import regime as _rg
+    dfw = load_market(symbol_key, "1w", 260)          # ~5 años de velas semanales
+    reg = _rg.compute(dfw, periods_per_year=52)
+    snap = {"direction": reg.direction, "strength": reg.strength, "years": reg.years,
+            "range_pct": reg.range_pct, "annual_return": reg.annual_return,
+            "ma_long": reg.ma_long, "notes": reg.notes, "ts": _t.time()}
+    try:
+        from db import cloud as _c
+        _c.setting_set(f"regime:{symbol_key}", snap)  # centralizado en la nube
+    except Exception:
+        pass
+    return snap
+
+
+def _regime_obj(symbol_key: str):
+    """Reconstruye el objeto Regime desde el snapshot cacheado (o None si falla)."""
+    from analysis import regime as _rg
+    try:
+        s = _regime_cached(symbol_key)
+    except Exception:
+        return None
+    return _rg.Regime(direction=s["direction"], strength=s["strength"],
+                      price=0.0, ma_long=s.get("ma_long"), range_pct=s.get("range_pct"),
+                      annual_return=s.get("annual_return"), years=s.get("years", 0.0),
+                      notes=list(s.get("notes", [])))
+
+
 # --------------------------------- Login -----------------------------------
 if not st.session_state.get("_db_inited"):   # solo una vez por sesión (login rápido)
     try:
@@ -379,6 +412,15 @@ def _consensus_for(sk: str, duration: str, news_score):
     if lw is not None:
         wr = round((wr + lw) / 2, 1) if wr is not None else lw
     plan = advisor.consensus_plan(per_tf, (dtuple[0], dtuple[1]), ap, ac, wr)
+    # CONTEXTO DE LARGO PLAZO (años): la señal de corto plazo se contrasta con la
+    # tendencia de fondo. Operar a favor es más fiable; contra un fondo fuerte, espera.
+    try:
+        from analysis import regime as _rg
+        reg = _regime_obj(sk)
+        if reg is not None:
+            plan = _rg.apply_to_plan(plan, reg)
+    except Exception:
+        pass
     # Ajuste por lo APRENDIDO de resultados reales (probabilidad de acierto del modelo)
     try:
         from analysis import self_learn
@@ -403,6 +445,13 @@ def _ia_verdict_cached(sk: str, duration: str):
         digest = load_news(sk)
         _, sig_main, _ = _consensus_for(sk, duration, digest.score)
         ex = []
+        try:
+            _rs = _regime_cached(sk)
+            ex.append(f"Tendencia de fondo (~{_rs['years']} años): {_rs['direction']} "
+                      f"(fuerza {_rs['strength']:.0%}); rendimiento ~12m "
+                      f"{(_rs.get('annual_return') or 0):+.1%}.")
+        except Exception:
+            pass
         so = _social_cached(sk)
         if so:
             ex.append(f"Sentimiento social: {so['label']} ({so['detail']}).")
@@ -418,29 +467,175 @@ def _ia_verdict_cached(sk: str, duration: str):
         return None
 
 
+def _confirm_seconds(expiry_seconds: int) -> int:
+    """Cuánto tiempo debe SOSTENERSE la señal antes de abrir (analizar con calma).
+
+    Proporcional al plazo: plazos cortos confirman en pocos segundos; los largos
+    esperan más. Así no se opera por un movimiento pasajero de 2 segundos.
+    """
+    return int(min(max(expiry_seconds * 0.25, 6), 30))
+
+
+def _adaptive_gate(sk: str, plan, sig_main) -> dict:
+    """DECISIÓN ADAPTATIVA: el sistema decide SOLO cuándo ser conservador y cuándo
+    arriesgar, según el contexto. Devuelve el umbral de confianza para abrir, un
+    factor de confirmación (más/menos paciencia) y un 'modo' explicativo.
+
+    Suma señales a favor de arriesgar (tendencia de fondo a favor, buena precisión
+    real, baja volatilidad) y en contra (fondo lateral/opuesto, mala precisión, mucha
+    volatilidad, eventos de alto impacto). Con eso ajusta cuánto exige antes de operar.
+    """
+    score = 0.0
+    reasons = []
+
+    # 1) Tendencia de fondo (años): a favor anima a arriesgar; en contra/lateral frena
+    reg = _regime_obj(sk)
+    if reg is not None:
+        if reg.is_strong and plan.direction == reg.bias:
+            score += 1.2; reasons.append("fondo de años a favor")
+        elif reg.is_strong and plan.direction != reg.bias:
+            score -= 1.3; reasons.append("fondo de años en contra")
+        elif reg.direction == "LATERAL":
+            score -= 0.6; reasons.append("fondo lateral")
+
+    # 2) Precisión REAL aprendida del activo (resultados propios)
+    wr = tracker.live_winrate(sk)
+    if wr is not None:
+        if wr >= 60:
+            score += 1.0; reasons.append(f"precisión real alta ({wr:.0f}%)")
+        elif wr < 45:
+            score -= 1.2; reasons.append(f"precisión real baja ({wr:.0f}%)")
+
+    # 3) Volatilidad (ATR%): mucha = más riesgo -> conservador; poca = más estable
+    price = sig_main.price or 1.0
+    vol = (sig_main.atr or 0.0) / price if price else 0.0
+    if vol >= 0.006:
+        score -= 0.8; reasons.append("alta volatilidad")
+    elif vol <= 0.0025:
+        score += 0.3
+
+    # 4) Eventos de alto impacto (macro/earnings): prudencia
+    try:
+        if _macro_cached().get("major"):
+            score -= 1.0; reasons.append("evento macro cercano")
+    except Exception:
+        pass
+    try:
+        if _earnings_cached(sk):
+            score -= 0.6; reasons.append("reporte de resultados cercano")
+    except Exception:
+        pass
+
+    # Mapear el 'apetito de riesgo' a umbral y paciencia de confirmación
+    min_conf = max(56.0, min(76.0, 66.0 - score * 4.0))   # arriesga -> umbral menor
+    confirm_factor = max(0.6, min(1.7, 1.0 - score * 0.18))  # arriesga -> confirma más rápido
+    if score >= 1.2:
+        mode = "🔥 Agresivo"
+    elif score <= -1.0:
+        mode = "🛡️ Conservador"
+    else:
+        mode = "⚖️ Equilibrado"
+    return {"min_conf": round(min_conf, 1), "confirm_factor": confirm_factor,
+            "mode": mode, "score": round(score, 2), "why": reasons}
+
+
+def _waiting_plan(candidate, stable_for: float, need: float):
+    """Plan de ESPERA mientras se confirma la señal (no abre todavía)."""
+    from analysis.advisor import TradePlan
+    faltan = max(0, int(need - stable_for))
+    lab = "COMPRA (CALL)" if candidate.direction == "SUBE" else "VENTA (PUT)"
+    reasons = list(candidate.rationale) + [
+        f"⏳ Analizando con calma: confirmando {lab} — faltan ~{faltan}s de estabilidad "
+        f"antes de dar la entrada (evita señales falsas)."]
+    return TradePlan("ESPERAR", "ESPERAR (confirmando)", "⏳", "—", 0,
+                     min(candidate.confidence, 55.0), reasons)
+
+
 def compute_locked_plan(sk: str, duration: str, news_score):
-    """Multi-TF + BLOQUEO: mantiene el plan durante la duración salvo reversión fuerte."""
+    """Multi-TF + BLOQUEO firme: una vez abierta, la operación se MANTIENE hasta
+    vencer (nunca cambia de opinión a mitad de camino, como en IQ Option). Antes de
+    abrir, exige que la señal se sostenga unos segundos (confirmación) para no operar
+    por un movimiento pasajero.
+    """
     import time as _t
     plan, sig_main, reading = _consensus_for(sk, duration, news_score)
-    key = f"lock:{sk}:{duration}"
+    lock_key = f"lock:{sk}:{duration}"
+    conf_key = f"confirm:{sk}:{duration}"
     now = _t.time()
-    lock = st.session_state.get(key)
-    remaining = 0
+
+    # El sistema decide SOLO su apetito de riesgo según el contexto (adaptativo)
+    gate = _adaptive_gate(sk, plan, sig_main)
+    st.session_state[f"mode:{sk}:{duration}"] = gate
+
+    # 1) OPERACIÓN EN CURSO -> se mantiene intacta hasta vencer (sin flip-flop)
+    lock = st.session_state.get(lock_key)
     if lock and now < lock["until"]:
-        reversal = (plan.is_actionable and plan.direction != lock["dir"]
-                    and plan.confidence >= 80)
-        if reversal:
-            st.session_state[key] = {"dir": plan.direction,
-                                     "until": now + max(plan.expiry_seconds, 30), "plan": plan}
-            remaining = int(plan.expiry_seconds)
+        return lock["plan"], sig_main, reading, int(lock["until"] - now)
+
+    # 2) SIN operación activa: umbral y confirmación ADAPTATIVOS (arriesga o es cauto)
+    can_open = (plan.direction in ("SUBE", "BAJA")
+                and plan.confidence >= gate["min_conf"])
+    if can_open:
+        need = max(3, int(_confirm_seconds(plan.expiry_seconds) * gate["confirm_factor"]))
+        cst = st.session_state.get(conf_key)
+        if cst and cst["dir"] == plan.direction:
+            stable_for = now - cst["since"]
         else:
-            plan = lock["plan"]
-            remaining = int(lock["until"] - now)
-    elif plan.is_actionable:
-        st.session_state[key] = {"dir": plan.direction,
-                                 "until": now + max(plan.expiry_seconds, 30), "plan": plan}
-        remaining = int(plan.expiry_seconds)
-    return plan, sig_main, reading, remaining
+            cst = {"dir": plan.direction, "since": now}
+            stable_for = 0.0
+        st.session_state[conf_key] = cst
+
+        if stable_for >= need:
+            # Confirmada -> se ABRE y se bloquea por toda la duración
+            plan.rationale = list(plan.rationale) + [
+                f"Modo {gate['mode']} (umbral {gate['min_conf']:.0f}%"
+                + (f" · {', '.join(gate['why'])}" if gate['why'] else "") + ")."]
+            st.session_state[lock_key] = {
+                "dir": plan.direction, "until": now + max(plan.expiry_seconds, 30),
+                "plan": plan, "entry_price": sig_main.price, "opened": now}
+            st.session_state[conf_key] = None
+            st.session_state["_new_trade_open"] = now
+            return plan, sig_main, reading, int(plan.expiry_seconds)
+        # Aún confirmando -> mostrar ESPERA (no se opera todavía)
+        return _waiting_plan(plan, stable_for, need), sig_main, reading, 0
+
+    # 3) Señal insuficiente para el umbral actual -> reiniciar confirmación y esperar
+    st.session_state[conf_key] = None
+    return plan, sig_main, reading, 0
+
+
+def chart_trades(sk: str) -> list:
+    """Operaciones a MARCAR en el gráfico (línea de entrada estilo IQ Option).
+
+    Se construye desde DOS fuentes para que la línea aparezca SIEMPRE y al instante:
+      1) el BLOQUEO de sesión (la operación abierta ahora) — disponible en memoria,
+         sin depender de la base de datos ni de su caché;
+      2) las señales persistidas y ya resueltas (acierto/fallo) de Supabase, para
+         ver también entradas anteriores y cómo terminaron.
+    """
+    import time as _t
+    now = _t.time()
+    trades, seen = [], set()
+    for k, v in list(st.session_state.items()):
+        if isinstance(k, str) and k.startswith(f"lock:{sk}:") and isinstance(v, dict):
+            if now < v.get("until", 0) and v.get("entry_price"):
+                trades.append({
+                    "direction": v.get("dir"),
+                    "entry_price": float(v.get("entry_price")),
+                    "exit_price": None,
+                    "entry_ts": float(v.get("opened", v.get("until", now) - 60)),
+                    "ends_ts": float(v.get("until", now)),
+                    "status": "pending"})
+                seen.add(round(float(v.get("entry_price")), 8))
+    try:
+        for t in tracker.active_trades(sk):
+            if t.get("status") == "pending" and round(float(t.get("entry_price") or 0), 8) in seen:
+                continue
+            trades.append(t)
+    except Exception:
+        pass
+    trades.sort(key=lambda t: t.get("entry_ts", 0))
+    return trades
 
 
 def render_system_status():
@@ -498,10 +693,13 @@ def render_strip():
     st.session_state["_cur"] = {"reasons": plan.rationale,
                                 "sig_action": sig_main.action, "price": sig_main.price}
 
-    # Aprendizaje por resultados: registra la señal (con foto de indicadores) y
-    # evalúa las vencidas con el precio real
+    # Una operación está ABIERTA cuando queda tiempo de vencimiento (bloqueada).
+    _trade_open = remaining > 0 and plan.direction in ("SUBE", "BAJA")
+
+    # Aprendizaje por resultados: registra la señal ABIERTA (con foto de indicadores)
+    # y evalúa las vencidas con el precio real
     try:
-        if plan.is_actionable:
+        if _trade_open:
             _feat = None
             try:
                 from ml.model import extract_features
@@ -516,7 +714,14 @@ def render_strip():
     except Exception:
         pass
 
-    if plan.is_actionable:
+    # Al ABRIR una operación nueva, redibuja el gráfico UNA vez para pintar la línea
+    # de entrada (verde/roja) al instante, como en IQ Option.
+    _open = st.session_state.get("_new_trade_open")
+    if _open and st.session_state.get("_shown_trade_open") != _open:
+        st.session_state["_shown_trade_open"] = _open
+        st.rerun(scope="app")
+
+    if _trade_open:
         tag = f"{sk}:{plan.direction}:{duration}"
         if st.session_state.get("_last_tag") != tag:
             st.session_state["_last_tag"] = tag
@@ -575,10 +780,34 @@ def render_strip():
             f"🎯 Precisión sistema: <b>{_g['accuracy']:.0f}%</b> ({_g['n']}) · "
             f"{symbol.label}: <b>{_ps['accuracy']:.0f}%</b> ({_ps['n']})</div>") if _g['n'] else ""
 
+    # --- Tendencia de fondo (análisis de años) que respalda o frena la señal ---
+    _reg_html = ""
+    try:
+        _rsnap = _regime_cached(sk)
+        _rc = {"ALCISTA": T.GREEN, "BAJISTA": T.RED}.get(_rsnap["direction"], T.GOLD)
+        _ricon = {"ALCISTA": "📈", "BAJISTA": "📉"}.get(_rsnap["direction"], "➖")
+        _reg_html = (f"<div style='font-size:0.8rem;color:{T.MUTED};margin-top:4px;'>"
+                     f"🌍 Fondo (~{_rsnap['years']} años): "
+                     f"<b style='color:{_rc};'>{_ricon} {_rsnap['direction']}</b> "
+                     f"<span style='opacity:.7;'>fuerza {_rsnap['strength']:.0%} · "
+                     f"~12m {(_rsnap.get('annual_return') or 0):+.1%}</span></div>")
+    except Exception:
+        pass
+
+    # --- Modo adaptativo: el sistema decide solo si arriesga o es prudente ---
+    _mode_html = ""
+    _gate = st.session_state.get(f"mode:{sk}:{duration}")
+    if _gate:
+        _mc = {"🔥 Agresivo": T.GREEN, "🛡️ Conservador": T.GOLD}.get(_gate["mode"], T.MUTED)
+        _why = (" · " + ", ".join(_gate["why"])) if _gate.get("why") else ""
+        _mode_html = (f"<div style='font-size:0.8rem;color:{T.MUTED};margin-top:4px;'>"
+                      f"🧠 Modo <b style='color:{_mc};'>{_gate['mode']}</b> "
+                      f"<span style='opacity:.7;'>(abre desde {_gate['min_conf']:.0f}%{_why})</span></div>")
+
     # --- Gestor de riesgo: cuánto invertir según tu capital y la ventaja ---
     _risk_html = ""
     _cap = float(st.session_state.get("capital", 0) or 0)
-    if plan.is_actionable and _cap > 0:
+    if _trade_open and _cap > 0:
         _wr = tracker.live_winrate(sk)   # precisión real del activo (si hay muestra)
         _rk = risk.suggest_stake(_cap, plan.confidence, win_rate=_wr,
                                  payout=float(st.session_state.get("payout_pct", 85)) / 100.0,
@@ -617,7 +846,7 @@ def render_strip():
             f"<div style='display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;'>"
             f"<span style='font-size:1.7rem;font-weight:800;color:{color};'>{plan.icon} {plan.action_label}</span>"
             f"<span style='font-size:1.15rem;font-weight:700;'>{plan.confidence:.0f}%</span>"
-            f"<span style='font-size:0.85rem;color:{T.MUTED};'>{venc}</span></div>{_sent}{_acc}{_risk_html}{ia_html}</div>",
+            f"<span style='font-size:0.85rem;color:{T.MUTED};'>{venc}</span></div>{_sent}{_mode_html}{_reg_html}{_acc}{_risk_html}{ia_html}</div>",
             unsafe_allow_html=True)
     with s[1]:
         if opportunities:
@@ -679,12 +908,13 @@ def render_chart_full():
             _lv = _levels_cached(sk, interval, limit)
         except Exception:
             _lv = None
+        _tr = chart_trades(sk)
         st.plotly_chart(
             C.pro_chart(symbol.label, df, sig.support, sig.resistance,
                         show_ma=st.session_state.get("show_ma", True),
                         show_bb=st.session_state.get("show_bb", True),
                         show_volume=st.session_state.get("show_vol", True),
-                        levels=_lv),
+                        levels=_lv, trades=_tr),
             use_container_width=True, config=cfg)
     if st.session_state.get("show_ind", True):
         st.plotly_chart(C.indicator_panel(df), use_container_width=True,
@@ -848,6 +1078,9 @@ with tab_live:
     # Franja superior de avisos (auto-refresca sin reiniciar el gráfico)
     st.fragment(run_every=_strip_refresh)(render_strip)()
 
+    # Operaciones a MARCAR en el gráfico (línea de entrada + resultado, estilo IQ Option)
+    _trades = chart_trades(_symbol.key)
+
     # Gráfico a pantalla completa
     if _stream:
         try:
@@ -857,7 +1090,8 @@ with tab_live:
         if _symbol.type == "cripto":
             # Cripto: tick a tick por WebSocket de Binance
             components.html(stream_chart_html(_symbol.provider_id, st.session_state["interval"],
-                                              560, levels=_slv, use_ws=True), height=624)
+                                              560, levels=_slv, use_ws=True, trades=_trades),
+                            height=624)
         else:
             # Forex/acciones/índices/materias: MISMA gráfica con todas las herramientas,
             # sembrada con nuestras velas (sin auto-refresco para conservar el zoom).
@@ -872,7 +1106,8 @@ with tab_live:
             except Exception:
                 pass
             components.html(stream_chart_html(_symbol.provider_id, st.session_state["interval"],
-                                              560, levels=_slv, use_ws=False, seed=_seed),
+                                              560, levels=_slv, use_ws=False, seed=_seed,
+                                              trades=_trades),
                             height=624)
     else:
         if not is_realtime(_symbol):

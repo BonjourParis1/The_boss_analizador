@@ -46,6 +46,46 @@ def evaluate(symbol_key: str, current_price: float) -> None:
             cloud.signal_update(s.get("id"), "win" if win else "loss", current_price)
 
 
+def _trade_row(s: dict, status: str, ets: float, exp: int) -> dict:
+    ex = s.get("exit_price")
+    return {
+        "direction": s.get("direction"),
+        "entry_price": float(s.get("entry_price", 0) or 0),
+        "exit_price": float(ex) if ex not in (None, "") else None,
+        "entry_ts": ets,
+        "expiry_seconds": exp,
+        "ends_ts": ets + exp,
+        "status": status,          # pending | win | loss
+    }
+
+
+def active_trades(symbol_key: str, include_recent: bool = True,
+                  recent_window: int = 1800) -> list:
+    """Operaciones del símbolo para MARCARLAS en la gráfica (estilo IQ Option).
+
+    Devuelve las PENDIENTES (línea viva con su cuenta atrás) y, si se pide, las
+    últimas ya resueltas (ACIERTO/FALLO dentro de `recent_window` segundos) para
+    que veas dónde entró la señal y cómo terminó — así se aprende mirando.
+    """
+    now = time.time()
+    out = []
+    for s in cloud.signals_all():
+        if s.get("symbol") != symbol_key:
+            continue
+        status = s.get("status")
+        ets = float(s.get("entry_ts", 0) or 0)
+        exp = int(s.get("expiry_seconds", 0) or 0)
+        if not ets or not float(s.get("entry_price", 0) or 0):
+            continue
+        if status == "pending":
+            out.append(_trade_row(s, "pending", ets, exp))
+        elif include_recent and status in ("win", "loss") \
+                and now - (ets + exp) <= recent_window:
+            out.append(_trade_row(s, status, ets, exp))
+    out.sort(key=lambda t: t["entry_ts"])
+    return out
+
+
 def mark_last(symbol_key: str, win: bool) -> bool:
     """Marca manualmente el resultado de la última señal del símbolo (tu resultado real)."""
     rows = [s for s in cloud.signals_all()

@@ -13,7 +13,7 @@ from db import cloud
 from security.auth import (LoginGuard, admin_keys_exist, global_is_locked,
                            global_register_failure, global_register_success,
                            global_seconds_left, make_session_token,
-                           verify_session_token, verify_triple)
+                           revoke_session_token, verify_session_token, verify_triple)
 
 
 def _ensure_state() -> None:
@@ -40,6 +40,9 @@ def logout() -> None:
     except Exception:
         pass
     try:
+        tok = st.query_params.get("s")
+        if tok:
+            revoke_session_token(tok)   # invalida el token de verdad (no solo la URL)
         if "s" in st.query_params:
             del st.query_params["s"]
     except Exception:

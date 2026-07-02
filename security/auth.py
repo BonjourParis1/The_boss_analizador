@@ -19,6 +19,8 @@ import hashlib
 import hmac
 import json
 import os
+import secrets
+import threading
 import time
 from dataclasses import dataclass
 
@@ -43,22 +45,47 @@ def _session_secret() -> bytes:
     return _SESSION_SECRET_FILE.read_bytes()
 
 
+# Nonces de sesión VIGENTES (revocables). Viven en el proceso del servidor, así el
+# cierre de sesión INVALIDA el token de verdad: aunque alguien hubiera copiado la URL
+# con el token, deja de servir. Al reiniciar el servidor caducan todos (más seguro).
+_TOK_LOCK = threading.Lock()
+_VALID_NONCES: set[str] = set()
+
+
 def make_session_token(hours: int = 12) -> str:
-    """Token firmado (HMAC) con expiración, para mantener la sesión al recargar."""
+    """Token firmado (HMAC) con expiración y NONCE revocable, para mantener la sesión."""
     exp = str(int(time.time()) + hours * 3600)
-    sig = hmac.new(_session_secret(), exp.encode(), hashlib.sha256).hexdigest()[:32]
-    return f"{exp}.{sig}"
+    nonce = secrets.token_hex(8)
+    with _TOK_LOCK:
+        _VALID_NONCES.add(nonce)
+    payload = f"{exp}.{nonce}"
+    sig = hmac.new(_session_secret(), payload.encode(), hashlib.sha256).hexdigest()[:32]
+    return f"{payload}.{sig}"
 
 
 def verify_session_token(token: str) -> bool:
     try:
-        exp, sig = token.split(".")
+        exp, nonce, sig = token.split(".")
         if int(exp) < time.time():
             return False
-        good = hmac.new(_session_secret(), exp.encode(), hashlib.sha256).hexdigest()[:32]
-        return hmac.compare_digest(sig, good)
+        good = hmac.new(_session_secret(), f"{exp}.{nonce}".encode(),
+                        hashlib.sha256).hexdigest()[:32]
+        if not hmac.compare_digest(sig, good):
+            return False
+        with _TOK_LOCK:
+            return nonce in _VALID_NONCES
     except Exception:
         return False
+
+
+def revoke_session_token(token: str) -> None:
+    """Invalida un token (cierre de sesión real). Silencioso si el token es inválido."""
+    try:
+        _, nonce, _ = token.split(".")
+        with _TOK_LOCK:
+            _VALID_NONCES.discard(nonce)
+    except Exception:
+        pass
 
 # Parámetros del KDF
 _ALGO = "sha256"

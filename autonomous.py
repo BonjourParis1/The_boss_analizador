@@ -55,6 +55,28 @@ _RESEARCH_COOLDOWN_S = 900   # no reinvestigar el mismo activo en 15 min
 _MAX_RESEARCH_PER_CYCLE = 2  # acota el tiempo del ciclo (la IA puede ser lenta)
 _OTHERS_PER_CYCLE = 4        # cuántos activos de "otros mercados" se rotan por pasada
 
+# Contexto de LARGO PLAZO (años) cacheado en el hilo para no pedir datos cada pasada
+_regime_cache: dict = {}     # symbol_key -> (epoch, Regime|None)
+_REGIME_TTL_S = 6 * 3600
+
+
+def _regime_for(symbol):
+    """Régimen de fondo (años) del activo, con caché de 6h para respetar las APIs."""
+    import time as _t
+    from analysis import regime as _rg
+    now = _t.time()
+    c = _regime_cache.get(symbol.key)
+    if c and now - c[0] < _REGIME_TTL_S:
+        return c[1]
+    reg = None
+    try:
+        dfw = compute_all(fetch_with_retry(symbol, interval="1w", limit=260))
+        reg = _rg.compute(dfw, periods_per_year=52)
+    except Exception:
+        reg = None
+    _regime_cache[symbol.key] = (now, reg)
+    return reg
+
 
 def _scan_targets():
     """Lista de activos a analizar esta pasada.
@@ -160,6 +182,15 @@ def _scan_cycle(stop_event: threading.Event, min_conf: float, timeframe: str) ->
                 except Exception:
                     pass
             plan = advisor.build_plan(sig, ap, ac)
+            # Contraste con la tendencia de fondo (años): a favor sube confianza,
+            # contra un fondo fuerte penaliza o pospone. Mismo criterio que el terminal.
+            try:
+                from analysis import regime as _rg
+                _reg = _regime_for(s)
+                if _reg is not None:
+                    plan = _rg.apply_to_plan(plan, _reg)
+            except Exception:
+                pass
             if plan.is_actionable and plan.confidence >= min_conf:
                 try:
                     save_recommendation(sig)

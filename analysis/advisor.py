@@ -38,7 +38,7 @@ class TradePlan:
 
     @property
     def is_actionable(self) -> bool:
-        return self.direction in ("SUBE", "BAJA") and self.confidence >= 60
+        return self.direction in ("SUBE", "BAJA") and self.confidence >= 64
 
 
 def _duration(vol: float, strong: bool) -> tuple[str, int]:
@@ -94,16 +94,18 @@ def consensus_plan(per_tf, force_duration, auto_pred=None, auto_conf=None,
     if total == 0:
         return TradePlan("ESPERAR", "ESPERAR", "⏸", "—", 0, 30.0, reasons)
 
+    # Exigimos consenso AMPLIO (≥70% del peso en la misma dirección). Con temporalidades
+    # largas (1h/1d) pesando más, esto evita operar por un impulso corto pasajero.
     align = max(buy_w, sell_w) / total
-    if align >= 0.60 and buy_w > sell_w:
+    if align >= 0.70 and buy_w > sell_w:
         direction = "SUBE"
-    elif align >= 0.60 and sell_w > buy_w:
+    elif align >= 0.70 and sell_w > buy_w:
         direction = "BAJA"
     else:
         direction = "ESPERAR"
-        reasons.append("Temporalidades NO alineadas: lo fiable es ESPERAR.")
+        reasons.append("Temporalidades NO alineadas (consenso insuficiente): lo fiable es ESPERAR.")
 
-    conf = 40 + align * 52    # 0.6 -> ~71 ; 1.0 -> ~92
+    conf = 34 + align * 58    # 0.70 -> ~75 ; 1.0 -> ~92
     if direction == "ESPERAR":
         conf = min(conf, 45)
 

@@ -103,7 +103,7 @@ def ticker_header(symbol_label: str, df: pd.DataFrame, mkt_type: str,
 def pro_chart(symbol_label: str, df: pd.DataFrame,
               support: float | None = None, resistance: float | None = None,
               show_ma: bool = True, show_bb: bool = True, show_volume: bool = True,
-              levels: list | None = None) -> go.Figure:
+              levels: list | None = None, trades: list | None = None) -> go.Figure:
     """Velas + volumen + SMA9/21 + EMA50 + Bollinger + NIVELES automáticos
     (máx/mín de día/semana/mes y soporte/resistencia). Indicadores conmutables."""
     if show_volume:
@@ -147,6 +147,23 @@ def pro_chart(symbol_label: str, df: pd.DataFrame,
             fig.add_hline(y=support, line=dict(color=T.GREEN, width=1, dash="dash"),
                           annotation_text="Soporte", annotation_position="bottom right",
                           annotation_font_color=T.GREEN, row=1, col=1)
+
+    # Operaciones marcadas (estilo IQ Option): línea de ENTRADA verde/roja + resultado
+    if trades:
+        for tr in trades:
+            price = tr.get("entry_price")
+            if not price:
+                continue
+            buy = tr.get("direction") == "SUBE"
+            pending = tr.get("status") == "pending"
+            win = tr.get("status") == "win"
+            color = (T.GREEN if buy else T.RED) if pending else (T.GREEN if win else T.RED)
+            tag = ("▲ COMPRA" if buy else "▼ VENTA") + (
+                " ⏳" if pending else (" ✓" if win else " ✗"))
+            fig.add_hline(y=price, line=dict(color=color, width=2 if pending else 1,
+                                             dash="solid" if pending else "dot"),
+                          annotation_text=tag, annotation_position="left",
+                          annotation_font=dict(color=color, size=10), row=1, col=1)
 
     if show_volume:
         vol_colors = [T.GREEN if c >= o else T.RED for o, c in zip(df["open"], df["close"])]

@@ -12,6 +12,16 @@ runOnSave = false
 # Seguridad: por defecto el panel solo es accesible desde TU equipo (localhost).
 # Si quieres exponerlo en tu red local, cambia a "0.0.0.0" bajo tu propio riesgo.
 address = "localhost"
+# Protección CSRF (envía cookie por petición y restringe orígenes cruzados).
+# Nota: con XSRF activo, Streamlit ya limita el CORS; no fijamos enableCORS aparte
+# para no chocar con esa protección. Límite de subida bajo (no se suben archivos).
+enableXsrfProtection = true
+maxUploadSize = 5
 
 [browser]
 gatherUsageStats = false
+
+[client]
+# No revelar trazas internas del servidor en la interfaz (evita filtrar detalles).
+showErrorDetails = false
+toolbarMode = "minimal"

@@ -14,17 +14,28 @@ _WS_OK = {"1s", "1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "12h",
           "1d", "3d", "1w", "1M"}
 
 
+_IV_SECS = {"1s": 1, "1m": 60, "3m": 180, "5m": 300, "15m": 900, "30m": 1800,
+            "1h": 3600, "2h": 7200, "4h": 14400, "6h": 21600, "12h": 43200,
+            "1d": 86400, "3d": 259200, "1w": 604800, "1M": 2592000}
+
+
 def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 560,
                       levels: list | None = None, use_ws: bool = True,
-                      seed: list | None = None) -> str:
+                      seed: list | None = None, trades: list | None = None) -> str:
     """Gráfica TradingView con TODAS las herramientas (SMA9/21, Bollinger, niveles, zoom).
 
     * use_ws=True (cripto): carga de Binance y actualiza tick a tick por WebSocket.
     * use_ws=False (forex/acciones/índices/materias): se siembra con `seed` (nuestras
       velas OHLC) para que la MISMA gráfica con herramientas funcione en cualquier mercado.
+    * trades: operaciones a MARCAR (estilo IQ Option). Cada una: dirección, precio de
+      entrada, marca de tiempo y resultado. Se dibuja una línea VERDE (compra) / ROJA
+      (venta) en el precio de entrada, una flecha en la vela de entrada y, al vencer,
+      su resultado (✓ acierto / ✗ fallo). Así ves si el mercado terminó por encima o
+      por debajo de donde entró la señal.
     """
     import json
     iv = interval if interval in _WS_OK else "1m"
+    iv_secs = _IV_SECS.get(iv, 60)
     sym = binance_symbol.upper()
     sym_l = binance_symbol.lower()
     secs = "true" if iv.endswith("s") else "false"
@@ -32,6 +43,11 @@ def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 5
     seed_json = json.dumps(seed or [])
     levels_json = json.dumps([{"v": l["value"], "n": l["name"], "k": l["kind"]}
                               for l in (levels or [])])
+    trades_json = json.dumps([
+        {"dir": t.get("direction"), "p": t.get("entry_price"),
+         "xp": t.get("exit_price"), "t": int(t.get("entry_ts", 0)),
+         "end": int(t.get("ends_ts", 0)), "st": t.get("status", "pending")}
+        for t in (trades or []) if t.get("entry_price")])
     return f"""
 <div style="background:{T.PANEL};border:1px solid {T.BORDER};border-radius:12px;overflow:hidden;">
   <!-- Cabecera FUERA del área del gráfico (no obstaculiza) -->
@@ -102,6 +118,34 @@ def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 5
       price:l.v, color:l.k==='res'?'{T.RED}':'{T.GREEN}', lineWidth:1, lineStyle:2,
       axisLabelVisible:true, title:l.n }}));
 
+    // === Operaciones marcadas (estilo IQ Option): línea de ENTRADA + flecha + resultado ===
+    const TRADES = {trades_json};
+    const IVS = {iv_secs};
+    const tradeMarkers = [];
+    TRADES.forEach(tr => {{
+      const buy = tr.dir === 'SUBE';
+      const pending = tr.st === 'pending';
+      const win = tr.st === 'win';
+      // Color de la LÍNEA: verde compra / roja venta. Si ya venció, el color del
+      // resultado (verde acierto / rojo fallo) para reforzar el aprendizaje.
+      const lineColor = pending ? (buy ? '{T.GREEN}' : '{T.RED}')
+                                : (win ? '{T.GREEN}' : '{T.RED}');
+      const tag = (buy ? '▲ COMPRA' : '▼ VENTA') +
+                  (pending ? ' ⏳' : (win ? ' ✓' : ' ✗'));
+      candle.createPriceLine({{
+        price: tr.p, color: lineColor, lineWidth: pending ? 2 : 1,
+        lineStyle: pending ? 0 : 2, axisLabelVisible: true, title: tag }});
+      // Flecha en la vela de ENTRADA (tiempo alineado a la vela)
+      const tt = Math.floor(tr.t / IVS) * IVS;
+      tradeMarkers.push({{
+        time: tt, position: buy ? 'belowBar' : 'aboveBar',
+        color: lineColor, shape: buy ? 'arrowUp' : 'arrowDown',
+        text: (buy ? 'COMPRA' : 'VENTA') + (pending ? '' : (win ? ' ✓' : ' ✗')) }});
+    }});
+    function applyMarkers() {{
+      if (tradeMarkers.length) candle.setMarkers(
+        tradeMarkers.slice().sort((a,b)=>a.time-b.time)); }}
+
     const priceEl = document.getElementById('gxprice');
     const maEl = document.getElementById('gxma');
     let closes = [];
@@ -138,7 +182,7 @@ def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 5
     function applyData(data) {{
       if(!data||!data.length) return;
       candle.setData(data); closes=data.map(k=>({{time:k.time,close:k.close}})); rebuildMA();
-      paint(data[data.length-1]); fixW();
+      applyMarkers(); paint(data[data.length-1]); fixW();
       // Mostrar las últimas ~90 velas con buen ancho (no apretujar todo el histórico)
       const N=data.length; ts.setVisibleLogicalRange({{from:Math.max(0,N-90), to:N+2}});
     }}

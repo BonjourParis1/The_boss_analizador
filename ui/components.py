@@ -240,6 +240,53 @@ def seconds_candle_chart(symbol_label: str, df_sec: pd.DataFrame, bin_seconds: i
     return fig
 
 
+def alert_sound_html(direction: str = "signal", volume: float = 0.28) -> str:
+    """Reproduce un SONIDO de alerta cuando aparece una señal (Web Audio API, sin
+    archivos). COMPRA = dos tonos ascendentes; VENTA = descendentes; otro = doble tono.
+
+    Reutiliza un único AudioContext en la ventana principal (evita el límite del
+    navegador de ~6 contextos) y lo 'reanuda' para sortear el bloqueo de autoplay
+    tras la primera interacción del usuario (login/clics).
+    """
+    import json
+    freqs = {"SUBE": [660, 990], "BAJA": [660, 440]}.get(direction, [740, 740])
+    fjson = json.dumps(freqs)
+    vol = max(0.0, min(0.6, float(volume)))
+    return f"""
+<script>
+(function() {{
+  function beep(ctx) {{
+    var freqs = {fjson};
+    var t = ctx.currentTime;
+    for (var i = 0; i < freqs.length; i++) {{
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = freqs[i];
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime({vol}, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.30);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t); o.stop(t + 0.32);
+      t += 0.34;
+    }}
+  }}
+  try {{
+    var W = window.parent || window;
+    var AC = W.AudioContext || W.webkitAudioContext || window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    var ctx = W.__gxAudioCtx || (W.__gxAudioCtx = new AC());
+    if (ctx.state === 'suspended') {{ ctx.resume().then(function(){{ beep(ctx); }}).catch(function(){{ beep(ctx); }}); }}
+    else {{ beep(ctx); }}
+  }} catch (e) {{
+    try {{
+      var AC2 = window.AudioContext || window.webkitAudioContext;
+      var c2 = new AC2(); if (c2.state === 'suspended') c2.resume(); beep(c2);
+    }} catch (e2) {{}}
+  }}
+}})();
+</script>
+"""
+
+
 def trade_plan_html(plan, symbol_label: str) -> str:
     """Tarjeta destacada del PLAN AUTÓNOMO con dirección y duración sugerida."""
     color = T.GREEN if plan.direction == "SUBE" else T.RED if plan.direction == "BAJA" else T.GOLD

@@ -245,6 +245,12 @@ with st.sidebar:
         st.session_state["limit"] = st.slider("Velas a cargar", 60, 500, 200, step=20)
         st.session_state["refresh"] = st.number_input("Refresco (seg)", 1, 120,
                                                        value=settings.refresh_seconds)
+        st.session_state["sound_on"] = st.checkbox(
+            "🔊 Sonido en las alertas", value=st.session_state.get("sound_on", True),
+            help="Emite un pitido cuando aparece una señal (COMPRA sube, VENTA baja).")
+        if st.button("🔔 Probar sonido", use_container_width=True):
+            # El clic cuenta como interacción: desbloquea el audio del navegador
+            components.html(C.alert_sound_html("SUBE"), height=0)
         st.session_state["auto_minconf"] = st.slider("Confianza mín. autónomo %", 50, 90,
                                                      int(st.session_state["auto_minconf"]))
         _ff = st.checkbox("🎯 Foco Forex (prioriza tus pares)", value=True,
@@ -726,6 +732,8 @@ def render_strip():
         if st.session_state.get("_last_tag") != tag:
             st.session_state["_last_tag"] = tag
             st.toast(f"{plan.icon} {plan.action_label} {symbol.label} · {duration}", icon="🔔")
+            if st.session_state.get("sound_on", True):
+                components.html(C.alert_sound_html(plan.direction), height=0)
             feed = st.session_state.setdefault("plan_feed", [])
             feed.insert(0, {"t": datetime.now().strftime("%H:%M:%S"),
                             "txt": f"{plan.icon} {plan.action_label} {symbol.label} · {duration} · {plan.confidence:.0f}%"})

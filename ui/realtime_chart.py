@@ -152,9 +152,10 @@ def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 5
       if (tradeMarkers.length) candle.setMarkers(
         tradeMarkers.slice().sort((a,b)=>a.time-b.time)); }}
 
-    // Cuenta atrás EN VIVO de la operación abierta (se actualiza en el navegador)
+    // Cuenta atrás + RESULTADO EN VIVO de la operación abierta (estilo IQ Option)
     const countEl = document.getElementById('gxcount');
     const pend = TRADES.find(t => t.st === 'pending' && (t.end - Date.now()/1000) > -2);
+    let lastPrice = pend ? pend.p : null;   // precio actual (lo actualiza el stream)
     function fmtCd(s) {{ const m=Math.floor(s/60), ss=s%60;
       return m>0 ? (m + ':' + String(ss).padStart(2,'0')) : (ss + 's'); }}
     function tickCount() {{
@@ -163,11 +164,24 @@ def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 5
       const buy = pend.dir === 'SUBE';
       if (rem > 0) {{
         countEl.style.display = 'block';
-        countEl.style.background = buy ? '{T.GREEN}' : '{T.RED}';
-        countEl.textContent = (buy ? '▲ COMPRA' : '▼ VENTA') + '  ·  cierra en ' + fmtCd(rem);
+        countEl.style.background = 'rgba(12,18,24,0.86)';
+        const dirColor = buy ? '{T.GREEN}' : '{T.RED}';
+        const dirLbl = buy ? '▲ COMPRA' : '▼ VENTA';
+        let pl = '';
+        if (lastPrice != null && pend.p) {{
+          const move = (lastPrice - pend.p) / pend.p * 100;   // variación desde la entrada
+          const favor = buy ? move : -move;                   // a favor de TU posición
+          const plColor = favor >= 0 ? '{T.GREEN}' : '{T.RED}';
+          const word = favor >= 0 ? 'GANANDO' : 'PERDIENDO';
+          const arrow = favor >= 0 ? '▲' : '▼';
+          pl = "  ·  <span style='color:" + plColor + "'>" + word + " " + arrow + " " +
+               Math.abs(favor).toFixed(2) + "%</span>";
+        }}
+        countEl.innerHTML = "<span style='color:" + dirColor + "'>" + dirLbl + "</span>" +
+          "<span style='color:#e9eef5'>  ·  cierra en " + fmtCd(rem) + "</span>" + pl;
       }} else if (rem > -3) {{
         countEl.style.display = 'block';
-        countEl.style.background = '{T.MUTED}';
+        countEl.style.background = 'rgba(12,18,24,0.86)';
         countEl.textContent = '⏳ Cerrando operación…';
       }} else {{
         countEl.style.display = 'none';
@@ -194,6 +208,7 @@ def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 5
         "</span>  <span style='color:rgba(90,160,23,0.8)'>Bollinger 20,2</span>";
     }}
     function paint(c) {{ const up=c.close>=c.open;
+      lastPrice=c.close;   // alimenta el resultado EN VIVO de la operación
       priceEl.textContent=c.close.toLocaleString(undefined,{{maximumFractionDigits:8}});
       priceEl.style.color=up?'{T.GREEN}':'{T.RED}'; }}
 

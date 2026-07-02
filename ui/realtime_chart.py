@@ -63,6 +63,11 @@ def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 5
     </div>
   </div>
   <div style="position:relative;">
+    <!-- Cuenta atrás EN VIVO de la operación (estilo IQ Option), actualizada cada segundo -->
+    <div id="gxcount" style="position:absolute;top:10px;left:50%;transform:translateX(-50%);
+         z-index:7;display:none;padding:6px 14px;border-radius:22px;
+         font-family:'JetBrains Mono',monospace;font-size:0.86rem;font-weight:700;color:#fff;
+         box-shadow:0 3px 10px rgba(0,0,0,0.28);white-space:nowrap;"></div>
     <div style="position:absolute;bottom:30px;right:12px;z-index:6;display:flex;gap:6px;">
       <button id="gxzoomin"  style="cursor:pointer;width:30px;height:30px;border-radius:8px;border:1px solid {T.BORDER};background:{T.PANEL_2};color:{T.TEXT};font-size:1.1rem;">+</button>
       <button id="gxzoomout" style="cursor:pointer;width:30px;height:30px;border-radius:8px;border:1px solid {T.BORDER};background:{T.PANEL_2};color:{T.TEXT};font-size:1.1rem;">−</button>
@@ -146,6 +151,30 @@ def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 5
     function applyMarkers() {{
       if (tradeMarkers.length) candle.setMarkers(
         tradeMarkers.slice().sort((a,b)=>a.time-b.time)); }}
+
+    // Cuenta atrás EN VIVO de la operación abierta (se actualiza en el navegador)
+    const countEl = document.getElementById('gxcount');
+    const pend = TRADES.find(t => t.st === 'pending' && (t.end - Date.now()/1000) > -2);
+    function fmtCd(s) {{ const m=Math.floor(s/60), ss=s%60;
+      return m>0 ? (m + ':' + String(ss).padStart(2,'0')) : (ss + 's'); }}
+    function tickCount() {{
+      if (!pend) {{ countEl.style.display='none'; return; }}
+      const rem = Math.round(pend.end - Date.now()/1000);
+      const buy = pend.dir === 'SUBE';
+      if (rem > 0) {{
+        countEl.style.display = 'block';
+        countEl.style.background = buy ? '{T.GREEN}' : '{T.RED}';
+        countEl.textContent = (buy ? '▲ COMPRA' : '▼ VENTA') + '  ·  cierra en ' + fmtCd(rem);
+      }} else if (rem > -3) {{
+        countEl.style.display = 'block';
+        countEl.style.background = '{T.MUTED}';
+        countEl.textContent = '⏳ Cerrando operación…';
+      }} else {{
+        countEl.style.display = 'none';
+      }}
+    }}
+    tickCount();
+    setInterval(tickCount, 1000);
 
     const priceEl = document.getElementById('gxprice');
     const maEl = document.getElementById('gxma');

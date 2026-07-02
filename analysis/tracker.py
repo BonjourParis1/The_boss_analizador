@@ -18,18 +18,30 @@ from db import cloud
 _DUR_LABEL = {30: "30s", 60: "1m", 180: "3m", 300: "5m", 900: "15m"}
 
 
+# Descanso tras cerrar una operación antes de abrir otra en el MISMO activo (foco)
+_REENTRY_COOLDOWN_S = 20
+
+
 def record(symbol_key: str, direction: str, expiry_seconds: int, entry_price: float,
            source: str = "auto", features=None) -> None:
-    """Registra una señal accionable (SUBE/BAJA). Evita duplicar la misma pendiente.
+    """Registra UNA operación accionable (SUBE/BAJA) con CONCENTRACIÓN: una sola
+    operación por activo a la vez. Mientras haya una en curso —o recién cerrada— no
+    abre otra, para que el sistema se enfoque en operarla y aprender de su resultado.
     `features` = foto de indicadores en la entrada (para que el modelo aprenda)."""
     if direction not in ("SUBE", "BAJA") or not entry_price:
         return
     now = time.time()
     for s in cloud.signals_all():
-        if (s.get("symbol") == symbol_key and s.get("status") == "pending"
-                and s.get("direction") == direction
-                and now - float(s.get("entry_ts", 0)) < max(expiry_seconds, 30)):
-            return  # ya hay una pendiente igual reciente
+        if s.get("symbol") != symbol_key:
+            continue
+        # 1) Ya hay una operación EN CURSO de este activo -> concéntrate en ella
+        if s.get("status") == "pending" and now < float(s.get("entry_ts", 0)) + int(
+                s.get("expiry_seconds", 0)):
+            return
+        # 2) Una operación de este activo cerró hace muy poco -> respira antes de reentrar
+        if s.get("status") in ("win", "loss") and 0 <= now - (
+                float(s.get("entry_ts", 0)) + int(s.get("expiry_seconds", 0))) < _REENTRY_COOLDOWN_S:
+            return
     cloud.signal_save(symbol_key, direction, expiry_seconds, entry_price, source, features)
 
 

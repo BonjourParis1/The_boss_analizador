@@ -610,38 +610,44 @@ def compute_locked_plan(sk: str, duration: str, news_score):
     return plan, sig_main, reading, 0
 
 
-def chart_trades(sk: str) -> list:
-    """Operaciones a MARCAR en el gráfico (línea de entrada estilo IQ Option).
+def chart_trades(sk: str, duration: str | None = None) -> list:
+    """UNA sola operación en el gráfico (limpio como IQ Option): la que estás mirando.
 
-    Se construye desde DOS fuentes para que la línea aparezca SIEMPRE y al instante:
-      1) el BLOQUEO de sesión (la operación abierta ahora) — disponible en memoria,
-         sin depender de la base de datos ni de su caché;
-      2) las señales persistidas y ya resueltas (acierto/fallo) de Supabase, para
-         ver también entradas anteriores y cómo terminaron.
+    Muestra SOLO la operación ABIERTA de este activo y duración (una línea verde/roja
+    con su marca de entrada). Cuando cierra, deja ver su resultado (✓/✗) unos segundos
+    y desaparece. No apila el historial de señales para no ensuciar el gráfico.
     """
     import time as _t
     now = _t.time()
-    trades, seen = [], set()
-    for k, v in list(st.session_state.items()):
-        if isinstance(k, str) and k.startswith(f"lock:{sk}:") and isinstance(v, dict):
-            if now < v.get("until", 0) and v.get("entry_price"):
-                trades.append({
-                    "direction": v.get("dir"),
-                    "entry_price": float(v.get("entry_price")),
-                    "exit_price": None,
-                    "entry_ts": float(v.get("opened", v.get("until", now) - 60)),
-                    "ends_ts": float(v.get("until", now)),
-                    "status": "pending"})
-                seen.add(round(float(v.get("entry_price")), 8))
+
+    # 1) Operación ABIERTA del activo+duración observado (bloqueo de sesión, al instante)
+    def _from_lock(v):
+        return {"direction": v.get("dir"), "entry_price": float(v.get("entry_price")),
+                "exit_price": None,
+                "entry_ts": float(v.get("opened", v.get("until", now) - 60)),
+                "ends_ts": float(v.get("until", now)), "status": "pending"}
+
+    if duration:
+        v = st.session_state.get(f"lock:{sk}:{duration}")
+        if isinstance(v, dict) and now < v.get("until", 0) and v.get("entry_price"):
+            return [_from_lock(v)]
+    else:
+        for k, v in list(st.session_state.items()):
+            if isinstance(k, str) and k.startswith(f"lock:{sk}:") and isinstance(v, dict) \
+                    and now < v.get("until", 0) and v.get("entry_price"):
+                return [_from_lock(v)]
+
+    # 2) Sin operación abierta -> muestra el ÚLTIMO resultado por ~45s (para ver ✓/✗)
     try:
-        for t in tracker.active_trades(sk):
-            if t.get("status") == "pending" and round(float(t.get("entry_price") or 0), 8) in seen:
-                continue
-            trades.append(t)
+        resolved = [t for t in tracker.active_trades(sk, recent_window=90)
+                    if t.get("status") in ("win", "loss")]
+        if resolved:
+            last = max(resolved, key=lambda t: t.get("ends_ts", 0))
+            if now - float(last.get("ends_ts", 0)) <= 45:
+                return [last]
     except Exception:
         pass
-    trades.sort(key=lambda t: t.get("entry_ts", 0))
-    return trades
+    return []
 
 
 def render_system_status():
@@ -916,7 +922,7 @@ def render_chart_full():
             _lv = _levels_cached(sk, interval, limit)
         except Exception:
             _lv = None
-        _tr = chart_trades(sk)
+        _tr = chart_trades(sk, st.session_state.get("duration", "1m"))
         st.plotly_chart(
             C.pro_chart(symbol.label, df, sig.support, sig.resistance,
                         show_ma=st.session_state.get("show_ma", True),
@@ -1086,8 +1092,8 @@ with tab_live:
     # Franja superior de avisos (auto-refresca sin reiniciar el gráfico)
     st.fragment(run_every=_strip_refresh)(render_strip)()
 
-    # Operaciones a MARCAR en el gráfico (línea de entrada + resultado, estilo IQ Option)
-    _trades = chart_trades(_symbol.key)
+    # Operación a MARCAR en el gráfico (una sola, la que estás mirando, estilo IQ Option)
+    _trades = chart_trades(_symbol.key, st.session_state.get("duration", "1m"))
 
     # Gráfico a pantalla completa
     if _stream:

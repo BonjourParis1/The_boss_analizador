@@ -56,8 +56,30 @@ def compute_levels(intraday: pd.DataFrame, daily: pd.DataFrame | None = None) ->
         pass
 
     # Quitar niveles duplicados muy cercanos (evita amontonar líneas)
-    out: list[dict] = []
+    dedup: list[dict] = []
     for lv in levels:
-        if all(abs(lv["value"] - o["value"]) / (abs(lv["value"]) + 1e-9) > 0.0008 for o in out):
-            out.append(lv)
-    return out
+        if all(abs(lv["value"] - o["value"]) / (abs(lv["value"]) + 1e-9) > 0.0008 for o in dedup):
+            dedup.append(lv)
+
+    # Dejar SOLO los niveles relevantes al precio actual (gráfico limpio como IQ Option):
+    # la resistencia más cercana por encima y el soporte más cercano por debajo, más el
+    # máximo/mínimo del día como contexto. Así no se amontonan 8 líneas en el eje.
+    try:
+        price = float((base_day if base_day is not None and not base_day.empty
+                       else src_wm)["close"].iloc[-1])
+    except Exception:
+        return dedup
+
+    res = sorted([l for l in dedup if l["kind"] == "res" and l["value"] >= price],
+                 key=lambda l: l["value"] - price)
+    sup = sorted([l for l in dedup if l["kind"] == "sup" and l["value"] <= price],
+                 key=lambda l: price - l["value"])
+    keep, seen = [], set()
+    for name in ("Máx día", "Mín día"):
+        for l in dedup:
+            if l["name"] == name and l["value"] not in seen:
+                keep.append(l); seen.add(l["value"])
+    for l in res[:1] + sup[:1]:
+        if l["value"] not in seen:
+            keep.append(l); seen.add(l["value"])
+    return keep or dedup[:4]

@@ -130,17 +130,18 @@ def stream_chart_html(binance_symbol: str, interval: str = "1m", height: int = 5
       // resultado (verde acierto / rojo fallo) para reforzar el aprendizaje.
       const lineColor = pending ? (buy ? '{T.GREEN}' : '{T.RED}')
                                 : (win ? '{T.GREEN}' : '{T.RED}');
-      const tag = (buy ? '▲ COMPRA' : '▼ VENTA') +
-                  (pending ? ' ⏳' : (win ? ' ✓' : ' ✗'));
+      // Etiqueta breve en el eje (una sola, limpia como IQ Option)
+      const tag = pending ? (buy ? 'COMPRA' : 'VENTA')
+                          : (win ? 'GANÓ ✓' : 'PERDIÓ ✗');
       candle.createPriceLine({{
-        price: tr.p, color: lineColor, lineWidth: pending ? 2 : 1,
+        price: tr.p, color: lineColor, lineWidth: 2,
         lineStyle: pending ? 0 : 2, axisLabelVisible: true, title: tag }});
-      // Flecha en la vela de ENTRADA (tiempo alineado a la vela)
+      // Marca discreta en la vela de ENTRADA (sin texto encima, para no saturar)
       const tt = Math.floor(tr.t / IVS) * IVS;
       tradeMarkers.push({{
         time: tt, position: buy ? 'belowBar' : 'aboveBar',
         color: lineColor, shape: buy ? 'arrowUp' : 'arrowDown',
-        text: (buy ? 'COMPRA' : 'VENTA') + (pending ? '' : (win ? ' ✓' : ' ✗')) }});
+        text: pending ? '' : (win ? '✓' : '✗') }});
     }});
     function applyMarkers() {{
       if (tradeMarkers.length) candle.setMarkers(

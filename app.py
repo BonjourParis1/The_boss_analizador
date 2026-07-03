@@ -465,6 +465,32 @@ def _ia_verdict_cached(sk: str, duration: str):
                       f"{(_rs.get('annual_return') or 0):+.1%}.")
         except Exception:
             pass
+        # RESULTADOS REALES del sistema: el cerebro razona también con lo que ha pasado
+        try:
+            _label = SYMBOLS_BY_KEY[sk].label
+            _ps = tracker.stats(sk)
+            _gg = tracker.stats()
+            rp = []
+            if _ps["n"]:
+                rp.append(f"precisión real en {_label}: {_ps['accuracy']:.0f}% "
+                          f"({_ps['n']} operaciones evaluadas)")
+            if _gg["n"]:
+                rp.append(f"precisión global del sistema: {_gg['accuracy']:.0f}% ({_gg['n']})")
+            try:
+                from analysis import self_learn
+                from ml.model import extract_features
+                _tf = advisor.DURATION_BY_LABEL.get(duration, advisor.DURATION_BY_LABEL["1m"])[2]
+                _feat = extract_features(load_market(sk, _tf, 150))[0].tolist()
+                _wp = self_learn.win_probability(_feat)
+                if _wp is not None:
+                    rp.append(f"probabilidad de acierto del modelo (aprendida de resultados): {_wp:.0f}%")
+            except Exception:
+                pass
+            if rp:
+                ex.append("Resultados reales a tener en cuenta — " + "; ".join(rp) +
+                          ". Pondera esto: si la precisión histórica es baja, sé más prudente.")
+        except Exception:
+            pass
         so = _social_cached(sk)
         if so:
             ex.append(f"Sentimiento social: {so['label']} ({so['detail']}).")
@@ -564,17 +590,64 @@ def _waiting_plan(candidate, stable_for: float, need: float):
                      min(candidate.confidence, 55.0), reasons)
 
 
+def _fuse_ia(plan, ia):
+    """Funde el veredicto del CEREBRO (razonado con los 147 conocimientos + los
+    resultados reales) con el plan técnico, para que el CONOCIMIENTO influya en la
+    decisión: confirma (más confianza), discrepa (menos, o ESPERAR si es fuerte)."""
+    if not ia:
+        return plan
+    _map = {"COMPRA": "SUBE", "VENTA": "BAJA", "ESPERAR": "ESPERAR"}
+    ia_dir = _map.get(str(ia.get("direccion", "")).upper(), "ESPERAR")
+    try:
+        ia_conf = float(ia.get("confianza") or 0)
+    except Exception:
+        ia_conf = 0.0
+    reasons = list(plan.rationale)
+    if plan.direction in ("SUBE", "BAJA"):
+        if ia_dir == plan.direction:
+            plan.confidence = round(min(98.0, 0.72 * plan.confidence
+                                        + 0.28 * max(ia_conf, plan.confidence) + 4), 1)
+            reasons.append(f"🧠 Cerebro CONFIRMA {plan.action_label} ({ia_conf:.0f}%) "
+                           f"aplicando su conocimiento y los resultados reales: más fiable.")
+        elif ia_dir in ("SUBE", "BAJA"):   # el cerebro opina lo CONTRARIO
+            if ia_conf >= 70:
+                reasons.append(f"🧠 Cerebro DISCREPA con fuerza ({ia_conf:.0f}%): "
+                               f"lo prudente es ESPERAR (conocimiento vs. técnico).")
+                plan.direction = "ESPERAR"
+                plan.action_label, plan.icon = "ESPERAR", "⏸"
+                plan.duration_label, plan.expiry_seconds = "—", 0
+                plan.confidence = round(min(plan.confidence, 45.0), 1)
+            else:
+                plan.confidence = round(max(0.0, plan.confidence - 12), 1)
+                reasons.append(f"🧠 Cerebro discrepa ({ia_conf:.0f}%): menos fiable, cautela.")
+        else:   # el cerebro sugiere ESPERAR
+            plan.confidence = round(max(0.0, plan.confidence - 6), 1)
+            reasons.append("🧠 Cerebro aconseja ESPERAR: cautela añadida a la decisión.")
+    plan.rationale = reasons
+    return plan
+
+
 def compute_locked_plan(sk: str, duration: str, news_score):
     """Multi-TF + BLOQUEO firme: una vez abierta, la operación se MANTIENE hasta
     vencer (nunca cambia de opinión a mitad de camino, como en IQ Option). Antes de
     abrir, exige que la señal se sostenga unos segundos (confirmación) para no operar
     por un movimiento pasajero.
+
+    La decisión COMBINA: técnico multi-temporalidad + tendencia de años + resultados
+    reales aprendidos + veredicto del cerebro (conocimiento). Todo pondera.
     """
     import time as _t
     plan, sig_main, reading = _consensus_for(sk, duration, news_score)
     lock_key = f"lock:{sk}:{duration}"
     conf_key = f"confirm:{sk}:{duration}"
     now = _t.time()
+
+    # El CONOCIMIENTO del cerebro influye en la decisión (fusión con el plan técnico).
+    # El veredicto está cacheado (3 min), así que no llama al modelo en cada refresco.
+    try:
+        plan = _fuse_ia(plan, _ia_verdict_cached(sk, duration))
+    except Exception:
+        pass
 
     # El sistema decide SOLO su apetito de riesgo según el contexto (adaptativo)
     gate = _adaptive_gate(sk, plan, sig_main)

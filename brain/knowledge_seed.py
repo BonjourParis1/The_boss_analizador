@@ -12,12 +12,14 @@ Es idempotente: usa una versión (kb_seed_version en app_settings) para no dupli
 """
 from __future__ import annotations
 
-_SEED_VERSION = 1
+_SEED_VERSION = 2
 _KIND = "fundamento"
 _PREFIX = "Fundamentos de trading"
 
+# El conocimiento se organiza en LOTES versionados: al subir la versión se inyectan
+# SOLO los lotes nuevos (no se duplican los anteriores). Cada entrada es
 # (título, resumen buscable, contenido detallado). Todo verificable y estándar.
-ENTRIES: list[tuple[str, str, str]] = [
+_BATCH1: list[tuple[str, str, str]] = [
     ("Tendencia (trend following)",
      "La tendencia es tu aliada. Alcista: máximos y mínimos crecientes. Bajista: "
      "máximos y mínimos decrecientes. Lateral: rango sin dirección. Operar A FAVOR "
@@ -256,6 +258,265 @@ ENTRIES: list[tuple[str, str, str]] = [
      "perdedora en 'inversión de largo plazo' quitando el stop."),
 ]
 
+# ---- LOTE 2: conocimiento PROFUNDO (nivel profesional) ----
+_BATCH2: list[tuple[str, str, str]] = [
+    ("Estructura de mercado: BOS y CHoCH",
+     "La estructura de mercado se lee por máximos y mínimos. BOS (break of structure): el "
+     "precio rompe el último máximo (alcista) o mínimo (bajista) CONTINUANDO la tendencia. "
+     "CHoCH (change of character): rompe en sentido contrario, primer aviso de posible GIRO.",
+     "En tendencia alcista se encadenan máximos y mínimos crecientes; un BOS al alza confirma "
+     "continuación. Cuando el precio deja de hacer mínimos crecientes y rompe el último mínimo "
+     "relevante, ocurre un CHoCH: la tendencia puede estar cambiando. Opera a favor de la "
+     "estructura vigente y desconfía de entradas contra-estructura hasta ver CHoCH + confirmación."),
+
+    ("Order blocks (bloques de órdenes)",
+     "Un order block es la última vela contraria antes de un movimiento fuerte e impulsivo "
+     "(la zona donde entró el dinero institucional). El precio suele VOLVER a testear ese bloque "
+     "antes de continuar: ofrece entradas de alta probabilidad a favor del impulso.",
+     "El order block alcista es la última vela bajista antes de un rally; el bajista, la última "
+     "vela alcista antes de una caída. Se marca el rango de esa vela como zona de interés. La "
+     "entrada busca la reacción del precio al regresar (mitigación) con confirmación (vela de "
+     "rechazo, CHoCH menor). Ganan valor si coinciden con desequilibrios y liquidez cercana."),
+
+    ("Zonas de oferta y demanda",
+     "Demanda: zona donde la compra superó a la venta y el precio despegó al alza (suelo de "
+     "acumulación). Oferta: zona donde la venta dominó y el precio cayó (techo de distribución). "
+     "El precio tiende a reaccionar al volver a esas zonas 'frescas' (aún no testeadas).",
+     "Se dibujan como rectángulos en el origen de movimientos impulsivos. Una zona pierde fuerza "
+     "cada vez que se testea. Las mejores operaciones combinan una zona de demanda fresca a favor "
+     "de la tendencia superior, con confluencia de Fibonacci o soporte. Entra con confirmación y "
+     "stop al otro lado de la zona."),
+
+    ("Liquidez y barridos de stops (stop hunt)",
+     "Bajo mínimos y sobre máximos evidentes se acumulan órdenes stop (liquidez). El precio suele "
+     "'barrer' esas zonas (falsa ruptura que caza stops) antes de girar en la dirección real. Un "
+     "barrido de liquidez seguido de CHoCH es una señal de giro potente.",
+     "Los grandes operadores necesitan liquidez para ejecutar volumen: empujan el precio a zonas "
+     "obvias de stops, los activan y luego mueven en sentido contrario. Señales: mecha larga que "
+     "supera un máximo/mínimo clave y cierra de vuelta dentro del rango. No pongas tus stops en el "
+     "sitio 'obvio'; dales aire más allá de la zona de barrido."),
+
+    ("Fair value gaps (desequilibrios)",
+     "Un fair value gap (FVG) o imbalance es un hueco de ineficiencia entre tres velas donde el "
+     "precio se movió tan rápido que dejó una zona sin negociar. El precio suele REGRESAR a "
+     "rellenar ese desequilibrio antes de continuar.",
+     "Se identifica cuando la mecha de la vela 1 y la de la vela 3 no se solapan, dejando un vacío "
+     "en la vela 2 impulsiva. Actúa como imán y como zona de reentrada a favor del impulso. Los "
+     "FVG combinados con order blocks y con la tendencia superior dan entradas precisas. No todo "
+     "FVG se rellena de inmediato: úsalo con confirmación, no en solitario."),
+
+    ("Método Wyckoff: acumulación y distribución",
+     "Wyckoff describe cómo el 'dinero inteligente' ACUMULA en rangos antes de subidas y DISTRIBUYE "
+     "antes de caídas. Fases con eventos clave: spring (barrido bajo el rango en acumulación) y "
+     "upthrust (barrido sobre el rango en distribución), que preceden al movimiento real.",
+     "En acumulación, tras un rango, un 'spring' perfora el soporte, caza stops y vuelve dentro: "
+     "señal alcista. En distribución, el 'upthrust' hace lo simétrico sobre resistencia: señal "
+     "bajista. La ley de causa-efecto: cuanto mayor el rango de acumulación, mayor el movimiento "
+     "posterior. El volumen confirma cada fase (esfuerzo vs resultado)."),
+
+    ("VWAP (precio medio ponderado por volumen)",
+     "El VWAP es el precio promedio ponderado por volumen del día. Actúa como imán y como soporte/"
+     "resistencia dinámico intradía. Precio sobre VWAP = sesgo comprador de la sesión; bajo VWAP = "
+     "sesgo vendedor. Muy usado por institucionales para medir ejecución.",
+     "En tendencia intradía, los retrocesos al VWAP ofrecen reentradas a favor. En rango, el precio "
+     "oscila alrededor del VWAP (reversión a la media). Las bandas de desviación del VWAP marcan "
+     "extremos. Combínalo con la apertura de sesión y niveles previos para timing de scalping y "
+     "day trading."),
+
+    ("Ichimoku Kinko Hyo (la nube)",
+     "Ichimoku muestra tendencia, soporte/resistencia y momentum de un vistazo. Precio sobre la "
+     "nube (Kumo) = alcista; bajo la nube = bajista; dentro = indefinido. El cruce Tenkan/Kijun y "
+     "el grosor de la nube confirman fuerza y posibles giros.",
+     "Componentes: Tenkan (media rápida), Kijun (media lenta, soporte dinámico), Senkou A/B que "
+     "forman la nube proyectada al futuro, y Chikou (cierre desplazado atrás) que confirma. Señal "
+     "alcista robusta: precio sobre nube, Tenkan sobre Kijun y Chikou libre por encima del precio. "
+     "Una nube gruesa = soporte/resistencia fuerte; fina = fácil de perforar."),
+
+    ("ADX: fuerza de la tendencia",
+     "El ADX mide la FUERZA de la tendencia (no su dirección) de 0 a 100. ADX < 20: mercado sin "
+     "tendencia (rango), evita estrategias de seguimiento. ADX > 25 y subiendo: tendencia fuerte, "
+     "favorece seguir tendencia. Los +DI/−DI indican la dirección.",
+     "Usa el ADX como filtro de régimen: con ADX bajo, prioriza reversión a la media (rango, "
+     "Bollinger); con ADX alto, prioriza continuación (rupturas, medias, pullbacks). +DI sobre −DI "
+     "= presión alcista; −DI sobre +DI = bajista. Un ADX que cae desde valores altos avisa de "
+     "agotamiento de la tendencia."),
+
+    ("Oscilador estocástico",
+     "El estocástico compara el cierre con el rango reciente (0-100). >80 sobrecompra, <20 "
+     "sobreventa. El cruce de %K sobre %D en zona baja da señal alcista; a la inversa, bajista. "
+     "Sus divergencias con el precio anticipan giros, como en el RSI.",
+     "Funciona mejor en mercados en RANGO; en tendencia fuerte se satura y da señales falsas "
+     "(igual que el RSI). El estocástico lento (más suavizado) reduce el ruido. Combínalo con la "
+     "tendencia superior: en tendencia alcista, usa sobreventa del estocástico para reentradas al "
+     "alza, ignorando las señales de venta."),
+
+    ("Divergencias regulares y ocultas",
+     "Divergencia REGULAR = giro: precio hace máximo más alto pero el oscilador (RSI/MACD) máximo "
+     "más bajo (bajista), o mínimo más bajo con oscilador más alto (alcista). Divergencia OCULTA = "
+     "continuación: avisa de que la tendencia seguirá tras un retroceso.",
+     "La divergencia oculta alcista: precio con mínimo MÁS ALTO y oscilador con mínimo más bajo, en "
+     "tendencia alcista → reanudación al alza. La oculta bajista: precio con máximo más bajo y "
+     "oscilador con máximo más alto, en tendencia bajista → reanudación a la baja. Las regulares "
+     "buscan el giro; las ocultas, entrar a favor de la tendencia en el retroceso."),
+
+    ("Ondas de Elliott (base)",
+     "La teoría de Elliott ve el mercado en ciclos: 5 ondas a favor de la tendencia (impulso, "
+     "1-2-3-4-5) seguidas de 3 ondas correctivas (A-B-C). La onda 3 suele ser la más larga y "
+     "potente; la onda 2 no retrocede más allá del inicio de la 1.",
+     "Reglas clave: la onda 2 nunca retrocede el 100% de la 1; la 3 no es la más corta; la 4 no "
+     "solapa el territorio de la 1. Las correcciones (A-B-C) ofrecen reentradas a favor de la "
+     "tendencia mayor. Elliott es interpretativo y subjetivo: úsalo como marco de contexto, "
+     "confirmado con estructura y Fibonacci, no como predicción exacta."),
+
+    ("Puntos pivote (pivot points)",
+     "Los pivotes calculan niveles de soporte (S1,S2,S3) y resistencia (R1,R2,R3) a partir del "
+     "máximo, mínimo y cierre del período previo. El precio sobre el pivote central = sesgo "
+     "alcista del día; por debajo = bajista. Muy usados en intradía.",
+     "El pivote (P = (H+L+C)/3) actúa como eje del día. Los operadores buscan rebotes en S1/R1 y "
+     "rupturas hacia S2/R2. Funcionan porque muchos participantes los vigilan (profecía "
+     "autocumplida). Combínalos con VWAP, apertura y niveles previos para confluencia. Los "
+     "pivotes de Fibonacci usan proporciones 0.382/0.618 en lugar de fijas."),
+
+    ("Velas: tres soldados y tres cuervos",
+     "Tres soldados blancos: tres velas alcistas consecutivas con cierres crecientes tras una "
+     "caída: giro alcista fuerte. Tres cuervos negros: tres velas bajistas seguidas tras una "
+     "subida: giro bajista. Muestran un cambio de control sostenido.",
+     "Su fiabilidad sube si los cuerpos son amplios, con mechas pequeñas y volumen creciente, y si "
+     "aparecen en un nivel clave. Cuidado con entrar tarde: tras tres velas grandes el movimiento "
+     "puede estar extendido y sobrevenir un retroceso. Ideal esperar un pequeño pullback para "
+     "entrar con mejor riesgo/beneficio."),
+
+    ("Velas: pinzas, harami y marubozu",
+     "Pinza (tweezer): dos velas con máximos (techo) o mínimos (suelo) casi idénticos: rechazo de "
+     "nivel, posible giro. Harami: vela pequeña dentro del cuerpo de la anterior grande: "
+     "indecisión/pausa. Marubozu: vela sin mechas, cuerpo pleno: dominio total de un lado.",
+     "La pinza en soporte/resistencia con confirmación señala giro. El harami avisa de pérdida de "
+     "impulso y posible reversión, sobre todo tras tendencia extendida. Un marubozu alcista "
+     "(sin mechas) muestra compradores en control absoluto y suele preceder continuación. Todos "
+     "ganan fiabilidad con contexto (nivel, tendencia, volumen)."),
+
+    ("Huecos (gaps): ruptura, continuación y agotamiento",
+     "Un gap es un salto de precio sin negociación entre velas (típico en acciones al abrir). Gap "
+     "de RUPTURA: inicia un movimiento desde un rango. De CONTINUACIÓN (runaway): a mitad de "
+     "tendencia, la confirma. De AGOTAMIENTO: al final, suele rellenarse y avisar de giro.",
+     "Muchos gaps tienden a 'rellenarse' cuando el precio vuelve a la zona del hueco. El gap de "
+     "ruptura con volumen alto suele mantenerse y marcar tendencia. El de agotamiento aparece tras "
+     "un movimiento extendido con volumen clímax y anticipa reversión. En cripto/forex 24h hay "
+     "menos gaps salvo el de apertura del domingo en forex."),
+
+    ("Trampas y falsas rupturas (bull/bear traps)",
+     "Una falsa ruptura (fakeout) supera un nivel clave y regresa rápido, atrapando a quienes "
+     "entraron en la ruptura. Trampa alcista: ruptura de resistencia que falla y cae. Trampa "
+     "bajista: ruptura de soporte que falla y sube. Son fuente de barridos de liquidez.",
+     "Para evitarlas: espera CIERRE de vela fuera del nivel (no solo mecha), confirma con volumen y "
+     "considera el retest. Una ruptura sin volumen o contra la tendencia superior es sospechosa. "
+     "Paradójicamente, una falsa ruptura confirmada (vuelta dentro del rango) es una de las "
+     "señales de reversión más rentables: opera a favor del rechazo."),
+
+    ("Régimen de mercado: tendencia vs rango",
+     "El mercado alterna entre TENDENCIA (direccional) y RANGO (lateral). La táctica debe cambiar: "
+     "en tendencia, seguir el movimiento (rupturas, pullbacks a medias); en rango, reversión a la "
+     "media (comprar soporte, vender resistencia). Usar la estrategia equivocada al régimen pierde.",
+     "Identifica el régimen con ADX (alto=tendencia, bajo=rango), la pendiente de las medias y la "
+     "estructura. El mayor error es aplicar seguimiento de tendencia en un rango (te barren en los "
+     "extremos) o reversión a la media en tendencia fuerte (te arrolla). Adapta indicadores y "
+     "gestión al régimen actual."),
+
+    ("Tamaño de posición por volatilidad (ATR)",
+     "Ajusta el tamaño y el stop a la VOLATILIDAD (ATR), no a un número fijo. Stop = múltiplo de "
+     "ATR (p.ej. 1.5–2×ATR) para dar aire al ruido; el tamaño se reduce cuando el ATR es alto para "
+     "mantener constante el riesgo en dinero por operación.",
+     "Fórmula: tamaño = (capital × riesgo%) / (distancia_al_stop). Si el stop se fija en ATR, en "
+     "mercados volátiles el stop es más ancho y el tamaño menor (mismo riesgo $). Así normalizas el "
+     "riesgo entre activos y regímenes. Nunca uses el mismo tamaño fijo en un activo tranquilo y en "
+     "uno muy volátil: el riesgo real sería muy distinto."),
+
+    ("Criterio de Kelly y Kelly fraccional",
+     "Kelly calcula la fracción óptima del capital a arriesgar para maximizar el crecimiento a "
+     "largo plazo, según tu probabilidad de acierto y tu ratio ganancia/pérdida. En la práctica se "
+     "usa KELLY FRACCIONAL (media o cuarto de Kelly) para reducir la volatilidad y el riesgo de ruina.",
+     "Kelly = W − (1−W)/R, donde W = prob. de acierto y R = ganancia media/pérdida media. Kelly "
+     "completo maximiza crecimiento pero con drawdowns brutales; la mayoría usa 1/4–1/2 de Kelly. "
+     "Si Kelly da negativo, tu sistema no tiene ventaja: no operes. Requiere estimaciones honestas "
+     "de W y R (de tu backtest/resultados reales), no optimistas."),
+
+    ("Riesgo de ruina y control del drawdown",
+     "El riesgo de ruina es la probabilidad de perder tanto capital que no puedas recuperarte. "
+     "Crece con el riesgo por operación y las rachas de pérdidas. Perder el 50% exige ganar el "
+     "100% para recuperar: por eso limitar el drawdown es vital para la supervivencia.",
+     "Toda estrategia sufre rachas perdedoras: con 50% de aciertos, rachas de 6-8 seguidas son "
+     "normales. Arriesgar poco (1-2%) mantiene el drawdown manejable y evita la ruina. Fija un "
+     "límite de pérdida diaria/semanal y detente al alcanzarlo. La matemática de la recuperación es "
+     "asimétrica: cuanto más caes, exponencialmente más cuesta volver."),
+
+    ("Correlaciones entre activos",
+     "Los mercados están conectados. El dólar (DXY) suele moverse INVERSO al oro y al EUR/USD. En "
+     "cripto, la dominancia de BTC guía a las altcoins. Entornos 'risk-on' favorecen acciones y "
+     "cripto; 'risk-off' favorecen dólar, oro y bonos.",
+     "Operar dos activos muy correlacionados a la vez DUPLICA el riesgo (es casi la misma apuesta). "
+     "Usa las correlaciones como confirmación: si vas largo en oro, un DXY débil lo apoya. "
+     "Divergencias entre correlacionados avisan de giros. Vigila el DXY para forex/materias y la "
+     "dominancia BTC para altcoins antes de operar."),
+
+    ("Costes: spread, slippage y comisiones",
+     "Cada operación tiene costes: spread (diferencia compra/venta), slippage (ejecución a peor "
+     "precio en alta volatilidad) y comisiones. En scalping y binarias los costes pesan mucho "
+     "sobre el resultado: una ventaja pequeña puede desaparecer tras costes.",
+     "Opera en horas líquidas para spreads estrechos y evita el momento exacto de noticias (spreads "
+     "se disparan). En binarias, el 'coste' es el payout inferior al 100%: exige una ventaja real "
+     "sobre el punto de equilibrio. Incluye SIEMPRE los costes en tu backtest; ignorarlos hace "
+     "parecer rentable un sistema que no lo es."),
+
+    ("Gestión de la operación: parciales y break-even",
+     "Gestionar la operación abierta importa tanto como la entrada. Mueve el stop a break-even al "
+     "alcanzar cierto avance (elimina el riesgo), toma beneficios PARCIALES en objetivos/niveles y "
+     "deja correr el resto con trailing stop para capturar tendencia.",
+     "Escalar salidas: cierra 1/3 o 1/2 en el primer objetivo (asegura ganancia y reduce estrés) y "
+     "gestiona el resto con el stop en break-even. Evita escalar HACIA una posición perdedora "
+     "(promediar a la baja sin plan). Un buen plan de gestión convierte aciertos medianos en "
+     "operaciones rentables y limita el daño de los fallos."),
+
+    ("Martingala vs anti-martingala",
+     "Martingala (doblar tras cada pérdida para 'recuperar') es un camino directo a la ruina: una "
+     "racha perdedora —que ocurre— revienta la cuenta. Anti-martingala (aumentar tamaño cuando "
+     "ganas y reducir cuando pierdes) es lo correcto: aprovecha rachas buenas y protege en malas.",
+     "La martingala tiene alta probabilidad de pequeñas ganancias y baja probabilidad de una "
+     "pérdida catastrófica: la esperanza sigue siendo negativa y el riesgo de ruina, altísimo. En "
+     "binarias es especialmente letal por el payout <100%. Usa tamaño fijo por % de capital o "
+     "anti-martingala moderada; nunca persigas pérdidas subiendo la apuesta."),
+
+    ("Análisis top-down multi-temporalidad",
+     "Flujo profesional: empieza por la temporalidad ALTA (diario/4h) para la tendencia y niveles "
+     "mayores; baja a la media (1h/15m) para el contexto y zonas; y a la baja (5m/1m) solo para el "
+     "TIMING de entrada. Operar alineado con lo superior es lo más fiable.",
+     "Define primero el sesgo (alcista/bajista/neutral) en el marco alto y las zonas de interés "
+     "(soporte/resistencia, order blocks). Luego espera en la temporalidad baja una confirmación "
+     "(CHoCH, patrón de vela, rechazo) DENTRO de esas zonas y a favor del sesgo. Nunca dejes que la "
+     "temporalidad baja te haga operar contra la alta."),
+
+    ("Diario de trading y expectativa por setup",
+     "Registrar cada operación (motivo, entrada, stop, objetivo, resultado, emoción) es lo que "
+     "convierte experiencia en mejora. Con datos calculas la EXPECTATIVA por tipo de setup y "
+     "descartas los que pierden, doblando en los que ganan. Sin diario, repites errores a ciegas.",
+     "Métricas a seguir: tasa de acierto, ratio riesgo/beneficio real, expectativa (ganancia media "
+     "por operación), drawdown máximo y adherencia al plan. Filtra por setup, activo, hora y "
+     "temporalidad para hallar tu 'edge'. El diario también revela sesgos emocionales (operar por "
+     "aburrimiento, venganza). Mides, aprendes y ajustas: así se llega a ser consistente."),
+
+    ("Checklist de entrada y confluencia",
+     "Sistematiza tus entradas con una lista de verificación: solo operas cuando se cumplen varias "
+     "condiciones (confluencia): tendencia superior a favor, zona/nivel válido, patrón o "
+     "confirmación de vela, gestión de riesgo definida. Menos operaciones, pero mejores.",
+     "Ejemplo de checklist: (1) sesgo de temporalidad alta claro; (2) precio en zona de interés "
+     "(soporte/OB/Fibonacci); (3) confirmación (CHoCH, envolvente, rechazo); (4) R/B ≥ 1:2; (5) sin "
+     "noticia de alto impacto inminente; (6) tamaño según riesgo 1-2%. Si falta algo, no operas. La "
+     "disciplina de la checklist elimina las entradas impulsivas y de baja probabilidad."),
+]
+
+# Todos los lotes y el conjunto completo (para count() y recuperación)
+_BATCHES: dict[int, list[tuple[str, str, str]]] = {1: _BATCH1, 2: _BATCH2}
+ENTRIES: list[tuple[str, str, str]] = [e for v in sorted(_BATCHES) for e in _BATCHES[v]]
+
 
 def already_seeded() -> bool:
     """True si la base ya está sembrada a esta versión (evita duplicar)."""
@@ -267,18 +528,30 @@ def already_seeded() -> bool:
 
 
 def seed(force: bool = False) -> int:
-    """Inserta la base de conocimiento en Supabase. Devuelve cuántas entradas guardó.
-    Idempotente: no reescribe si ya está a esta versión (salvo force=True)."""
+    """Inyecta la base de conocimiento en Supabase. Devuelve cuántas entradas guardó.
+
+    Incremental: inserta SOLO los lotes cuya versión aún no se ha sembrado (así al
+    añadir conocimiento nuevo no se duplica el anterior). Con force=True recarga todo.
+    """
     from db import cloud
-    if not force and already_seeded():
-        return 0
-    n = 0
-    for title, summary, content in ENTRIES:
+    current = 0
+    if not force:
         try:
-            cloud.knowledge_save(_KIND, f"{_PREFIX} · {title}", 0.0, summary, content)
-            n += 1
+            current = int(cloud.setting_get("kb_seed_version", 0) or 0)
         except Exception:
-            pass
+            current = 0
+        if current >= _SEED_VERSION:
+            return 0
+    n = 0
+    for v in sorted(_BATCHES):
+        if v <= current:
+            continue  # ese lote ya está sembrado
+        for title, summary, content in _BATCHES[v]:
+            try:
+                cloud.knowledge_save(_KIND, f"{_PREFIX} · {title}", 0.0, summary, content)
+                n += 1
+            except Exception:
+                pass
     try:
         cloud.setting_set("kb_seed_version", _SEED_VERSION)
     except Exception:

@@ -592,8 +592,7 @@ def _waiting_plan(candidate, stable_for: float, need: float):
 
 def _fuse_ia(plan, ia):
     """Funde el veredicto del CEREBRO (razonado con los 147 conocimientos + los
-    resultados reales) con el plan técnico, para que el CONOCIMIENTO influya en la
-    decisión: confirma (más confianza), discrepa (menos, o ESPERAR si es fuerte)."""
+    resultados reales) con el plan técnico. Usa la lógica compartida de advisor."""
     if not ia:
         return plan
     _map = {"COMPRA": "SUBE", "VENTA": "BAJA", "ESPERAR": "ESPERAR"}
@@ -602,29 +601,7 @@ def _fuse_ia(plan, ia):
         ia_conf = float(ia.get("confianza") or 0)
     except Exception:
         ia_conf = 0.0
-    reasons = list(plan.rationale)
-    if plan.direction in ("SUBE", "BAJA"):
-        if ia_dir == plan.direction:
-            plan.confidence = round(min(98.0, 0.72 * plan.confidence
-                                        + 0.28 * max(ia_conf, plan.confidence) + 4), 1)
-            reasons.append(f"🧠 Cerebro CONFIRMA {plan.action_label} ({ia_conf:.0f}%) "
-                           f"aplicando su conocimiento y los resultados reales: más fiable.")
-        elif ia_dir in ("SUBE", "BAJA"):   # el cerebro opina lo CONTRARIO
-            if ia_conf >= 70:
-                reasons.append(f"🧠 Cerebro DISCREPA con fuerza ({ia_conf:.0f}%): "
-                               f"lo prudente es ESPERAR (conocimiento vs. técnico).")
-                plan.direction = "ESPERAR"
-                plan.action_label, plan.icon = "ESPERAR", "⏸"
-                plan.duration_label, plan.expiry_seconds = "—", 0
-                plan.confidence = round(min(plan.confidence, 45.0), 1)
-            else:
-                plan.confidence = round(max(0.0, plan.confidence - 12), 1)
-                reasons.append(f"🧠 Cerebro discrepa ({ia_conf:.0f}%): menos fiable, cautela.")
-        else:   # el cerebro sugiere ESPERAR
-            plan.confidence = round(max(0.0, plan.confidence - 6), 1)
-            reasons.append("🧠 Cerebro aconseja ESPERAR: cautela añadida a la decisión.")
-    plan.rationale = reasons
-    return plan
+    return advisor.fuse_verdict(plan, ia_dir, ia_conf)
 
 
 def compute_locked_plan(sk: str, duration: str, news_score):

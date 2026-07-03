@@ -130,6 +130,40 @@ def consensus_plan(per_tf, force_duration, auto_pred=None, auto_conf=None,
     return TradePlan(direction, action_label, icon, act_dur, act_secs, round(conf, 1), reasons)
 
 
+def fuse_verdict(plan: "TradePlan", ia_dir: str, ia_conf: float) -> "TradePlan":
+    """Funde el veredicto del CEREBRO (dirección SUBE/BAJA/ESPERAR + confianza, razonado
+    con el conocimiento y los resultados reales) con un plan técnico. Uso COMPARTIDO por
+    el terminal y el motor autónomo, para que todo el sistema decida en conjunto.
+
+    * Confirma la dirección  -> sube la confianza (mezcla ponderada).
+    * Discrepa               -> baja la confianza (−12).
+    * Discrepa con fuerza (≥70%) -> fuerza ESPERAR (el conocimiento veta la señal técnica).
+    * Aconseja ESPERAR       -> cautela añadida (−6).
+    """
+    if plan.direction not in ("SUBE", "BAJA"):
+        return plan
+    reasons = list(plan.rationale)
+    if ia_dir == plan.direction:
+        plan.confidence = round(min(98.0, 0.72 * plan.confidence
+                                    + 0.28 * max(ia_conf, plan.confidence) + 4), 1)
+        reasons.append(f"🧠 Cerebro CONFIRMA {plan.direction} ({ia_conf:.0f}%): más fiable.")
+    elif ia_dir in ("SUBE", "BAJA"):
+        if ia_conf >= 70:
+            reasons.append(f"🧠 Cerebro DISCREPA con fuerza ({ia_conf:.0f}%): ESPERAR.")
+            plan.direction = "ESPERAR"
+            plan.action_label, plan.icon = "ESPERAR", "⏸"
+            plan.duration_label, plan.expiry_seconds = "—", 0
+            plan.confidence = round(min(plan.confidence, 45.0), 1)
+        else:
+            plan.confidence = round(max(0.0, plan.confidence - 12), 1)
+            reasons.append(f"🧠 Cerebro discrepa ({ia_conf:.0f}%): cautela.")
+    else:   # ESPERAR
+        plan.confidence = round(max(0.0, plan.confidence - 6), 1)
+        reasons.append("🧠 Cerebro aconseja ESPERAR: cautela añadida.")
+    plan.rationale = reasons
+    return plan
+
+
 def build_plan(sig, auto_pred: str | None = None, auto_conf: float | None = None,
                force_duration: tuple | None = None) -> TradePlan:
     """Genera el plan a partir de la señal del motor y (opcional) el autoaprendizaje.

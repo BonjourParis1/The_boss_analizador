@@ -12,7 +12,7 @@ Es idempotente: usa una versión (kb_seed_version en app_settings) para no dupli
 """
 from __future__ import annotations
 
-_SEED_VERSION = 2
+_SEED_VERSION = 3
 _KIND = "fundamento"
 _PREFIX = "Fundamentos de trading"
 
@@ -513,8 +513,239 @@ _BATCH2: list[tuple[str, str, str]] = [
      "disciplina de la checklist elimina las entradas impulsivas y de baja probabilidad."),
 ]
 
+# ---- LOTE 3: ESTRATEGIAS operables + conocimiento por MERCADO (aplica en todos) ----
+_BATCH3: list[tuple[str, str, str]] = [
+    ("Estrategia: pullback a la EMA en tendencia",
+     "Estrategia de continuación (cripto, forex, índices, acciones, materias): en tendencia "
+     "clara, espera un retroceso a la EMA20/50 y entra a favor de la tendencia cuando el precio "
+     "rebota con una vela de confirmación. Stop bajo el swing; objetivo, el máximo previo o 1:2.",
+     "Pasos: (1) confirma tendencia alcista en temporalidad alta (máximos/mínimos crecientes, "
+     "precio sobre EMA50). (2) Espera el pullback a la EMA20/50 (zona de valor). (3) Entra con "
+     "confirmación (envolvente, martillo, CHoCH menor a favor). (4) Stop bajo el mínimo del "
+     "retroceso; toma parcial en 1:1 y deja correr con trailing. Funciona en CUALQUIER mercado "
+     "con tendencia; ajusta la EMA y el stop al ATR del activo."),
+
+    ("Estrategia: ruptura de rango con retest",
+     "Estrategia de ruptura (todos los mercados): cuando el precio rompe un rango o nivel clave "
+     "con volumen, no entres a ciegas; espera el RETEST del nivel roto (ahora soporte/resistencia) "
+     "y entra en la confirmación. Reduce las falsas rupturas y mejora el riesgo/beneficio.",
+     "Pasos: (1) marca el rango/nivel y espera CIERRE fuera con volumen. (2) Deja que el precio "
+     "vuelva a testear el nivel roto. (3) Entra si el nivel aguanta (vela de rechazo) en la "
+     "dirección de la ruptura. (4) Stop al otro lado del nivel; objetivo = altura del rango "
+     "proyectada. Evita rupturas sin volumen o contra la tendencia superior (suelen ser trampas)."),
+
+    ("Estrategia: reversión en zona con divergencia",
+     "Estrategia de reversión a la media (mejor en rango): en una zona de soporte/resistencia o "
+     "sobre-extensión, busca una DIVERGENCIA (RSI/MACD) más una vela de rechazo para operar el "
+     "giro. Ideal en mercados laterales o extremos; peligrosa contra tendencia fuerte.",
+     "Pasos: (1) precio llega a zona clave y muestra agotamiento (mecha larga, divergencia "
+     "regular). (2) Confirma con vela de giro (pin bar, envolvente). (3) Entra contra el "
+     "movimiento extendido; stop más allá del extremo/mecha. (4) Objetivo: la media o el otro "
+     "lado del rango. Filtra con ADX bajo (rango). NO la uses contra una tendencia con ADX alto."),
+
+    ("Estrategia: barrido de liquidez + CHoCH (SMC)",
+     "Estrategia de dinero inteligente: espera un BARRIDO de liquidez (falsa ruptura de un máximo/"
+     "mínimo obvio que caza stops) seguido de un CHoCH (cambio de estructura). Entra en la "
+     "dirección del giro, con stop más allá del barrido. Muy precisa en forex, cripto e índices.",
+     "Pasos: (1) identifica liquidez (máximos/mínimos iguales, stops evidentes). (2) El precio "
+     "barre esa zona con mecha y vuelve dentro. (3) Confirma con CHoCH en temporalidad menor "
+     "(rompe la microestructura contraria). (4) Entra en el order block/FVG de origen; stop tras "
+     "el barrido; objetivo, la liquidez opuesta. Combina liquidez, estructura y desequilibrios."),
+
+    ("Estrategia: VWAP bounce intradía",
+     "Estrategia intradía (índices, acciones, cripto, forex): en tendencia del día, los retrocesos "
+     "al VWAP son reentradas a favor. Precio sobre VWAP = buscar compras en el toque; bajo VWAP = "
+     "buscar ventas. Muy usada por institucionales para day trading y scalping.",
+     "Pasos: (1) define el sesgo del día (precio sobre/bajo VWAP y apertura). (2) Espera el "
+     "retroceso al VWAP dentro de la tendencia. (3) Entra con confirmación (vela de rechazo en el "
+     "VWAP). (4) Stop al otro lado del VWAP; objetivo, el extremo del día o banda de desviación. "
+     "En rango, el precio oscila alrededor del VWAP (reversión). Requiere buena liquidez de sesión."),
+
+    ("Estrategia: ruptura del rango de apertura (ORB)",
+     "Opening Range Breakout (índices y acciones sobre todo): marca el rango de los primeros 15-30 "
+     "min tras la apertura; opera la ruptura de ese rango en la dirección del impulso, con el otro "
+     "extremo como stop. Aprovecha la volatilidad y el volumen de la apertura.",
+     "Pasos: (1) delimita máximo y mínimo del rango de apertura. (2) Entra al romper con volumen "
+     "hacia arriba (largo) o hacia abajo (corto). (3) Stop en el lado opuesto del rango; objetivo "
+     "= altura del rango o niveles del día previo. Filtra con la tendencia mayor y evita días de "
+     "noticias que distorsionan. Aplicable al 'rango asiático' en forex."),
+
+    ("Estrategia: confluencia Fibonacci + order block",
+     "Entrada de alta probabilidad (todos los mercados): busca que un retroceso de Fibonacci "
+     "(50-61.8%) coincida con un order block o zona de demanda/oferta y con la tendencia superior. "
+     "La CONFLUENCIA de varios factores en el mismo punto multiplica la fiabilidad.",
+     "Pasos: (1) traza Fibonacci del impulso. (2) Marca order blocks/zonas en la región 50-61.8%. "
+     "(3) Si coinciden con la tendencia alta y un nivel previo, es zona premium. (4) Espera "
+     "confirmación (vela/CHoCH) y entra; stop tras la zona; objetivo, la extensión o liquidez "
+     "opuesta. Cuantos más factores se alinean, mayor probabilidad y mejor riesgo/beneficio."),
+
+    ("Estrategia binarias: pin bar en nivel",
+     "Para opciones binarias de corto plazo: opera un rechazo claro (pin bar/martillo/estrella "
+     "fugaz) en un nivel fuerte (soporte/resistencia/VWAP) a favor de la tendencia superior, con "
+     "un vencimiento de 1-3 velas. Entra tras el CIERRE de la vela de rechazo, no antes.",
+     "Reglas: (1) nivel de calidad + tendencia mayor a favor. (2) vela de rechazo con mecha "
+     "dominante en el nivel. (3) vencimiento acorde (1-3 velas de la temporalidad analizada). (4) "
+     "evita noticias de alto impacto y horas de baja liquidez. Recuerda el punto de equilibrio del "
+     "payout: necesitas ventaja real y gestión estricta; no persigas con martingala."),
+
+    ("Mercado: criptomonedas (BTC, ETH, altcoins)",
+     "Cripto (Bitcoin BTC, Ethereum ETH, Solana, altcoins) opera 24/7 con ALTA volatilidad. La "
+     "DOMINANCIA de BTC guía al resto: si BTC cae, las altcoins suelen caer más. Muy sensible a "
+     "sentimiento, funding y liquidaciones. Fines de semana con menor liquidez y movimientos bruscos.",
+     "Claves: vigila BTC antes de operar altcoins (correlación alta); el 'funding' extremo y las "
+     "liquidaciones en cascada provocan mechas violentas y barridos de liquidez. Usa stops más "
+     "amplios por la volatilidad (ATR alto) y tamaño menor. Los niveles redondos (20k, 50k, 100k) "
+     "son imanes psicológicos. Entorno risk-on favorece cripto; risk-off la castiga."),
+
+    ("Mercado: forex (pares de divisas)",
+     "Forex (EUR/USD, GBP/USD, USD/JPY, cross como EUR/JPY) se mueve por sesiones y por el dólar "
+     "(DXY). Mayor volatilidad en el solape Londres-Nueva York. Muy sensible a bancos centrales "
+     "(Fed, BCE, BoJ), tipos de interés y datos macro (NFP, IPC).",
+     "Claves: DXY fuerte suele empujar EUR/USD y GBP/USD a la baja y viceversa (correlación "
+     "inversa). Opera los mayores en su sesión para spreads estrechos. Evita operar en el minuto "
+     "de una noticia de alto impacto (latigazos y spreads amplios). Los cross (sin USD) tienen su "
+     "propia dinámica. El carry (diferencial de tipos) marca sesgos de fondo de medio plazo."),
+
+    ("Mercado: índices bursátiles (S&P, Nasdaq, Dow)",
+     "Índices (S&P 500/SPY, Nasdaq 100/QQQ, Dow/DIA) reflejan el conjunto del mercado de acciones. "
+     "Gran actividad en la apertura de Nueva York. Sensibles a tipos de interés, bonos y al VIX "
+     "(índice del miedo): VIX alto = miedo y caídas; VIX bajo = complacencia.",
+     "Claves: la apertura de Wall Street genera gaps y volatilidad (útil para ORB). El Nasdaq "
+     "(tecnología) es más volátil y sensible a tipos que el Dow. Subidas de tipos suelen presionar "
+     "a la baja (sobre todo tech). Correlación fuerte entre índices: confírmalos entre sí. Vigila "
+     "el VIX como termómetro de riesgo y los rendimientos de bonos."),
+
+    ("Mercado: metales (oro y plata)",
+     "Oro (gold) y plata (silver) son refugio de valor. El oro se mueve INVERSO al dólar y a los "
+     "tipos de interés reales, y sube con el miedo/geopolítica e inflación. La plata es más "
+     "volátil (componente industrial). Metales preciosos = protección en entornos risk-off.",
+     "Claves: dólar (DXY) débil y tipos reales a la baja impulsan el oro; lo contrario lo frena. "
+     "El oro rompe al alza en crisis y tensión geopolítica. La plata amplifica los movimientos del "
+     "oro (mayor beta) pero con más ruido. Vigila la relación oro/plata y los rendimientos reales. "
+     "Niveles psicológicos redondos (2000, 3000 en oro) son relevantes."),
+
+    ("Mercado: petróleo (WTI/Brent)",
+     "El petróleo (WTI, Brent) se rige por OFERTA y DEMANDA global: decisiones de la OPEP+, "
+     "inventarios semanales (EIA en EE. UU.), crecimiento económico y geopolítica. Muy volátil "
+     "ante titulares. Estacionalidad (temporada de conducción, invierno) influye en la demanda.",
+     "Claves: los inventarios semanales de la EIA mueven el precio con fuerza (evita operar en el "
+     "dato). Recortes de la OPEP+ tienden a subir el precio; recesión y dólar fuerte lo bajan. "
+     "Respeta niveles técnicos claros porque atraen a muchos operadores. Tensión geopolítica en "
+     "zonas productoras dispara la volatilidad. Ajusta stops al ATR (el crudo se mueve mucho)."),
+
+    ("Mercado: acciones individuales",
+     "Acciones (Apple, Microsoft, Tesla, Nvidia, Amazon…) se mueven por resultados (earnings), "
+     "guidance, sector y su BETA respecto al índice. Los earnings provocan gaps enormes; el "
+     "guidance (previsión) suele importar más que el dato pasado. Correlacionan con su índice.",
+     "Claves: evita mantener posiciones sobre un earnings salvo que sea tu estrategia (riesgo de "
+     "gap). Una acción de beta alta (Tesla, Nvidia) amplifica los movimientos del índice. La "
+     "fuerza relativa (la acción sube más que su índice) señala liderazgo. Vigila el sector y las "
+     "noticias de la empresa. Los gaps de apertura ofrecen setups (continuación o cierre de gap)."),
+
+    ("Aplica tu método en TODOS los mercados",
+     "Los principios técnicos (tendencia, soporte/resistencia, estructura, gestión de riesgo) son "
+     "UNIVERSALES: valen en cripto, forex, índices, metales, petróleo y acciones. Lo que cambia es "
+     "el contexto: horario, liquidez, volatilidad (ATR) y catalizadores propios de cada mercado.",
+     "Adapta, no reinventes: usa la misma jerarquía (tendencia superior → zona → gatillo → gestión) "
+     "en cualquier activo, pero ajusta el stop al ATR del mercado, opera en sus horas líquidas y "
+     "respeta sus catalizadores (noticias macro en forex/índices, inventarios en petróleo, earnings "
+     "en acciones, dominancia BTC en cripto). Un buen operador aplica el MISMO método disciplinado "
+     "en todos los mercados, calibrado a cada uno."),
+
+    ("Fuerza relativa (relative strength)",
+     "La fuerza relativa compara un activo con su índice/sector o con otro activo: el que SUBE MÁS "
+     "(o cae menos) es el más fuerte. En una subida general, compra los líderes (mayor fuerza "
+     "relativa); en caídas, los más débiles caen más. Útil para elegir el MEJOR activo.",
+     "Ejemplos: si el S&P sube y una acción sube más, tiene fuerza relativa positiva (candidata "
+     "a largo). En cripto, mide altcoins frente a BTC. La fuerza relativa anticipa: los líderes "
+     "suelen romper antes. No confundir con el índice RSI. Opera los fuertes al alza y los débiles "
+     "a la baja para maximizar probabilidad y aprovechar la rotación de capital."),
+
+    ("Perfil de volumen y área de valor",
+     "El Volume Profile muestra CUÁNTO volumen se negoció en cada nivel de precio (no en el tiempo). "
+     "El nivel de mayor volumen (POC, punto de control) y el área de valor (donde ocurrió el ~70% "
+     "del volumen) actúan como imanes y como soporte/resistencia potentes.",
+     "Los precios con mucho volumen (alto valor) atraen al precio (reversión a la media); las zonas "
+     "de bajo volumen se cruzan rápido (movimientos veloces). El POC del día/semana previo es un "
+     "nivel clave para reentradas y objetivos. Operar en el borde del área de valor con rechazo, o "
+     "la ruptura fuera de ella, ofrece setups de alta calidad. Complementa al VWAP y a los niveles."),
+
+    ("VWAP anclado (anchored VWAP)",
+     "El VWAP anclado se calcula desde un EVENTO clave (un máximo/mínimo importante, un earnings, el "
+     "inicio de un movimiento) en lugar de solo el día. Muestra el precio medio de todos los que "
+     "entraron desde ese punto y actúa como soporte/resistencia dinámico de referencia.",
+     "Ancla el VWAP a un pivote relevante para ver si los compradores desde ese evento van en "
+     "ganancia (precio sobre el aVWAP) o pérdida (por debajo). El aVWAP desde un suelo importante "
+     "suele actuar como soporte en tendencia alcista. Muy útil para juzgar la salud de un movimiento "
+     "y para fijar entradas/objetivos en cualquier mercado con volumen fiable."),
+
+    ("Estacionalidad y patrones de calendario",
+     "Algunos activos muestran sesgos estacionales estadísticos: tendencias por meses/épocas ('sell "
+     "in May', rally de fin de año en bolsa, demanda de gasolina en verano para el crudo, refugio "
+     "en oro en incertidumbre). Son PROBABILIDADES históricas, no certezas.",
+     "Úsalos como contexto de fondo, no como señal aislada: refuerzan una tesis técnica pero no la "
+     "sustituyen. Efectos intradía también existen (mayor volatilidad en aperturas y solapes de "
+     "sesión). Combina la estacionalidad con la estructura actual del precio; si ambas coinciden, "
+     "la probabilidad mejora. Verifica siempre con datos y no operes 'solo por el calendario'."),
+
+    ("Squeeze de volatilidad (Bollinger + Keltner)",
+     "Cuando las Bandas de Bollinger se meten DENTRO de los canales de Keltner, la volatilidad está "
+     "comprimida al máximo ('squeeze', TTM Squeeze): suele preceder a un movimiento explosivo. La "
+     "compresión no dice la dirección; la ruptura sí.",
+     "Detecta el squeeze (baja volatilidad, rango estrecho) y prepárate para la expansión. Opera la "
+     "RUPTURA en la dirección confirmada (con volumen y a favor de la tendencia superior), no "
+     "adivines antes. Tras la expansión, la volatilidad se normaliza. Funciona en todos los "
+     "mercados y temporalidades; es una de las mejores señales de 'movimiento inminente'."),
+
+    ("Killzones: horas de mayor probabilidad",
+     "No todas las horas son iguales. Las 'killzones' (aperturas de Londres y Nueva York en forex/"
+     "índices, apertura de Wall Street para acciones) concentran volumen, volatilidad y los "
+     "movimientos direccionales del día. Operar en horas muertas da rango sucio y falsas señales.",
+     "Enfoca tus operaciones en las ventanas de mayor liquidez: solape Londres-NY (aprox. 13:00-"
+     "16:00 UTC) para forex e índices; la primera y última hora de Wall Street para acciones. "
+     "Cripto opera 24/7 pero también tiene picos ligados a esas sesiones. Fuera de esas ventanas, "
+     "reduce actividad. Alinear la señal con la hora correcta mejora la probabilidad."),
+
+    ("Gestión de riesgo por clase de activo",
+     "Cada mercado tiene su volatilidad: un stop que sirve para EUR/USD es demasiado ajustado para "
+     "Bitcoin o el petróleo. Ajusta SIEMPRE el stop y el tamaño al ATR del activo para que el "
+     "riesgo en dinero sea constante, sin importar el mercado.",
+     "Cripto y petróleo (ATR alto) exigen stops más amplios y tamaño menor; forex mayor (ATR "
+     "moderado) permite stops más ceñidos. Nunca uses el mismo número de 'pips/puntos' fijo en "
+     "todos. Mantén el riesgo por operación en 1-2% del capital calculando el tamaño desde la "
+     "distancia al stop. Así operas cualquier mercado con riesgo homogéneo y controlado."),
+
+    ("Confirmación por volumen y absorción",
+     "El volumen valida el movimiento en cualquier mercado: rupturas y tendencias con volumen "
+     "creciente son fiables; con volumen decreciente, sospechosas. La ABSORCIÓN (mucho volumen sin "
+     "que el precio avance) revela que un lado está frenando al otro: posible giro.",
+     "Señales: ruptura con volumen alto = probable continuación; clímax de volumen en un extremo = "
+     "posible agotamiento y giro. En acciones/índices el volumen es fiable; en forex (descentralizado) "
+     "se usa el tick volume como aproximación; en cripto el volumen de exchange. La divergencia de "
+     "volumen (precio sube, volumen baja) avisa de debilidad. Usa el volumen para confirmar, no como "
+     "señal única."),
+
+    ("El plan de trading escrito",
+     "Un plan de trading escrito define: qué mercados operas, en qué horario, con qué estrategias y "
+     "temporalidades, cuánto riesgas por operación y al día, y tus reglas de entrada/salida. Operar "
+     "sin plan es improvisar; el plan convierte la disciplina en un proceso repetible.",
+     "Un buen plan incluye: objetivos realistas, activos y sesiones, checklist de entrada, gestión "
+     "(riesgo 1-2%, límite de pérdida diaria), reglas de gestión de la operación y un diario para "
+     "revisar. El sistema automatizado ES un plan: reglas objetivas, sin emoción, aplicadas por "
+     "igual en todos los mercados. Sigue el plan; cámbialo con datos, no con impulsos."),
+
+    ("Cómo combinar todo: la jerarquía de decisión",
+     "Integra el conocimiento en una jerarquía: (1) TENDENCIA/contexto de fondo (temporalidad alta y "
+     "años); (2) ZONA de interés (soporte/resistencia, order block, Fibonacci, VWAP); (3) GATILLO "
+     "(vela de confirmación, CHoCH, divergencia); (4) GESTIÓN (riesgo, stop por ATR, objetivos).",
+     "Ninguna señal aislada basta: la fiabilidad nace de la CONFLUENCIA de los cuatro niveles a "
+     "favor. Primero define la dirección de fondo, luego dónde (zona), luego cuándo (gatillo) y "
+     "cuánto (gestión). Si algún nivel falla o se contradice, ESPERA. Este mismo marco se aplica a "
+     "cripto, forex, índices, metales, petróleo y acciones: cambia el calibrado, no el método."),
+]
+
 # Todos los lotes y el conjunto completo (para count() y recuperación)
-_BATCHES: dict[int, list[tuple[str, str, str]]] = {1: _BATCH1, 2: _BATCH2}
+_BATCHES: dict[int, list[tuple[str, str, str]]] = {1: _BATCH1, 2: _BATCH2, 3: _BATCH3}
 ENTRIES: list[tuple[str, str, str]] = [e for v in sorted(_BATCHES) for e in _BATCHES[v]]
 
 

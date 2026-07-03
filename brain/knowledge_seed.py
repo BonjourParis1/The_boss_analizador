@@ -12,7 +12,7 @@ Es idempotente: usa una versión (kb_seed_version en app_settings) para no dupli
 """
 from __future__ import annotations
 
-_SEED_VERSION = 3
+_SEED_VERSION = 4
 _KIND = "fundamento"
 _PREFIX = "Fundamentos de trading"
 
@@ -744,8 +744,221 @@ _BATCH3: list[tuple[str, str, str]] = [
      "cripto, forex, índices, metales, petróleo y acciones: cambia el calibrado, no el método."),
 ]
 
+# ---- LOTE 4: order flow, macro intermercado, gestión de cartera y métricas ----
+_BATCH4: list[tuple[str, str, str]] = [
+    ("Premium y descuento (equilibrio SMC)",
+     "Divide un rango o impulso por su 50% (equilibrio): por encima es PREMIUM (caro, zona para "
+     "vender), por debajo es DESCUENTO (barato, zona para comprar). En tendencia alcista busca "
+     "compras en descuento; en bajista, ventas en premium. Evita comprar caro y vender barato.",
+     "El precio justo es el 50% del rango relevante. Un operador profesional solo compra en la "
+     "mitad inferior (descuento) y vende en la superior (premium), a favor de la tendencia de "
+     "fondo. Combina el descuento con order blocks y Fibonacci (61.8%) para entradas óptimas. "
+     "Vale en todos los mercados: define primero el rango correcto (del swing de la temporalidad alta)."),
+
+    ("Optimal Trade Entry (OTE)",
+     "El OTE es la zona de retroceso del 62-79% de un impulso (Fibonacci), donde entrar a favor de "
+     "la tendencia ofrece el mejor riesgo/beneficio: stop pequeño (tras el 79%) y objetivo grande "
+     "(la extensión). Es la 'zona premium' de entrada del dinero inteligente.",
+     "Traza Fibonacci del impulso; el OTE (62-79%) suele coincidir con order blocks y desequilibrios "
+     "sin rellenar. Espera confirmación (vela de rechazo, CHoCH menor) dentro de esa zona. El stop "
+     "va justo tras el retroceso profundo; los objetivos, en la liquidez o extensiones (-0.27, "
+     "-0.62). Da ratios 1:3 o mejores. Aplícalo en cualquier activo con un impulso claro."),
+
+    ("Breaker block",
+     "Un breaker block es un order block que FALLÓ: el precio lo rompió y luego lo usa en sentido "
+     "contrario como soporte/resistencia. Marca un cambio de control. Se opera el retest del "
+     "breaker tras un cambio de estructura (BOS/CHoCH) confirmado.",
+     "Ejemplo alcista: tras un barrido de mínimos y un CHoCH al alza, el último order block bajista "
+     "que fue superado se convierte en soporte (breaker): busca compras en su retest. Refleja el "
+     "atrapamiento de quienes entraron mal. Combínalo con liquidez y desequilibrios. Es una "
+     "reentrada de precisión válida en forex, cripto e índices."),
+
+    ("Inducement (liquidez trampa)",
+     "El 'inducement' es liquidez señuelo: un mínimo/máximo menor evidente que ATRAE a los "
+     "operadores a entrar antes de la zona institucional real, para luego barrerlos. Reconocerlo "
+     "evita entradas prematuras y te alinea con el movimiento verdadero.",
+     "Antes de un order block válido suele haber un pequeño swing que 'induce' entradas; el precio "
+     "toma esa liquidez y recién entonces reacciona en la zona real. Práctica: no entres en el "
+     "primer nivel obvio; espera a que se barra el inducement y el precio llegue a la zona de "
+     "origen con confirmación. Filtra muchas trampas y falsas señales en todos los mercados."),
+
+    ("Displacement (vela de desplazamiento)",
+     "Un displacement es un movimiento fuerte, rápido y direccional (velas amplias) que revela "
+     "INTENCIÓN institucional y suele dejar un fair value gap. Confirma que un nivel importa y "
+     "marca la dirección probable siguiente. Sin displacement, la señal es débil.",
+     "Tras un barrido de liquidez o en un nivel clave, un desplazamiento con cierre convincente "
+     "(no solo mecha) valida el giro/continuación y crea el desequilibrio al que el precio volverá. "
+     "Úsalo como filtro de calidad: opera reentradas hacia el FVG/order block que dejó el "
+     "displacement. Distingue un movimiento con convicción de un simple ruido de rango."),
+
+    ("Draw on liquidity (objetivo del precio)",
+     "El mercado se mueve buscando LIQUIDEZ: máximos y mínimos previos, dobles techos/suelos y "
+     "números redondos son 'imanes' hacia donde el precio tiende a ir. Definir el próximo objetivo "
+     "de liquidez da el sesgo direccional del día/semana.",
+     "Pregúntate: ¿dónde está la liquidez obvia? Ahí suele dirigirse el precio. En tendencia "
+     "alcista, el objetivo son los máximos previos (liquidez de compradores en corto); en bajista, "
+     "los mínimos. Usa esta 'atracción' para fijar objetivos realistas y para entender por qué el "
+     "precio barre un nivel antes de girar. Marco válido en todos los mercados."),
+
+    ("Rango diario promedio (ADR/ATR diario)",
+     "El ADR (rango diario promedio) o el ATR diario indican cuánto suele moverse un activo por día. "
+     "Sirve para fijar objetivos realistas y saber si el movimiento del día ya está 'agotado' "
+     "(cerca de completar su rango) o si aún le queda recorrido.",
+     "Si un activo recorre de media 100 puntos al día y ya lleva 90, perseguir la ruptura tiene "
+     "poco recorrido restante y más riesgo de reversión a la media. Al inicio del día, con poco "
+     "rango consumido, hay margen para tendencia. Ajusta stops y objetivos al ADR de CADA mercado "
+     "(cripto y petróleo mueven mucho más que un par forex tranquilo)."),
+
+    ("Order book y profundidad de mercado (DOM)",
+     "El libro de órdenes (order book/DOM) muestra las órdenes límite de compra y venta en cada "
+     "nivel. Grandes muros de órdenes actúan como soporte/resistencia temporal. El precio tiende a "
+     "moverse hacia donde hay más liquidez que ejecutar.",
+     "Cuidado: parte de la liquidez visible puede ser 'spoofing' (órdenes falsas que se retiran). "
+     "La absorción (muchas órdenes de mercado chocando contra un muro sin mover el precio) revela "
+     "fuerza de un lado. En mercados centralizados (acciones, futuros, cripto) el DOM es visible; "
+     "en forex es fragmentado. Úsalo como contexto de corto plazo, no como señal aislada."),
+
+    ("Order flow: delta y absorción",
+     "El order flow mide la agresión: delta = volumen comprador de mercado menos vendedor. Delta "
+     "positivo fuerte = compradores agresivos. La ABSORCIÓN ocurre cuando hay mucha agresión pero "
+     "el precio no avanza: alguien grande está absorbiendo con órdenes límite (posible giro).",
+     "El delta acumulado (cumulative delta) que diverge del precio (precio sube pero delta baja) "
+     "avisa de debilidad, como una divergencia de momentum. La absorción en un nivel (agresión "
+     "vendedora que no baja el precio) suele preceder a un rebote. Es lectura fina de futuros/"
+     "acciones/cripto; el principio (quién domina la agresión) refuerza cualquier análisis."),
+
+    ("Análisis intermercado (dólar, bonos, materias, acciones)",
+     "Los mercados están enlazados (teoría intermercado de Murphy): dólar, bonos, materias primas y "
+     "acciones se influyen. Un dólar fuerte presiona materias y emergentes; bonos y acciones y "
+     "tipos se mueven en relación. Leer el conjunto mejora las decisiones en cada activo.",
+     "Relaciones típicas: dólar (DXY) inverso a oro y a muchas materias; subida de rendimientos de "
+     "bonos suele presionar a las acciones de crecimiento (tech); materias al alza pueden anticipar "
+     "inflación. Antes de operar un activo, mira su 'entorno': confirma tu tesis con los mercados "
+     "relacionados. La confluencia intermercado da sesgos más fiables."),
+
+    ("Rendimientos de bonos y curva de tipos",
+     "Los rendimientos de los bonos y la curva de tipos son la brújula macro. Subida de tipos/"
+     "rendimientos suele castigar a las acciones de crecimiento (tech/Nasdaq) y apoyar al dólar. "
+     "Una curva invertida (corto plazo rinde más que largo) suele anticipar recesión.",
+     "Los tipos de interés reales (nominal menos inflación) guían al oro (tipos reales altos = oro "
+     "débil). Las decisiones de la Fed/BCE mueven todo el complejo. Aunque operes intradía, conocer "
+     "el sesgo de tipos evita operar contra la marea macro. Es contexto de fondo que se aplica a "
+     "índices, forex, metales y acciones."),
+
+    ("Ciclo económico y rotación sectorial",
+     "La economía se mueve en ciclos (expansión, pico, contracción, recuperación) y el capital ROTA "
+     "entre sectores según la fase: tecnología y consumo discrecional lideran en expansión; "
+     "servicios básicos, salud y utilities resisten en contracción; energía y materiales en "
+     "inflación.",
+     "Saber la fase del ciclo ayuda a elegir QUÉ operar al alza o a la baja. En 'risk-on' (expansión) "
+     "brillan crecimiento, cripto e índices; en 'risk-off' (contracción/miedo) se busca refugio "
+     "(dólar, oro, bonos, defensivos). La rotación se ve en la fuerza relativa de los sectores. "
+     "Alinear el activo con la fase del ciclo mejora la probabilidad de fondo."),
+
+    ("Risk-on / risk-off en profundidad",
+     "En 'risk-on' (apetito por el riesgo) suben acciones, cripto, divisas de materias (AUD, NZD) y "
+     "caen los refugios. En 'risk-off' (aversión) sube el dólar, el yen, el oro y los bonos, y caen "
+     "acciones y cripto. Identificar el régimen orienta TODAS tus operaciones.",
+     "Termómetros del régimen: el VIX (alto = risk-off), los rendimientos de bonos, el oro y el "
+     "dólar. En risk-off, ser comprador de cripto o acciones va contra la corriente. Antes de "
+     "operar, define si el mercado está en risk-on o risk-off y opera a favor: es un filtro de "
+     "fondo que reduce operaciones perdedoras en cualquier activo."),
+
+    ("Volatilidad implícita, realizada y VIX",
+     "La volatilidad implícita (esperada por las opciones, VIX) suele ser mayor que la realizada "
+     "(la que ocurre). VIX alto = miedo, movimientos amplios; VIX bajo = calma/complacencia. "
+     "Picos de VIX suelen coincidir con suelos del mercado (pánico = oportunidad).",
+     "La volatilidad es cíclica: tras compresión (baja vol) viene expansión y viceversa. En vol "
+     "alta, amplía stops y reduce tamaño; en vol baja, prepárate para rupturas (squeeze). El VIX "
+     "extremo (>30-40) marca capitulación y posibles rebotes; VIX muy bajo, complacencia y riesgo "
+     "de giro. La gestión debe adaptarse al régimen de volatilidad, no ignorarlo."),
+
+    ("Riesgo de cartera y correlación",
+     "El riesgo no es por operación aislada sino AGREGADO: abrir varias posiciones correlacionadas "
+     "(p.ej. largo en EUR/USD y en GBP/USD, o en varias altcoins) es casi la misma apuesta con "
+     "riesgo multiplicado. Controla la exposición total, no solo el riesgo por trade.",
+     "Suma el riesgo de todas las posiciones abiertas ('heat' de la cuenta) y ponle un tope (p.ej. "
+     "máximo 4-6% en riesgo a la vez). Diversifica en activos poco correlacionados o reduce el "
+     "tamaño si están correlacionados. Una noticia adversa puede mover todo un bloque a la vez. "
+     "Pensar en cartera, no en operaciones sueltas, evita ruinas por concentración."),
+
+    ("Estilos de trading: scalping, day, swing",
+     "Elige un estilo acorde a tu tiempo y carácter. Scalping: muchas operaciones de segundos/"
+     "minutos, alta concentración, costes importan mucho. Day trading: intradía, cierras en el día. "
+     "Swing: operaciones de días/semanas, menos ruido, más paciencia.",
+     "El scalping exige spreads mínimos, ejecución rápida y disciplina férrea; el swing tolera más "
+     "ruido pero requiere aguantar oscilaciones y usar temporalidades altas. No mezcles estilos en "
+     "la misma operación (entrar como scalper y quedarte como swing por miedo es un error clásico). "
+     "Define tu estilo, su temporalidad y sus reglas, y sé coherente en todos los mercados."),
+
+    ("Detectar el agotamiento de una tendencia",
+     "Señales de que una tendencia se agota: clímax de volumen (pico extremo), velas de reversión "
+     "en un extremo, divergencias múltiples en osciladores, alcance del rango diario/objetivo de "
+     "liquidez, y pérdida de la estructura (CHoCH). Avisan de tomar beneficios o esperar giro.",
+     "Ninguna señal aislada basta; busca CONFLUENCIA de agotamiento. Una tendencia extendida y "
+     "sobre-extendida (lejos de la media, tras un impulso parabólico) es más vulnerable. No "
+     "'shortees' techos ni 'compres' suelos solo por estar extendido: espera confirmación de giro "
+     "(barrido + CHoCH, vela de reversión con volumen). Aplica igual en cripto, forex e índices."),
+
+    ("Ruptura falsa vs verdadera",
+     "Distinguir una ruptura real de una falsa (fakeout) es clave. Verdadera: cierre convincente "
+     "fuera del nivel, con volumen, a favor de la tendencia, y aguanta el retest. Falsa: mecha que "
+     "supera el nivel pero cierra dentro, sin volumen, contra la tendencia; suele revertir rápido.",
+     "Filtros: exige CIERRE (no mecha) fuera del nivel; confirma con volumen/displacement; valora el "
+     "contexto (rupturas a favor de la tendencia mayor son más fiables). El retest exitoso confirma; "
+     "la vuelta rápida dentro del rango delata la trampa (y ofrece operar el rechazo). En rangos y "
+     "cerca de liquidez obvia abundan las falsas rupturas: paciencia antes de perseguir."),
+
+    ("Métricas de rendimiento del sistema",
+     "Mide tu sistema con datos, no sensaciones: tasa de acierto, ratio riesgo/beneficio, "
+     "EXPECTATIVA (ganancia media por operación), PROFIT FACTOR (ganancias brutas / pérdidas "
+     "brutas, >1 es rentable), drawdown máximo y ratio de Sharpe (retorno ajustado a riesgo).",
+     "Un profit factor >1.5 y expectativa positiva sostenida indican ventaja real. Vigila también "
+     "MAE/MFE (excursión adversa/favorable máxima) para afinar stops y objetivos. No juzgues por "
+     "unas pocas operaciones: se necesita muestra amplia. Estas métricas, aplicadas a los resultados "
+     "reales en todos los mercados, dicen si el sistema tiene 'edge' o hay que corregirlo."),
+
+    ("Gestión emocional avanzada (tilt, FOMO)",
+     "El 'tilt' (operar alterado tras una pérdida o racha) y el FOMO (miedo a quedarse fuera, "
+     "perseguir el precio) destruyen cuentas. La codicia hace arriesgar de más; el miedo cierra "
+     "ganancias pronto. Reconocer el estado emocional y PARAR a tiempo es una habilidad clave.",
+     "Reglas anti-tilt: límite de pérdida diaria (al alcanzarlo, se cierra la jornada); pausa tras "
+     "2-3 pérdidas seguidas; nunca aumentar el tamaño para 'recuperar' (revenge trading). Contra el "
+     "FOMO: si perdiste la entrada, espera el siguiente setup, no persigas. El sistema automatizado "
+     "ayuda porque quita la emoción: sigue sus reglas incluso cuando 'sientes' otra cosa."),
+
+    ("Pensar en probabilidades y series",
+     "Cada operación es UNA de una serie larga: el resultado individual (ganar o perder) no valida "
+     "ni invalida el sistema. Con ventaja positiva, basta ejecutar consistentemente y dejar que la "
+     "probabilidad actúe en el conjunto. Un acierto no te hace genio ni un fallo, un inútil.",
+     "El error mental típico es sobrerreaccionar a la última operación (euforia o frustración) y "
+     "romper el plan. Piensa como un casino: no importa una mano, importa la esperanza sobre miles. "
+     "Acepta que perderás un % de las veces AUNQUE hagas todo bien. La consistencia en el proceso, "
+     "no el resultado puntual, produce rentabilidad en todos los mercados."),
+
+    ("Gestión de noticias y eventos",
+     "Ante datos de alto impacto (tipos, NFP, IPC, earnings, inventarios) hay tres tácticas: (1) "
+     "EVITAR: no operar en el impacto (lo más prudente); (2) esperar el RETEST tras la reacción y "
+     "operar la nueva tendencia; (3) straddle: colocar órdenes a ambos lados (avanzado y arriesgado).",
+     "En el minuto del dato, spreads se disparan, hay slippage y latigazos: la mayoría debe evitarlo. "
+     "Lo profesional suele ser dejar que el mercado reaccione y 'digiera' la noticia, y luego operar "
+     "el retest de la ruptura con la tendencia resultante. Marca los eventos del día en el calendario "
+     "económico y no te dejes sorprender con posiciones abiertas de corto plazo."),
+
+    ("La ventaja (edge) es lo primero",
+     "Sin una VENTAJA real (una razón estadística por la que ganas más de lo que pierdes a largo "
+     "plazo), ninguna gestión de riesgo ni psicología te salva: solo alargan la pérdida. Primero "
+     "demuestra el edge (backtest + resultados reales), luego optimiza gestión y ejecución.",
+     "La ventaja puede venir de un patrón con esperanza positiva, de leer mejor el contexto "
+     "(multi-temporalidad, confluencia) o de una ejecución disciplinada donde otros fallan. Se mide "
+     "con expectativa y profit factor positivos y sostenidos. Protégela: no la diluyas con "
+     "over-trading, ni la rompas saltándote las reglas. El edge + gestión + disciplina = "
+     "rentabilidad consistente en cualquier mercado."),
+]
+
 # Todos los lotes y el conjunto completo (para count() y recuperación)
-_BATCHES: dict[int, list[tuple[str, str, str]]] = {1: _BATCH1, 2: _BATCH2, 3: _BATCH3}
+_BATCHES: dict[int, list[tuple[str, str, str]]] = {
+    1: _BATCH1, 2: _BATCH2, 3: _BATCH3, 4: _BATCH4}
 ENTRIES: list[tuple[str, str, str]] = [e for v in sorted(_BATCHES) for e in _BATCHES[v]]
 
 

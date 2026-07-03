@@ -12,7 +12,7 @@ Es idempotente: usa una versión (kb_seed_version en app_settings) para no dupli
 """
 from __future__ import annotations
 
-_SEED_VERSION = 4
+_SEED_VERSION = 5
 _KIND = "fundamento"
 _PREFIX = "Fundamentos de trading"
 
@@ -956,9 +956,221 @@ _BATCH4: list[tuple[str, str, str]] = [
      "rentabilidad consistente en cualquier mercado."),
 ]
 
+# ---- LOTE 5: patrones avanzados, indicadores de volumen, canales, internos y macro ----
+_BATCH5: list[tuple[str, str, str]] = [
+    ("Patrones de cuña (wedge)",
+     "La cuña es un patrón de líneas convergentes inclinadas. Cuña ASCENDENTE (dos rectas al "
+     "alza que se estrechan) suele ser BAJISTA (agotamiento comprador). Cuña DESCENDENTE (dos "
+     "rectas a la baja que convergen) suele ser ALCISTA. Se opera la ruptura confirmada.",
+     "Una cuña ascendente en tendencia alcista avisa de pérdida de impulso: al romper el soporte "
+     "inferior, giro bajista. La descendente en tendencia bajista anticipa rebote al romper la "
+     "resistencia superior. Objetivo aproximado: la altura de la cuña. Confirma con volumen "
+     "decreciente dentro del patrón y creciente en la ruptura. Válida en todos los mercados."),
+
+    ("Rectángulo y taza con asa",
+     "El rectángulo es un rango horizontal (consolidación) que se opera en la ruptura de su techo "
+     "o suelo. La 'taza con asa' (cup and handle) es un patrón alcista de continuación: una base "
+     "redondeada (taza) seguida de un pequeño retroceso (asa) antes de romper al alza.",
+     "En el rectángulo, el objetivo tras la ruptura es la altura del rango proyectada. En la taza "
+     "con asa, la ruptura de la resistencia del asa con volumen confirma continuación alcista; "
+     "objetivo = profundidad de la taza. Ambos requieren cierre con volumen y ganan fiabilidad a "
+     "favor de la tendencia previa. Frecuentes en acciones e índices, útiles en cualquier activo."),
+
+    ("Patrones armónicos (Gartley, Bat, Butterfly, Crab)",
+     "Los patrones armónicos usan proporciones de Fibonacci para anticipar zonas de giro. Gartley, "
+     "Bat, Butterfly y Crab son estructuras de 5 puntos (XABCD) donde el punto D marca una zona de "
+     "reversión potencial (PRZ) según ratios concretos. El AB=CD es su base simétrica.",
+     "Cada patrón define el punto D por un ratio de Fibonacci del tramo XA (Gartley ~0.786, Bat "
+     "~0.886, Butterfly ~1.27, Crab ~1.618). En la PRZ se busca confirmación (vela de rechazo, "
+     "divergencia) para operar el giro con stop ajustado tras D. Son precisos pero exigen medición "
+     "correcta; combínalos con estructura y niveles. Aplicables a forex, cripto, índices y materias."),
+
+    ("Velas: penetrante, nube oscura y tres dentro/fuera",
+     "Línea penetrante (piercing): vela alcista que cierra por encima del punto medio de la roja "
+     "previa: giro alcista. Nube oscura (dark cloud cover): su espejo bajista. 'Tres dentro/fuera' "
+     "son harami o envolventes con una tercera vela de confirmación del giro.",
+     "La penetrante y la nube oscura son giros de dos velas en extremos de tendencia; cuanto más "
+     "penetra en el cuerpo previo, más fuerte. 'Tres dentro arriba' = harami alcista confirmado por "
+     "una tercera vela verde; 'tres fuera arriba' = envolvente alcista confirmada. La confirmación "
+     "en la tercera vela aumenta la fiabilidad. Ganan peso en soporte/resistencia y con volumen."),
+
+    ("Líneas de tendencia y canales",
+     "Una línea de tendencia une mínimos crecientes (alcista) o máximos decrecientes (bajista) y "
+     "actúa como soporte/resistencia dinámico. Un canal añade una paralela: el precio oscila dentro. "
+     "Se opera el rebote en el borde o la RUPTURA del canal con confirmación.",
+     "Traza con al menos dos-tres toques válidos; cuantos más toques, más relevante. En un canal "
+     "alcista, compra en la base y toma beneficio en el techo; la ruptura del canal avisa de cambio "
+     "de ritmo. Evita 'forzar' la línea a tu sesgo. Una línea de tendencia con mucha pendiente es "
+     "insostenible. Herramienta universal en todos los mercados y temporalidades."),
+
+    ("Canales de Donchian y sistema Turtle",
+     "Los canales de Donchian marcan el máximo y el mínimo de las últimas N velas. El sistema "
+     "'Turtle' (tortugas) fue una estrategia famosa de seguimiento de tendencia: comprar la "
+     "ruptura del máximo de 20 días y vender la del mínimo, con gestión por volatilidad (ATR).",
+     "Es seguimiento de tendencia puro: entras en la ruptura del canal en la dirección del "
+     "movimiento y sales con un canal más corto o un múltiplo de ATR. Funciona en mercados con "
+     "tendencias sostenidas (materias, cripto, índices) y sufre en rangos (muchas falsas rupturas). "
+     "La clave del Turtle fue la GESTIÓN de riesgo y la disciplina, no solo la señal de entrada."),
+
+    ("Parabolic SAR y Supertrend",
+     "El Parabolic SAR pone puntos que siguen al precio y sirven de trailing stop: cuando el precio "
+     "los cruza, la tendencia se invierte (stop and reverse). El Supertrend usa el ATR para trazar "
+     "una línea de tendencia dinámica: precio por encima = alcista; por debajo = bajista.",
+     "Ambos son excelentes para SEGUIR tendencias y gestionar salidas, pero dan muchas señales "
+     "falsas en rango (whipsaw). Úsalos como trailing stop para dejar correr ganancias y como filtro "
+     "de dirección, no como entrada aislada. Combínalos con un filtro de régimen (ADX) para "
+     "evitar operarlos en mercados laterales. Válidos en cualquier activo y temporalidad."),
+
+    ("Indicadores de volumen (OBV, MFI, CMF, A/D)",
+     "Miden la presión de compra/venta con el volumen. OBV (On Balance Volume) acumula volumen "
+     "según el cierre. MFI (Money Flow Index) es un RSI ponderado por volumen (sobrecompra/venta). "
+     "Chaikin Money Flow y la línea de Acumulación/Distribución miden si entra o sale dinero.",
+     "Su mayor valor son las DIVERGENCIAS: si el precio sube pero el OBV/CMF cae, la subida no "
+     "tiene respaldo de volumen (debilidad). Un OBV que rompe su propia tendencia suele adelantar al "
+     "precio. El MFI en extremos (>80/<20) marca agotamiento. En forex se usa el tick volume como "
+     "aproximación; en acciones/cripto/futuros el volumen es fiable. Confirman, no sustituyen al precio."),
+
+    ("Tipos de gráfico: Heikin Ashi, Renko, Point & Figure",
+     "Heikin Ashi suaviza las velas para ver la TENDENCIA con menos ruido (velas del mismo color "
+     "seguidas = tendencia sana). Renko dibuja 'ladrillos' por movimiento de precio ignorando el "
+     "tiempo. Point & Figure usa columnas de X/O y filtra el ruido, resaltando niveles.",
+     "Heikin Ashi ayuda a aguantar tendencias y detectar giros (cambio de color y mechas), pero "
+     "oculta el precio real de cierre: no lo uses para fijar entradas exactas. Renko y P&F son "
+     "excelentes para ver estructura y soporte/resistencia sin el ruido temporal. Son formas "
+     "alternativas de VER el mismo mercado; complementan a las velas japonesas, no las reemplazan."),
+
+    ("Internos del mercado (TICK, TRIN, línea A/D)",
+     "Para índices/acciones, los 'internos' miden la amplitud del mercado. El TICK cuenta cuántas "
+     "acciones suben menos las que bajan en tiempo real. El TRIN (Arms Index) >1 es bajista, <1 "
+     "alcista. La línea Avance/Descenso (A/D) muestra si la subida la sostienen muchas acciones.",
+     "Una subida del índice con amplitud DÉBIL (pocas acciones suben, A/D no confirma) es "
+     "sospechosa (posible techo). El TICK en extremos (+1000/−1000) marca euforia/pánico intradía. "
+     "La divergencia entre el índice y su amplitud avisa de agotamiento. Son herramientas de "
+     "day trading de índices que dan contexto de fuerza al conjunto del mercado."),
+
+    ("Sentimiento contrario (put/call, Fear & Greed, COT)",
+     "El sentimiento extremo suele ser CONTRARIAN: cuando todos están eufóricos, escasea el "
+     "comprador nuevo (techo); en pánico extremo, el vendedor se agota (suelo). El ratio put/call "
+     "alto = miedo (alcista contrarian); el índice Fear & Greed y el informe COT miden posicionamiento.",
+     "El COT (Commitment of Traders) muestra cómo están posicionados los grandes operadores "
+     "(comerciales vs especuladores) en futuros: extremos suelen preceder giros. 'Sé temeroso "
+     "cuando otros son codiciosos y codicioso cuando otros temen'. El sentimiento no da timing "
+     "exacto: es contexto de fondo que, en extremos, avisa de reversiones en índices, materias y forex."),
+
+    ("Indicadores económicos y su impacto",
+     "Los datos macro mueven los mercados: PMI (>50 expansión), empleo (NFP, paro), inflación (IPC/"
+     "IPP), PIB y ventas minoristas. Dato mejor de lo esperado suele fortalecer la divisa y, según "
+     "el contexto, subir o presionar bolsa (por expectativa de tipos).",
+     "Lo que mueve el precio es la SORPRESA frente a lo esperado, no el dato absoluto. Inflación "
+     "alta → expectativa de subidas de tipos → dólar fuerte y presión en bolsa/oro. Empleo fuerte "
+     "→ economía sólida pero posibles más tipos. Consulta el calendario económico, marca los datos "
+     "rojos y evita operar en el impacto. Afecta sobre todo a forex, índices, bonos y metales."),
+
+    ("Política de bancos centrales (hawkish/dovish, QE/QT)",
+     "Los bancos centrales (Fed, BCE, BoJ) marcan la marea de fondo. Postura HAWKISH (dura: subir "
+     "tipos/retirar estímulo) fortalece la divisa y presiona bolsa y oro. DOVISH (blanda: bajar "
+     "tipos/estimular) debilita la divisa y suele impulsar activos de riesgo.",
+     "La 'forward guidance' (lo que anticipan hacer) mueve más que la decisión ya esperada. QE "
+     "(compra de bonos, inyecta liquidez) es alcista para riesgo; QT (retirada) es restrictivo. El "
+     "tono del comunicado y la rueda de prensa disparan volatilidad. Conocer el sesgo del banco "
+     "central evita operar contra la política monetaria en forex, índices, bonos y metales."),
+
+    ("Futuros: contango, backwardation y curva",
+     "En futuros (materias, VIX) el precio a distintos vencimientos forma una curva. CONTANGO: los "
+     "futuros lejanos valen más que el spot (curva ascendente). BACKWARDATION: valen menos (curva "
+     "descendente), típico de escasez inmediata. Afecta a los ETF que 'rolan' contratos.",
+     "El 'roll yield' erosiona a los ETF de materias en contango (compran caro el siguiente "
+     "contrato) y beneficia en backwardation. En el VIX, el contango es lo normal (mercado tranquilo) "
+     "y la backwardation aparece en pánico. Entender la curva evita sorpresas al operar productos "
+     "basados en futuros (petróleo, gas, VIX) frente al precio 'spot'."),
+
+    ("Carry trade y rollover en forex",
+     "El carry trade consiste en comprar una divisa de tipo de interés ALTO financiándose en una de "
+     "tipo BAJO, cobrando el diferencial (swap/rollover) por mantener la posición. Funciona en "
+     "entornos estables (risk-on) y se deshace bruscamente en risk-off.",
+     "Cada día que mantienes la posición abierta cobras o pagas el rollover según el diferencial de "
+     "tipos y la dirección. Pares clásicos de carry usan divisas de alto rendimiento contra el yen "
+     "o el franco. El riesgo: en episodios de aversión al riesgo, el carry se deshace violentamente "
+     "(la divisa de alto tipo se desploma). Es un sesgo de fondo de medio plazo, no una señal intradía."),
+
+    ("Estrategia: turtle soup (falsa ruptura)",
+     "La 'turtle soup' opera la REVERSIÓN de una falsa ruptura: cuando el precio rompe un máximo/"
+     "mínimo evidente (de ~20 velas) y vuelve rápido dentro del rango, se entra a favor del rechazo. "
+     "Aprovecha el barrido de liquidez que atrapa a los que persiguieron la ruptura.",
+     "Pasos: (1) identifica un máximo/mínimo obvio (liquidez). (2) el precio lo supera brevemente y "
+     "CIERRA de vuelta dentro. (3) entra en la reversión con stop tras el extremo del barrido. (4) "
+     "objetivo, el otro lado del rango o la liquidez opuesta. Es la contraparte de la ruptura y una "
+     "de las reversiones más fiables. Válida en forex, índices, cripto y materias."),
+
+    ("Pirámide: escalar a favor (scaling in)",
+     "Piramidar es AÑADIR a una posición ganadora a medida que la tendencia avanza, no a una "
+     "perdedora. Cada añadido es menor que el anterior y el stop del conjunto se sube para proteger. "
+     "Maximiza el beneficio en tendencias fuertes sin aumentar el riesgo inicial.",
+     "Reglas: añade solo si la operación ya va en ganancia y la estructura lo confirma (nuevo BOS, "
+     "pullback a media); mueve el stop para que, en el peor caso, salgas en break-even o pequeña "
+     "ganancia. NUNCA promedies a la baja una posición perdedora sin plan (eso es lo contrario y "
+     "arruina). Bien hecho, convierte una buena tendencia en una operación excelente."),
+
+    ("Selectividad: operar solo setups A+",
+     "No todas las oportunidades valen igual. Clasifica tus setups (A+, B, C) según cuántos factores "
+     "de confluencia se alinean y opera SOLO los de máxima calidad. Menos operaciones, pero de mayor "
+     "probabilidad y mejor riesgo/beneficio: la selectividad es una ventaja en sí misma.",
+     "Un setup A+ reúne: tendencia superior a favor, zona clave, confirmación (gatillo), R/B ≥ 1:2 y "
+     "sin eventos de riesgo inminentes. Los B/C se dejan pasar. Esperar el pitch perfecto (como un "
+     "bateador) evita el over-trading y eleva la tasa de acierto. La paciencia para no operar "
+     "mediocridades distingue al profesional en cualquier mercado."),
+
+    ("Líneas de Andrews (pitchfork) y medianas",
+     "El pitchfork de Andrews traza tres líneas paralelas desde tres pivotes: una línea MEDIANA "
+     "central y dos paralelas. El precio tiende a gravitar hacia la mediana y a reaccionar en las "
+     "paralelas, que actúan como soporte/resistencia dinámicos del canal de tendencia.",
+     "La mediana funciona como imán: si el precio no la alcanza, la tendencia es fuerte; si la "
+     "supera, puede acelerar. Las paralelas exterior/interior dan zonas de entrada y objetivo dentro "
+     "de la tendencia. Es una herramienta geométrica para enmarcar el movimiento y anticipar dónde "
+     "reaccionará el precio. Útil en tendencias claras de cualquier mercado."),
+
+    ("Bandas de Keltner y medias Guppy (GMMA)",
+     "Los canales de Keltner usan una EMA con bandas basadas en ATR (volatilidad): el precio "
+     "'caminando' por la banda superior indica tendencia alcista fuerte. La GMMA (Guppy) superpone "
+     "varias EMAs cortas y largas: su separación mide la fuerza y el acuerdo de la tendencia.",
+     "Keltner (más suave que Bollinger) filtra el ruido y confirma tendencia; su combinación con "
+     "Bollinger define el 'squeeze' de volatilidad. En la GMMA, cuando el grupo de medias cortas se "
+     "separa con claridad del grupo largo, la tendencia es robusta; cuando se enredan, hay "
+     "indecisión/rango. Ayudan a decidir cuándo seguir tendencia y cuándo esperar, en todos los mercados."),
+
+    ("Backtesting: sesgos y robustez",
+     "Un backtest engaña si tiene sesgos: 'look-ahead' (usar datos futuros sin querer), "
+     "'survivorship' (probar solo con activos que sobrevivieron) y sobre-optimización (ajustar "
+     "parámetros hasta que el pasado brille, pero falla en vivo). Un sistema robusto funciona con "
+     "reglas simples y estables.",
+     "Valida con datos FUERA de muestra (out-of-sample) y walk-forward (optimizar en un tramo, "
+     "probar en el siguiente). Las simulaciones de Monte Carlo estiman el rango de resultados y el "
+     "drawdown posible. Incluye costes (spread, comisiones, slippage). Desconfía de curvas de "
+     "equity 'perfectas': suelen ser sobre-ajuste. La robustez importa más que un retorno histórico brillante."),
+
+    ("Cobertura (hedging)",
+     "Cubrirse (hedge) es abrir una posición que compensa el riesgo de otra: p.ej. proteger una "
+     "cartera de acciones con cortos en el índice, o usar un activo inversamente correlacionado "
+     "(oro/dólar en risk-off). Reduce la exposición sin cerrar la posición principal.",
+     "El hedge tiene coste (reduce beneficio potencial) y sirve para atravesar incertidumbre "
+     "(eventos, noticias) sin liquidar todo. Cubrir con activos correlacionados o con opciones "
+     "(puts de protección) acota pérdidas. No es gratis ni elimina todo el riesgo (correlaciones "
+     "cambian). Concepto clave de gestión: proteger el capital ante escenarios adversos conocidos."),
+
+    ("Salidas por tiempo y por estructura",
+     "Además del stop y el objetivo, existen salidas por TIEMPO (cerrar al vencimiento, fin de "
+     "sesión o si el trade no se mueve en X velas) y por ESTRUCTURA (salir si se pierde el nivel/"
+     "media que sostenía la tesis, o aparece un CHoCH en contra). Definir la salida es tan vital "
+     "como la entrada.",
+     "Una operación que no avanza consume capital y atención: una salida por tiempo libera recursos. "
+     "La salida por estructura protege ganancias cuando el motivo de la operación deja de existir "
+     "(rompe la línea de tendencia, cambia el carácter). En binarias la salida es el vencimiento "
+     "fijo: por eso elegirlo bien es crucial. Planifica TODAS las formas de salir antes de entrar."),
+]
+
 # Todos los lotes y el conjunto completo (para count() y recuperación)
 _BATCHES: dict[int, list[tuple[str, str, str]]] = {
-    1: _BATCH1, 2: _BATCH2, 3: _BATCH3, 4: _BATCH4}
+    1: _BATCH1, 2: _BATCH2, 3: _BATCH3, 4: _BATCH4, 5: _BATCH5}
 ENTRIES: list[tuple[str, str, str]] = [e for v in sorted(_BATCHES) for e in _BATCHES[v]]
 
 

@@ -219,19 +219,38 @@ def _chat_raw(system: str, user: str, max_tokens: int = 900) -> str:
 
 
 # ----------------------------- Funciones de uso ----------------------------
-def _learned(limit: int = 4) -> str:
-    """Trae el conocimiento que se le enseñó (Supabase) para usarlo como contexto."""
+def _learned(query: str | None = None, limit: int = 5) -> str:
+    """Trae el conocimiento (Supabase) para usarlo como contexto.
+
+    Si se pasa `query` (el activo/situación o la pregunta), busca lo MÁS RELEVANTE
+    con knowledge_search y lo completa con lo más reciente; así el cerebro aplica el
+    fundamento adecuado a cada caso, no solo lo último que se guardó.
+    """
     try:
         from db import cloud
-        ks = cloud.knowledge_recent(limit)
-        lines = []
-        for k in ks:
-            s = (k.get("summary") or "")[:240].replace("\n", " ").strip()
-            if s:
-                lines.append(f"- ({k.get('kind', '')}) {s}")
-        if lines:
-            return ("Conocimiento aprendido (lo que te he enseñado; tenlo en cuenta):\n"
-                    + "\n".join(lines) + "\n")
+        items, seen = [], set()
+
+        def _add(k):
+            s = (k.get("summary") or "")[:260].replace("\n", " ").strip()
+            key = s[:80].lower()
+            if s and key not in seen:
+                seen.add(key)
+                items.append(f"- ({k.get('kind', '')}) {s}")
+
+        if query:
+            try:
+                for k in cloud.knowledge_search(query, limit=limit) or []:
+                    _add(k)
+            except Exception:
+                pass
+        for k in cloud.knowledge_recent(max(2, limit - len(items))):
+            if len(items) >= limit:
+                break
+            _add(k)
+
+        if items:
+            return ("Conocimiento de trading que debes APLICAR (fundamentos aprendidos "
+                    "y lo que te he enseñado; tenlo en cuenta):\n" + "\n".join(items) + "\n")
     except Exception:
         pass
     return ""
@@ -251,7 +270,8 @@ def reason_trade(sig, symbol_label: str, news_titles: list[str] | None = None,
         f"Razones técnicas:\n- " + "\n- ".join(sig.reasons) + "\n\n"
         f"Titulares recientes:\n{news}\n\n"
         + (extra_context + "\n\n" if extra_context else "")
-        + _learned() +
+        + _learned(f"{symbol_label} {sig.action} {sig.trend or ''} "
+                   f"{' '.join(sig.patterns or [])} tendencia soporte resistencia riesgo") +
         "\nExplica qué está pasando y qué escenario es más probable, con gestión de "
         "riesgo. Sé conciso (máx ~180 palabras)."
     )
@@ -324,7 +344,8 @@ def structured_verdict(sig, symbol_label: str, news_titles: list[str] | None = N
         f"Stop: {sig.stop_loss}  Objetivo: {sig.take_profit}\n"
         f"Sentimiento noticias: {sig.news_score}\nRazones: {'; '.join(sig.reasons)}\n"
         f"Titulares:\n{news}\n" + (extra_context + "\n" if extra_context else "")
-        + _learned() + "\n"
+        + _learned(f"{symbol_label} {sig.action} {sig.trend or ''} "
+                   f"{' '.join(sig.patterns or [])} tendencia multi-temporalidad riesgo") + "\n"
         "Devuelve un JSON con: direccion (COMPRA/VENTA/ESPERAR), confianza (0-100), "
         "resumen (1-2 frases), riesgos (1 frase), niveles_clave. Usa SOLO datos del contexto."
     )
@@ -363,7 +384,7 @@ _QA_SYSTEM = (
 def ask(question: str, context: str = "") -> str:
     """Responde una consulta de trading del usuario, usando contexto + lo aprendido."""
     user = (f"Contexto actual:\n{context}\n\n" if context else "") + \
-        _learned() + f"\nPregunta del usuario: {question}\n\nResponde conciso (máx ~200 palabras)."
+        _learned(question) + f"\nPregunta del usuario: {question}\n\nResponde conciso (máx ~200 palabras)."
     return _chat(_QA_SYSTEM, user, max_tokens=900)
 
 

@@ -171,6 +171,13 @@ if not st.session_state.get("_db_inited"):   # solo una vez por sesión (login r
         init_db()
     except Exception as e:  # noqa: BLE001
         st.sidebar.warning(f"Aviso base de datos ({BACKEND}): {e}")
+    # Alimenta el cerebro con la BASE DE CONOCIMIENTO REAL de trading (una sola vez;
+    # idempotente por versión, no duplica). Así razona sobre fundamentos sólidos.
+    try:
+        from brain import knowledge_seed
+        knowledge_seed.seed()
+    except Exception:
+        pass
     st.session_state["_db_inited"] = True
 
 if not is_authenticated():
@@ -1386,6 +1393,30 @@ with tab_brain:
                    "El resto del sistema funciona con normalidad.")
     else:
         st.caption("🧠 Cerebro IA activo")
+
+    # ---- Base de conocimiento REAL de trading (fundamentos que el cerebro aplica) ----
+    with st.container(border=True):
+        from brain import knowledge_seed as _kseed
+        from db import cloud as _kcloud
+        try:
+            _kn = _kcloud.knowledge_count()
+        except Exception:
+            _kn = 0
+        kb1, kb2 = st.columns([2.4, 1])
+        kb1.markdown(
+            f"#### 📚 Base de conocimiento de trading\n"
+            f"El cerebro razona sobre **{_kseed.count()} fundamentos reales** "
+            f"(tendencia, soporte/resistencia, RSI, MACD, velas, patrones, gestión de "
+            f"riesgo, psicología, opciones binarias, multi-temporalidad, noticias…). "
+            f"Total en memoria: **{_kn} conocimientos** (en Supabase).")
+        if kb2.button("📥 Recargar fundamentos", use_container_width=True,
+                      help="Vuelve a guardar la base de conocimiento real de trading."):
+            with st.spinner("Alimentando el cerebro con fundamentos de trading…"):
+                try:
+                    _added = _kseed.seed(force=True)
+                    st.success(f"✅ {_added} fundamentos cargados en el cerebro.")
+                except Exception as _e:  # noqa: BLE001
+                    st.error(f"No se pudo cargar: {_e}")
 
     # ---- Auto-investigación (noticias + YouTube) ----
     with st.container(border=True):

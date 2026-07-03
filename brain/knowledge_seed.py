@@ -12,7 +12,7 @@ Es idempotente: usa una versión (kb_seed_version en app_settings) para no dupli
 """
 from __future__ import annotations
 
-_SEED_VERSION = 5
+_SEED_VERSION = 6
 _KIND = "fundamento"
 _PREFIX = "Fundamentos de trading"
 
@@ -1168,9 +1168,217 @@ _BATCH5: list[tuple[str, str, str]] = [
      "fijo: por eso elegirlo bien es crucial. Planifica TODAS las formas de salir antes de entrar."),
 ]
 
+# ---- LOTE 6: conocimiento de FUENTES FIABLES (autores, obras y datos oficiales) ----
+_BATCH6: list[tuple[str, str, str]] = [
+    ("Teoría de Dow (Charles Dow)",
+     "La Teoría de Dow, base del análisis técnico moderno (Charles Dow, fundador del Wall Street "
+     "Journal y del Dow Jones), postula: el precio lo descuenta todo; hay tres tendencias "
+     "(primaria, secundaria, menor); la tendencia persiste hasta señales claras de giro; y el "
+     "volumen debe confirmar la tendencia.",
+     "Principios clave: (1) los índices deben confirmarse entre sí (industriales y transportes en "
+     "su origen); (2) una tendencia se compone de fases (acumulación, participación pública, "
+     "distribución); (3) la tendencia primaria dura meses/años; las secundarias son correcciones. "
+     "Es el marco conceptual del que derivan tendencia, confirmación y volumen. Fuente fundacional "
+     "y fiable, aplicable a cualquier mercado."),
+
+    ("John Murphy — Análisis Técnico e Intermercado",
+     "John J. Murphy, en 'Análisis Técnico de los Mercados Financieros', es una referencia estándar "
+     "del AT. También popularizó el análisis INTERMERCADO: dólar, bonos, materias y acciones se "
+     "influyen y deben leerse en conjunto. Fuente rigurosa y ampliamente reconocida.",
+     "De Murphy se toma la disciplina de combinar tendencia, patrones, indicadores y volumen, y la "
+     "idea de que ningún mercado se mueve aislado. Su enfoque intermercado guía el contexto macro "
+     "(dólar fuerte presiona materias; bonos y acciones se relacionan con los tipos). Es lectura "
+     "obligada y base sólida para operar con criterio en todos los mercados."),
+
+    ("Edwards & Magee — patrones clásicos",
+     "'Technical Analysis of Stock Trends' (Robert Edwards y John Magee, 1948) es la obra clásica "
+     "que catalogó los patrones gráficos (hombro-cabeza-hombro, dobles techos/suelos, triángulos, "
+     "banderas) y las líneas de tendencia. Base histórica y fiable del chartismo.",
+     "Estableció reglas para trazar tendencias, medir objetivos de patrones y usar el volumen como "
+     "confirmación. Muchos conceptos que hoy se dan por sentados provienen de aquí. Aporta rigor: "
+     "los patrones se definen con criterios objetivos, no a ojo. Referencia canónica para el "
+     "reconocimiento de patrones en cualquier activo."),
+
+    ("Thomas Bulkowski — estadística de patrones",
+     "Thomas Bulkowski ('Encyclopedia of Chart Patterns') midió el RENDIMIENTO ESTADÍSTICO de los "
+     "patrones: tasa de acierto, objetivo alcanzado, fallos y mejores condiciones. Enseña que no "
+     "todos los patrones son iguales y que conviene operar los de mayor probabilidad histórica.",
+     "Aporta datos en vez de folclore: algunos patrones cumplen su objetivo con más frecuencia y en "
+     "ciertos contextos (a favor de la tendencia, con ruptura por volumen). Su lección práctica: "
+     "elige patrones con buen historial, confirma la ruptura y gestiona el riesgo porque incluso "
+     "los mejores fallan un % de las veces. Enfoque basado en evidencia, fiable y medible."),
+
+    ("Steve Nison — velas japonesas",
+     "Steve Nison introdujo formalmente las velas japonesas en Occidente ('Japanese Candlestick "
+     "Charting Techniques'). Es la referencia sobre patrones de velas (martillo, envolvente, doji, "
+     "estrellas) y su interpretación como lucha entre compradores y vendedores.",
+     "De Nison se aprende que una vela cuenta una historia (apertura, máximos, mínimos, cierre) y "
+     "que los patrones ganan valor en contexto: en soporte/resistencia, tras tendencia y con "
+     "confirmación. Las velas son un lenguaje universal aplicable a cripto, forex, índices y "
+     "acciones. Fuente autorizada del análisis de velas."),
+
+    ("Mark Douglas — psicología (Trading in the Zone)",
+     "Mark Douglas ('Trading in the Zone', 'The Disciplined Trader') es la referencia en psicología "
+     "de trading. Su tesis: el mercado es incierto y hay que pensar en PROBABILIDADES, no en "
+     "certezas; el resultado de una operación individual es aleatorio dentro de una ventaja estadística.",
+     "Enseña a operar 'sin miedo ni euforia' aceptando que cualquier operación puede perder aunque "
+     "hagas todo bien. Las claves: definir el riesgo de antemano, ejecutar sin apego al resultado y "
+     "confiar en la ventaja a lo largo de una serie. Elimina el revenge trading y el FOMO. Fuente "
+     "esencial para la disciplina mental en cualquier mercado."),
+
+    ("Van Tharp — sizing, expectativa y R-múltiplos",
+     "Van K. Tharp ('Trade Your Way to Financial Freedom') popularizó que lo importante no es "
+     "'acertar' sino la EXPECTATIVA y el TAMAÑO de posición. Mide los resultados en R-múltiplos: "
+     "cada operación se expresa en múltiplos del riesgo inicial (1R = lo que arriesgaste).",
+     "Si arriesgas 1R y ganas 3 veces esa cantidad, es +3R. La expectativa = R promedio por "
+     "operación; positiva y sostenida = sistema rentable. El 'position sizing' (cuánto arriesgar) "
+     "determina el crecimiento y el riesgo de ruina más que la entrada. Pensar en R estandariza "
+     "resultados entre activos y mercados. Fuente clave de gestión monetaria."),
+
+    ("Alexander Elder — Trading for a Living y triple pantalla",
+     "Alexander Elder ('Trading for a Living') aporta el sistema de TRIPLE PANTALLA y reglas de "
+     "gestión monetaria: la regla del 2% (máximo riesgo por operación) y la del 6% (máxima pérdida "
+     "mensual). Integra análisis, gestión y psicología (los 'tres pilares').",
+     "La triple pantalla decide en tres pasos: (1) tendencia en la temporalidad ALTA (con un "
+     "indicador de tendencia); (2) un oscilador en la temporalidad INTERMEDIA para el retroceso; "
+     "(3) el gatillo de entrada en la temporalidad BAJA. Combina multi-temporalidad con timing. "
+     "Sus reglas 2%/6% protegen la cuenta. Fuente práctica y fiable aplicable a todos los mercados."),
+
+    ("Welles Wilder — RSI, ATR, ADX y Parabolic SAR",
+     "J. Welles Wilder ('New Concepts in Technical Trading Systems', 1978) CREÓ varios de los "
+     "indicadores más usados: RSI, ATR (rango medio verdadero), ADX/DMI (fuerza de tendencia) y el "
+     "Parabolic SAR. Fuente original de estas herramientas.",
+     "Conocer la intención del autor evita malos usos: el RSI mide impulso (no es orden de compra/"
+     "venta por sí solo), el ATR mide volatilidad para stops, el ADX mide FUERZA (no dirección) y "
+     "el SAR es un trailing stop. Wilder diseñó indicadores complementarios: combinar fuerza (ADX), "
+     "impulso (RSI) y volatilidad (ATR) da una lectura completa en cualquier mercado."),
+
+    ("John Bollinger y Gerald Appel — Bandas y MACD",
+     "John Bollinger creó las Bandas de Bollinger ('Bollinger on Bollinger Bands') y advierte: tocar "
+     "una banda NO es señal por sí sola, hay que confirmar. Gerald Appel creó el MACD. Usar un "
+     "indicador según su creador evita interpretaciones erróneas.",
+     "Bollinger enseña que en tendencia el precio 'camina' por una banda y que el squeeze (bandas "
+     "estrechas) precede a movimientos; combina las bandas con otros indicadores no correlacionados. "
+     "Appel diseñó el MACD para captar cambios de tendencia/momentum vía cruces y divergencias. "
+     "Respetar la lógica original de cada herramienta mejora su fiabilidad."),
+
+    ("Ondas de Elliott y método Wyckoff (fuentes)",
+     "Ralph Nelson Elliott ('The Wave Principle') describió los ciclos de 5 ondas de impulso y 3 "
+     "correctivas. Richard Wyckoff formuló las leyes de oferta/demanda, causa/efecto y esfuerzo/"
+     "resultado, y el concepto del 'operador compuesto' (dinero inteligente). Fuentes clásicas.",
+     "Elliott aporta un marco de estructura ondulatoria (subjetivo: úsalo con Fibonacci y "
+     "confirmación). Wyckoff aporta cómo acumula y distribuye el dinero inteligente y cómo el "
+     "volumen (esfuerzo) debe corresponder al movimiento (resultado). Ambos son bases del análisis "
+     "de estructura y de la lógica institucional moderna (SMC). Fuentes reconocidas y atemporales."),
+
+    ("Jack Schwager — Market Wizards (lecciones)",
+     "Jack Schwager entrevistó a grandes operadores en la serie 'Market Wizards'. Lecciones comunes "
+     "de los mejores: cortar pérdidas rápido, gestión de riesgo estricta, disciplina, tener un edge "
+     "y un método propio, y controlar la psicología. No hay un único estilo ganador.",
+     "Los 'magos del mercado' coinciden más en la GESTIÓN y la MENTALIDAD que en la técnica: "
+     "arriesgar poco por operación, adaptarse, aceptar errores y ser consistentes. Muchos usan "
+     "enfoques distintos (tendencia, contrarian, sistemático), lo que prueba que el edge + la "
+     "disciplina importan más que una 'estrategia mágica'. Fuente inspiradora y realista."),
+
+    ("Educación fiable: Babypips, Investopedia, CMT/CFA",
+     "Para aprender con rigor y gratis, fuentes fiables son Babypips (escuela de forex), "
+     "Investopedia (diccionario y guías de finanzas) y los cuerpos de conocimiento de la CMT "
+     "Association (Chartered Market Technician) y el CFA Institute. Enseñan con evidencia y ética, "
+     "no promesas de riqueza.",
+     "Estas fuentes explican conceptos verificables y advierten de los riesgos. La certificación CMT "
+     "cubre análisis técnico serio; el CFA cubre finanzas e inversión. Babypips es ideal para "
+     "fundamentos de forex; Investopedia para definiciones claras. Prioriza SIEMPRE material que "
+     "hable de gestión de riesgo y probabilidades frente a 'gurús' que prometen ganancias seguras."),
+
+    ("Datos oficiales y calendarios fiables",
+     "Para datos macro fiables usa fuentes oficiales: BLS de EE. UU. (empleo NFP e inflación IPC), "
+     "EIA (inventarios de petróleo), la CFTC (informe COT de posicionamiento), Eurostat y los "
+     "bancos centrales (Fed, BCE). Para agenda de eventos, calendarios como Forex Factory o "
+     "Investing.com.",
+     "Operar con datos de primera mano evita rumores. Los calendarios económicos marcan la hora y el "
+     "impacto esperado de cada evento (para evitar operar en el momento del dato). El COT de la CFTC "
+     "muestra cómo se posicionan los grandes en futuros. Verificar la fuente y el consenso previo es "
+     "parte del análisis fundamental serio en forex, índices, materias y bonos."),
+
+    ("Cómo evaluar una fuente de trading",
+     "No todas las fuentes valen. Señales de fuente FIABLE: habla de probabilidades y gestión de "
+     "riesgo, muestra evidencia/datos, admite que se pierde parte de las veces, no promete "
+     "resultados. Señales de ALERTA: 'señales infalibles', ganancias garantizadas, urgencia para "
+     "vender un curso, sin gestión de riesgo.",
+     "Aplica escepticismo: desconfía de gurús que enseñan lujo en vez de método, de sistemas 'sin "
+     "pérdidas' y de la ausencia de gestión de riesgo. Prioriza autores contrastados, material "
+     "académico (CMT/CFA) y datos oficiales. Verifica afirmaciones con backtest y resultados "
+     "reales. Una fuente honesta te prepara para perder bien, no solo para soñar con ganar."),
+
+    ("R-múltiplos y calidad del sistema (SQN)",
+     "Medir en R-múltiplos (Van Tharp) estandariza resultados: cada trade se expresa como múltiplo "
+     "del riesgo (R). Con la distribución de R se calculan expectativa (R medio) y consistencia. El "
+     "SQN (System Quality Number) valora la calidad de un sistema combinando expectativa y regularidad.",
+     "Ventaja: comparar operaciones y sistemas entre activos y tamaños de forma homogénea. Una "
+     "expectativa de +0.5R por trade sobre muchas operaciones es una buena ventaja. La consistencia "
+     "(baja dispersión de R) importa tanto como la media. Registra cada operación en R para saber si "
+     "tu sistema realmente tiene edge y en qué mercados rinde mejor."),
+
+    ("Las cuatro fases del mercado (ciclo)",
+     "Todo mercado cicla por cuatro fases (Wyckoff/Weinstein): ACUMULACIÓN (rango tras caída, "
+     "dinero inteligente compra), AVANCE/tendencia alcista, DISTRIBUCIÓN (rango tras subida, se "
+     "vende a la multitud) y DECLIVE/tendencia bajista. Identificar la fase orienta la táctica.",
+     "En acumulación y distribución conviene operar rangos (comprar soporte/vender resistencia); en "
+     "avance y declive, seguir tendencia (pullbacks, rupturas). El mayor error es aplicar la táctica "
+     "de una fase en otra. La fase se reconoce por la estructura del precio respecto a una media "
+     "larga (p.ej. la de 30 semanas de Weinstein). Marco de contexto válido en todos los mercados."),
+
+    ("Stan Weinstein — análisis de etapas",
+     "Stan Weinstein ('Secrets for Profiting in Bull and Bear Markets') define 4 ETAPAS usando la "
+     "media móvil de 30 semanas: Etapa 1 (base/acumulación), Etapa 2 (avance alcista, comprar), "
+     "Etapa 3 (techo/distribución), Etapa 4 (declive, evitar o vender). Compra en Etapa 2.",
+     "La clave: operar a favor de la Etapa 2 (precio sobre una MM30 al alza, tras romper la base con "
+     "volumen) y evitar comprar en Etapa 4 (precio bajo la MM30 a la baja). La fuerza relativa frente "
+     "al índice ayuda a elegir los líderes. Es un método de swing/posición sencillo y robusto, "
+     "aplicable a acciones, índices, cripto y materias."),
+
+    ("Curtis Faith / Turtles — reglas y disciplina",
+     "El experimento de las 'Tortugas' (Richard Dennis y William Eckhardt; relatado por Curtis "
+     "Faith en 'Way of the Turtle') demostró que un sistema de seguimiento de tendencia con reglas "
+     "claras y GESTIÓN de riesgo puede enseñarse y ser rentable. La disciplina pesó más que el talento.",
+     "Reglas turtle: entradas por ruptura de canales (Donchian), tamaño por volatilidad (ATR), "
+     "añadir a ganadores, cortar pérdidas y seguir el sistema sin excepciones. Lección central: un "
+     "edge modesto aplicado con disciplina absoluta y buena gestión supera a la intuición "
+     "indisciplinada. Base del trading sistemático y del control de riesgo."),
+
+    ("Ley de esfuerzo y resultado (volumen-precio)",
+     "Principio de Wyckoff y del Análisis Volumen-Precio (VSA, Tom Williams): el VOLUMEN es el "
+     "esfuerzo y el movimiento del precio, el resultado. Cuando el esfuerzo (volumen alto) no "
+     "produce resultado (el precio apenas avanza), hay ANOMALÍA: alguien absorbe, y suele avisar giro.",
+     "Ejemplos: volumen enorme en un máximo con cierre débil = distribución (posible techo); volumen "
+     "alto en un mínimo con cierre fuerte = absorción de compra (posible suelo). Poco volumen en una "
+     "subida = falta de interés (débil). Leer la relación esfuerzo/resultado detecta la mano fuerte "
+     "detrás del precio. Fundamento del análisis de volumen fiable en mercados con volumen real."),
+
+    ("Larry Williams y Linda Raschke — momentum y swing",
+     "Larry Williams (creador del %R y campeón de trading real) y Linda Raschke ('Street Smarts') "
+     "son referencias en momentum y swing trading de corto plazo. Aportan setups probados como la "
+     "'turtle soup' (reversión de falsa ruptura) y el uso del momentum con gestión estricta.",
+     "Enseñan a combinar momentum, patrones de corto plazo y una gestión de riesgo disciplinada, y a "
+     "operar con un plan claro de entrada/salida. Su enfoque práctico (setups repetibles, no "
+     "predicciones) encaja con el trading intradía y de swing en futuros, forex e índices. Fuentes "
+     "fiables de estrategias concretas y realistas."),
+
+    ("El sistema aprende de sus operaciones (refuerzo)",
+     "Este sistema se FORTALECE operando: cada señal se registra con su 'foto' de indicadores; al "
+     "vencer se marca acierto/fallo con el precio real; y un modelo aprende qué condiciones tienden "
+     "a acertar, ajustando la confianza futura. Además contrasta con el conocimiento y la tendencia "
+     "de fondo. Cuantas más operaciones evaluadas, más fiable.",
+     "El bucle de mejora: operar (motor autónomo + terminal) → registrar → evaluar con resultado "
+     "real → reentrenar el modelo y actualizar la precisión por activo/duración. El conocimiento "
+     "(estos fundamentos) da el marco de razonamiento y el histórico da la calibración. Mantén el "
+     "motor autónomo encendido para que acumule resultados en todos los mercados y el sistema mejore "
+     "con el tiempo, con honestidad (probabilidades, no certezas)."),
+]
+
 # Todos los lotes y el conjunto completo (para count() y recuperación)
 _BATCHES: dict[int, list[tuple[str, str, str]]] = {
-    1: _BATCH1, 2: _BATCH2, 3: _BATCH3, 4: _BATCH4, 5: _BATCH5}
+    1: _BATCH1, 2: _BATCH2, 3: _BATCH3, 4: _BATCH4, 5: _BATCH5, 6: _BATCH6}
 ENTRIES: list[tuple[str, str, str]] = [e for v in sorted(_BATCHES) for e in _BATCHES[v]]
 
 

@@ -245,11 +245,28 @@ def _scan_cycle(stop_event: threading.Event, min_conf: float, timeframe: str) ->
                     plan.direction = "ESPERAR"
                     plan.action_label, plan.icon = "ESPERAR", "⏸"
                     plan.expiry_seconds = 0
+
+            # PRIORIZA los activos que MEJOR rinden (precisión real) y penaliza los que
+            # pierden: sube/baja automáticamente el umbral exigido a CADA activo.
+            eff_min = min_conf
+            _wr = None
+            try:
+                _wr = tracker.live_winrate(s.key)
+                if _wr is not None:
+                    if _wr < 45:
+                        eff_min = min_conf + 8       # activo que pierde: mucho más exigente
+                    elif _wr < 50:
+                        eff_min = min_conf + 4
+                    elif _wr >= 60:
+                        eff_min = max(58, min_conf - 4)  # activo que gana: algo más fácil
+            except Exception:
+                pass
+
             # Si es candidata, el CEREBRO la verifica con su CONOCIMIENTO + resultados
             # reales y se FUNDE su veredicto en la decisión (con cooldown/cap de cuota).
             # Así el motor autónomo decide en conjunto, igual que el terminal.
             _ia = None
-            if plan.is_actionable and plan.confidence >= min_conf:
+            if plan.is_actionable and plan.confidence >= eff_min:
                 try:
                     from analysis.indicators import snapshot_text
                     _ind = snapshot_text(df)
@@ -264,12 +281,15 @@ def _scan_cycle(stop_event: threading.Event, min_conf: float, timeframe: str) ->
                     except Exception:
                         pass
 
-            # DECISIÓN FINAL COMBINADA (técnico + tendencia + aprendizaje + conocimiento)
-            if plan.is_actionable and plan.confidence >= min_conf:
+            # DECISIÓN FINAL COMBINADA (técnico + tendencia + aprendizaje + conocimiento),
+            # con el umbral ajustado por la precisión real del activo.
+            if plan.is_actionable and plan.confidence >= eff_min:
                 try:
                     save_recommendation(sig)
                 except Exception:
                     pass
+                # Puntuación de CALIDAD: confianza + bonus por precisión real del activo
+                _quality = round(plan.confidence + ((_wr - 50) * 0.4 if _wr is not None else 0), 1)
                 with _S.lock:
                     _S.results.appendleft({
                         "t": datetime.now().strftime("%H:%M:%S"),
@@ -279,6 +299,8 @@ def _scan_cycle(stop_event: threading.Event, min_conf: float, timeframe: str) ->
                         "icon": plan.icon,
                         "dur": plan.duration_label,
                         "conf": round(plan.confidence, 1),
+                        "wr": _wr,
+                        "quality": _quality,
                         "price": sig.price,
                     })
                 found += 1

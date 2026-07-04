@@ -217,16 +217,18 @@ with st.sidebar:
                 unsafe_allow_html=True)
     _label2key = {s.label: s.key for s in SYMBOLS}
     _snap = autonomous.snapshot()
+    _q = lambda r: r.get("quality", r["conf"])   # prioriza por CALIDAD (conf + precisión real)
     _best = {}
     for _r in _snap.get("results", []):
-        if _r["symbol"] not in _best or _r["conf"] > _best[_r["symbol"]]["conf"]:
+        if _r["symbol"] not in _best or _q(_r) > _q(_best[_r["symbol"]]):
             _best[_r["symbol"]] = _r
-    _potentials = sorted(_best.values(), key=lambda r: r["conf"], reverse=True)[:8]
+    _potentials = sorted(_best.values(), key=_q, reverse=True)[:8]
     if _potentials:
         for _r in _potentials:
             _k = _label2key.get(_r["symbol"])
             _sel = "▸ " if _k == st.session_state.get("symbol_key") else ""
-            if st.button(f"{_sel}{_r['icon']} {_r['symbol']} · {_r['conf']:.0f}% · {_r['dur']}",
+            _wrtag = f" · 🎯{_r['wr']:.0f}%" if _r.get("wr") is not None else ""
+            if st.button(f"{_sel}{_r['icon']} {_r['symbol']} · {_r['conf']:.0f}%{_wrtag} · {_r['dur']}",
                          key=f"wl_{_k}", use_container_width=True):
                 st.session_state["symbol_key"] = _k
                 st.rerun()
@@ -977,13 +979,15 @@ def render_strip():
     snap = autonomous.snapshot()
     market_rows = ""
     if snap.get("results"):
+        _qk = lambda r: r.get("quality", r["conf"])
         best = {}
         for r in snap["results"]:
-            if r["symbol"] not in best or r["conf"] > best[r["symbol"]]["conf"]:
+            if r["symbol"] not in best or _qk(r) > _qk(best[r["symbol"]]):
                 best[r["symbol"]] = r
-        for r in sorted(best.values(), key=lambda r: r["conf"], reverse=True)[:3]:
+        for r in sorted(best.values(), key=_qk, reverse=True)[:3]:
+            _wt = f" · 🎯{r['wr']:.0f}%" if r.get("wr") is not None else ""
             market_rows += (f"<div class='gx-news'>{r['icon']} <b>{r['symbol']}</b> · "
-                            f"{r['dur']} · {r['conf']:.0f}%</div>")
+                            f"{r['dur']} · {r['conf']:.0f}%{_wt}</div>")
 
     # Guardias de eventos (alta volatilidad): earnings del activo y macro global
     try:
@@ -1508,12 +1512,13 @@ with tab_radar:
 
         results = snap["results"]
         if results:
-            # Mejor oportunidad por activo, ordenadas por confianza, con veredicto IA
+            # Mejor oportunidad por activo, ordenadas por CALIDAD (conf + precisión real)
+            _qk = lambda r: r.get("quality", r["conf"])
             best = {}
             for r in results:
-                if r["symbol"] not in best or r["conf"] > best[r["symbol"]]["conf"]:
+                if r["symbol"] not in best or _qk(r) > _qk(best[r["symbol"]]):
                     best[r["symbol"]] = r
-            rows = sorted(best.values(), key=lambda r: r["conf"], reverse=True)
+            rows = sorted(best.values(), key=_qk, reverse=True)
             _ia = snap.get("ia", {})
             _l2k = {s.label: s.key for s in SYMBOLS}
 
@@ -1529,6 +1534,7 @@ with tab_radar:
 
             table = [{"Activo": r["symbol"], "Señal": f"{r['icon']} {r['action']}",
                       "Duración": r["dur"], "Confianza %": r["conf"],
+                      "Precisión %": (round(r["wr"], 0) if r.get("wr") is not None else "—"),
                       "IA": _ia_badge(r), "Precio": r["price"], "Hora": r["t"]} for r in rows]
             st.dataframe(pd.DataFrame(table), use_container_width=True, hide_index=True)
             st.caption("La columna **IA** muestra el veredicto del cerebro (Gemini/DeepSeek) "

@@ -46,6 +46,7 @@ class _State:
         self._research_cooldown: dict = {}  # symbol_key -> epoch del último estudio
         self.ia: dict = {}                # symbol_key -> {dir, conf, resumen} (veredicto IA)
         self.forex_focus = True           # priorizar Forex (y rotar el resto de mercados)
+        self.research_cap = 2             # nº de señales que el cerebro verifica por pasada
 
 
 _S = _State()
@@ -103,6 +104,13 @@ def set_forex_focus(enabled: bool) -> None:
         _S.forex_focus = bool(enabled)
 
 
+def set_research_cap(n: int) -> None:
+    """Cuántas señales verifica el cerebro (IA) por pasada. Más = más veredictos con
+    conocimiento, pero más consumo de cuota de IA."""
+    with _S.lock:
+        _S.research_cap = max(0, min(10, int(n)))
+
+
 def _forex_open() -> bool:
     """Aproxima el horario del Forex (abre dom ~21:00 UTC, cierra vie ~21:00 UTC)."""
     now = datetime.utcnow()
@@ -133,7 +141,7 @@ def _maybe_research(symbol, sig, plan, done_count: int, ind_ctx: str = ""):
     Devuelve (nuevo_contador, veredicto|None) para que la decisión FUNDA el veredicto.
     """
     import time as _t
-    if done_count >= _MAX_RESEARCH_PER_CYCLE:
+    if done_count >= _S.research_cap:
         return done_count, None
     if _t.time() - _S._research_cooldown.get(symbol.key, 0) < _RESEARCH_COOLDOWN_S:
         return done_count, None
@@ -207,6 +215,7 @@ def _scan_cycle(stop_event: threading.Event, min_conf: float, timeframe: str) ->
             # Si es candidata, el CEREBRO la verifica con su CONOCIMIENTO + resultados
             # reales y se FUNDE su veredicto en la decisión (con cooldown/cap de cuota).
             # Así el motor autónomo decide en conjunto, igual que el terminal.
+            _ia = None
             if plan.is_actionable and plan.confidence >= min_conf:
                 try:
                     from analysis.indicators import snapshot_text
@@ -217,7 +226,8 @@ def _scan_cycle(stop_event: threading.Event, min_conf: float, timeframe: str) ->
                 if _ia:
                     try:
                         plan = advisor.fuse_verdict(plan, _ia.get("dir", "ESPERAR"),
-                                                    float(_ia.get("conf") or 0))
+                                                    float(_ia.get("conf") or 0),
+                                                    scale=tracker.ia_scale())
                     except Exception:
                         pass
 
@@ -245,9 +255,13 @@ def _scan_cycle(stop_event: threading.Event, min_conf: float, timeframe: str) ->
                     _feat = extract_features(df)[0].tolist()
                 except Exception:
                     _feat = None
+                # Etiqueta si el cerebro CONFIRMÓ la dirección (para medir su acierto)
+                _iad = (_ia or {}).get("dir", "")
+                _src = "auto" + ("+iaok" if _iad == plan.direction
+                                 else "+iano" if _iad in ("SUBE", "BAJA") else "")
                 try:
                     tracker.record(s.key, plan.direction, plan.expiry_seconds, sig.price,
-                                   "auto", features=_feat)
+                                   _src, features=_feat)
                 except Exception:
                     pass
         except Exception:

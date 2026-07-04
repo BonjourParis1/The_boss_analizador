@@ -264,6 +264,13 @@ with st.sidebar:
                           help="El motor escanea TODO el Forex en cada pasada y rota el "
                                "resto de mercados, para no agotar las APIs gratuitas.")
         autonomous.set_forex_focus(_ff)
+        _rc = st.slider("🧠 Señales que verifica el cerebro / pasada", 0, 6,
+                        int(st.session_state.get("research_cap", 2)),
+                        help="Cuántas señales fuertes verifica el cerebro (IA) con su "
+                             "conocimiento en cada pasada del motor. Más = más veredictos "
+                             "pero más consumo de la cuota de IA.")
+        st.session_state["research_cap"] = _rc
+        autonomous.set_research_cap(_rc)
 
     with st.expander("💰 Capital y riesgo", expanded=False):
         from db import cloud as _cloud
@@ -562,7 +569,9 @@ def _adaptive_gate(sk: str, plan, sig_main) -> dict:
         if wr >= 60:
             score += 1.0; reasons.append(f"precisión real alta ({wr:.0f}%)")
         elif wr < 45:
-            score -= 1.2; reasons.append(f"precisión real baja ({wr:.0f}%)")
+            score -= 1.6; reasons.append(f"precisión real baja ({wr:.0f}%)")
+        elif wr < 50:
+            score -= 0.7; reasons.append(f"precisión real floja ({wr:.0f}%)")
 
     # 3) Volatilidad (ATR%): mucha = más riesgo -> conservador; poca = más estable
     price = sig_main.price or 1.0
@@ -584,8 +593,9 @@ def _adaptive_gate(sk: str, plan, sig_main) -> dict:
     except Exception:
         pass
 
-    # Mapear el 'apetito de riesgo' a umbral y paciencia de confirmación
-    min_conf = max(56.0, min(76.0, 66.0 - score * 4.0))   # arriesga -> umbral menor
+    # Mapear el 'apetito de riesgo' a umbral y paciencia de confirmación.
+    # Umbral base ALTO (más precisión): solo abre con señales de alta calidad.
+    min_conf = max(62.0, min(80.0, 70.0 - score * 4.0))   # arriesga -> umbral menor
     confirm_factor = max(0.6, min(1.7, 1.0 - score * 0.18))  # arriesga -> confirma más rápido
     if score >= 1.2:
         mode = "🔥 Agresivo"
@@ -620,7 +630,20 @@ def _fuse_ia(plan, ia):
         ia_conf = float(ia.get("confianza") or 0)
     except Exception:
         ia_conf = 0.0
-    return advisor.fuse_verdict(plan, ia_dir, ia_conf)
+    # Peso del cerebro ajustado por su acierto histórico real (auto-aprendizaje)
+    try:
+        _scale = tracker.ia_scale()
+    except Exception:
+        _scale = 1.0
+    return advisor.fuse_verdict(plan, ia_dir, ia_conf, scale=_scale)
+
+
+def _ia_dir_of(ia) -> str:
+    """Dirección del veredicto del cerebro (SUBE/BAJA/ESPERAR) o '' si no hay."""
+    if not ia:
+        return ""
+    return {"COMPRA": "SUBE", "VENTA": "BAJA", "ESPERAR": "ESPERAR"}.get(
+        str(ia.get("direccion", "")).upper(), "ESPERAR")
 
 
 def compute_locked_plan(sk: str, duration: str, news_score):
@@ -640,10 +663,26 @@ def compute_locked_plan(sk: str, duration: str, news_score):
 
     # El CONOCIMIENTO del cerebro influye en la decisión (fusión con el plan técnico).
     # El veredicto está cacheado (3 min), así que no llama al modelo en cada refresco.
+    _ia = None
     try:
-        plan = _fuse_ia(plan, _ia_verdict_cached(sk, duration))
+        _ia = _ia_verdict_cached(sk, duration)
+        plan = _fuse_ia(plan, _ia)
     except Exception:
         pass
+    # Recuerda si el cerebro CONFIRMÓ la dirección (para medir su acierto real después)
+    st.session_state[f"iadir:{sk}:{duration}"] = _ia_dir_of(_ia)
+
+    # FILTRO DE PRECISIÓN: no perseguir extremos de RSI (no comprar sobrecomprado ni
+    # vender sobrevendido en el corto plazo: suele revertir y baja la tasa de acierto).
+    _rsi = sig_main.rsi
+    if _rsi is not None:
+        if (plan.direction == "SUBE" and _rsi >= 74) or (plan.direction == "BAJA" and _rsi <= 26):
+            plan.rationale = list(plan.rationale) + [
+                f"⛔ RSI en extremo ({_rsi:.0f}) contra una entrada por impulso: "
+                f"riesgo de reversión, mejor ESPERAR."]
+            plan.direction = "ESPERAR"
+            plan.action_label, plan.icon = "ESPERAR", "⏸"
+            plan.duration_label, plan.expiry_seconds = "—", 0
 
     # El sistema decide SOLO su apetito de riesgo según el contexto (adaptativo)
     gate = _adaptive_gate(sk, plan, sig_main)
@@ -749,6 +788,13 @@ def render_system_status():
         modelo = "✅ activo"
     else:
         modelo = f"⏳ {sl.get('n', 0)}/{self_learn.MIN_SAMPLES}"
+    try:
+        _ia = tracker.ia_stats()
+        _ia_txt = (f" &nbsp;·&nbsp; 🧠 Cerebro acierta {_ia['agree_acc']:.0f}% "
+                   f"cuando confirma ({_ia['agree_n']}) vs media {_ia['overall_acc']:.0f}%"
+                   if _ia.get("agree_n") else "")
+    except Exception:
+        _ia_txt = ""
     st.markdown(
         f"<div class='gx-card' style='padding:8px 14px;margin-bottom:8px;'>"
         f"<span class='gx-tag'>⚙️ Estado del sistema</span>"
@@ -756,7 +802,7 @@ def render_system_status():
         f"🤖 Motor {motor} · {snap.get('cycles', 0)} pasadas (últ. {last_s}) &nbsp;·&nbsp; "
         f"🎯 {ts['n']} señales evaluadas ({ts['accuracy']:.0f}%) &nbsp;·&nbsp; "
         f"🧠 Aprendizaje {modelo} &nbsp;·&nbsp; 📚 {kn} conocimientos &nbsp;·&nbsp; "
-        f"IA: {C.esc(llm.backend_label())}</div></div>",
+        f"IA: {C.esc(llm.backend_label())}{_ia_txt}</div></div>",
         unsafe_allow_html=True)
 
 
@@ -796,8 +842,12 @@ def render_strip():
                 _feat = extract_features(_dff)[0].tolist()
             except Exception:
                 _feat = None
+            # Etiqueta si el CEREBRO confirmó la dirección (para medir su acierto real)
+            _iad = st.session_state.get(f"iadir:{sk}:{duration}", "")
+            _src = "terminal" + ("+iaok" if _iad == plan.direction
+                                 else "+iano" if _iad in ("SUBE", "BAJA") else "")
             tracker.record(sk, plan.direction, plan.expiry_seconds, sig_main.price,
-                           "terminal", features=_feat)
+                           _src, features=_feat)
         tracker.evaluate(sk, sig_main.price)
     except Exception:
         pass
@@ -931,6 +981,30 @@ def render_strip():
                    f"font-size:0.82rem;'>🧠 {badge} · {C.esc(ia.get('confianza','—'))}% — "
                    f"{C.esc(ia.get('resumen',''))}{_funds_html}</div>")
 
+    # --- Datos para el panel "¿Por qué esta decisión?" (las 4 capas combinadas) ---
+    try:
+        _iastat = tracker.ia_stats()
+    except Exception:
+        _iastat = {}
+    try:
+        _fondo = _regime_cached(sk)
+    except Exception:
+        _fondo = None
+    st.session_state["_why"] = {
+        "final": {"dir": plan.direction, "label": plan.action_label,
+                  "conf": plan.confidence, "icon": plan.icon},
+        "tecnico": {"action": sig_main.action, "conf": sig_main.confidence,
+                    "reads": (plan.rationale[0] if plan.rationale else "")},
+        "fondo": _fondo,
+        "reales": {"activo": _ps, "global": _g,
+                   "ia_peso": (tracker.ia_scale() if hasattr(tracker, "ia_scale") else 1.0),
+                   "ia_stat": _iastat},
+        "cerebro": ({"dir": ia.get("direccion"), "conf": ia.get("confianza"),
+                     "resumen": ia.get("resumen"), "fundamentos": ia.get("fundamentos") or []}
+                    if ia else None),
+        "modo": _gate,
+    }
+
     s = st.columns([1.8, 1.5, 1.4])
     with s[0]:
         st.markdown(
@@ -1014,6 +1088,71 @@ def render_chart_full():
                         config={"displayModeBar": False})
 
 
+def _render_why_panel():
+    """Panel '¿Por qué esta decisión?': muestra las 4 CAPAS que se combinan
+    (técnico + tendencia de años + resultados reales + conocimiento del cerebro)."""
+    w = st.session_state.get("_why")
+    if not w:
+        return
+    fin = w.get("final") or {}
+    col = T.GREEN if fin.get("dir") == "SUBE" else T.RED if fin.get("dir") == "BAJA" else T.GOLD
+
+    def _row(icon, titulo, cuerpo, color=T.TEXT):
+        return (f"<div style='display:flex;gap:8px;padding:5px 0;border-top:1px solid {T.BORDER};'>"
+                f"<div style='font-size:1rem;'>{icon}</div><div style='font-size:0.82rem;'>"
+                f"<b style='color:{color};'>{titulo}</b><br>"
+                f"<span style='color:{T.MUTED};'>{cuerpo}</span></div></div>")
+
+    # 1) Técnico
+    tec = w.get("tecnico") or {}
+    r1 = _row("📊", "Técnico (multi-temporalidad)",
+              f"Señal {C.esc(tec.get('action','—'))} · {tec.get('conf',0):.0f}%. "
+              f"{C.esc(tec.get('reads',''))}")
+    # 2) Tendencia de años
+    fo = w.get("fondo") or {}
+    if fo:
+        fc = {"ALCISTA": T.GREEN, "BAJISTA": T.RED}.get(fo.get("direction"), T.GOLD)
+        r2 = _row("🌍", "Tendencia de fondo (años)",
+                  f"<b style='color:{fc};'>{fo.get('direction','—')}</b> · fuerza "
+                  f"{(fo.get('strength') or 0):.0%} · ~12m {(fo.get('annual_return') or 0):+.1%} "
+                  f"(~{fo.get('years','?')} años)")
+    else:
+        r2 = _row("🌍", "Tendencia de fondo (años)", "Sin datos de largo plazo aún.")
+    # 3) Resultados reales
+    re = w.get("reales") or {}
+    _a, _g = re.get("activo") or {}, re.get("global") or {}
+    _ist = re.get("ia_stat") or {}
+    ia_line = ""
+    if _ist.get("agree_n"):
+        ia_line = (f" · Cerebro cuando confirma: {_ist.get('agree_acc',0):.0f}% "
+                   f"({_ist.get('agree_n')}) vs media {_ist.get('overall_acc',0):.0f}%")
+    r3 = _row("🎯", "Resultados reales (aprendizaje)",
+              f"Precisión activo {_a.get('accuracy',0):.0f}% ({_a.get('n',0)}) · "
+              f"sistema {_g.get('accuracy',0):.0f}% ({_g.get('n',0)}) · "
+              f"peso del cerebro ×{re.get('ia_peso',1.0)}{ia_line}")
+    # 4) Conocimiento del cerebro
+    ce = w.get("cerebro")
+    if ce:
+        funds = " · ".join((ce.get("fundamentos") or [])[:3])
+        r4 = _row("🧠", "Conocimiento del cerebro",
+                  f"Veredicto {C.esc(str(ce.get('dir','—')))} · {C.esc(str(ce.get('conf','—')))}%. "
+                  f"{C.esc(ce.get('resumen',''))}"
+                  + (f"<br>📚 Aplicó: {C.esc(funds)}" if funds else ""))
+    else:
+        r4 = _row("🧠", "Conocimiento del cerebro", "IA no disponible o sin veredicto ahora.")
+
+    modo = w.get("modo") or {}
+    modo_txt = (f" · Modo {modo.get('mode','')} (abre desde {modo.get('min_conf',0):.0f}%)"
+                if modo else "")
+    with st.expander("❓ ¿Por qué esta decisión? (las 4 capas combinadas)", expanded=False):
+        st.markdown(
+            f"<div class='gx-card' style='border-left:3px solid {col};'>"
+            f"<div style='font-size:0.95rem;font-weight:700;color:{col};'>"
+            f"{fin.get('icon','')} Decisión final: {C.esc(fin.get('label','—'))} · "
+            f"{fin.get('conf',0):.0f}%{modo_txt}</div>"
+            + r1 + r2 + r3 + r4 + "</div>", unsafe_allow_html=True)
+
+
 def render_details():
     """Detalle bajo el gráfico: RSI/MACD (en stream), lectura, registro y noticias."""
     if not is_authenticated():
@@ -1031,6 +1170,8 @@ def render_details():
                             config={"displayModeBar": False})
         except Exception:
             pass
+
+    _render_why_panel()
 
     d1, d2, d3 = st.columns([1.3, 1, 1.5])
     with d1:

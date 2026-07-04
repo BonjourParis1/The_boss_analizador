@@ -38,7 +38,7 @@ class TradePlan:
 
     @property
     def is_actionable(self) -> bool:
-        return self.direction in ("SUBE", "BAJA") and self.confidence >= 64
+        return self.direction in ("SUBE", "BAJA") and self.confidence >= 66
 
 
 def _duration(vol: float, strong: bool) -> tuple[str, int]:
@@ -94,18 +94,19 @@ def consensus_plan(per_tf, force_duration, auto_pred=None, auto_conf=None,
     if total == 0:
         return TradePlan("ESPERAR", "ESPERAR", "⏸", "—", 0, 30.0, reasons)
 
-    # Exigimos consenso AMPLIO (≥70% del peso en la misma dirección). Con temporalidades
+    # Exigimos consenso AMPLIO (≥72% del peso en la misma dirección). Con temporalidades
     # largas (1h/1d) pesando más, esto evita operar por un impulso corto pasajero.
+    # Umbral alto = MÁS PRECISIÓN (menos señales, pero de más calidad).
     align = max(buy_w, sell_w) / total
-    if align >= 0.70 and buy_w > sell_w:
+    if align >= 0.72 and buy_w > sell_w:
         direction = "SUBE"
-    elif align >= 0.70 and sell_w > buy_w:
+    elif align >= 0.72 and sell_w > buy_w:
         direction = "BAJA"
     else:
         direction = "ESPERAR"
         reasons.append("Temporalidades NO alineadas (consenso insuficiente): lo fiable es ESPERAR.")
 
-    conf = 34 + align * 58    # 0.70 -> ~75 ; 1.0 -> ~92
+    conf = 30 + align * 62    # 0.72 -> ~75 ; 1.0 -> ~92 (exige más alineación para confiar)
     if direction == "ESPERAR":
         conf = min(conf, 45)
 
@@ -130,35 +131,41 @@ def consensus_plan(per_tf, force_duration, auto_pred=None, auto_conf=None,
     return TradePlan(direction, action_label, icon, act_dur, act_secs, round(conf, 1), reasons)
 
 
-def fuse_verdict(plan: "TradePlan", ia_dir: str, ia_conf: float) -> "TradePlan":
+def fuse_verdict(plan: "TradePlan", ia_dir: str, ia_conf: float,
+                 scale: float = 1.0) -> "TradePlan":
     """Funde el veredicto del CEREBRO (dirección SUBE/BAJA/ESPERAR + confianza, razonado
     con el conocimiento y los resultados reales) con un plan técnico. Uso COMPARTIDO por
     el terminal y el motor autónomo, para que todo el sistema decida en conjunto.
 
+    `scale` (0..1.5) es el PESO del cerebro, ajustado por su acierto histórico: si la IA
+    ha demostrado acertar, pesa más; si no, pesa menos. Con scale=0 la IA no influye.
+
     * Confirma la dirección  -> sube la confianza (mezcla ponderada).
-    * Discrepa               -> baja la confianza (−12).
-    * Discrepa con fuerza (≥70%) -> fuerza ESPERAR (el conocimiento veta la señal técnica).
-    * Aconseja ESPERAR       -> cautela añadida (−6).
+    * Discrepa               -> baja la confianza.
+    * Discrepa con fuerza (≥70%) y con peso -> fuerza ESPERAR (veta la señal técnica).
+    * Aconseja ESPERAR       -> cautela añadida.
     """
     if plan.direction not in ("SUBE", "BAJA"):
         return plan
+    scale = max(0.0, min(1.5, scale))
+    base = plan.confidence
     reasons = list(plan.rationale)
     if ia_dir == plan.direction:
-        plan.confidence = round(min(98.0, 0.72 * plan.confidence
-                                    + 0.28 * max(ia_conf, plan.confidence) + 4), 1)
+        target = min(98.0, 0.72 * base + 0.28 * max(ia_conf, base) + 4)
+        plan.confidence = round(base + (target - base) * scale, 1)
         reasons.append(f"🧠 Cerebro CONFIRMA {plan.direction} ({ia_conf:.0f}%): más fiable.")
     elif ia_dir in ("SUBE", "BAJA"):
-        if ia_conf >= 70:
+        if ia_conf >= 70 and scale >= 0.6:
             reasons.append(f"🧠 Cerebro DISCREPA con fuerza ({ia_conf:.0f}%): ESPERAR.")
             plan.direction = "ESPERAR"
             plan.action_label, plan.icon = "ESPERAR", "⏸"
             plan.duration_label, plan.expiry_seconds = "—", 0
-            plan.confidence = round(min(plan.confidence, 45.0), 1)
+            plan.confidence = round(min(base, 45.0), 1)
         else:
-            plan.confidence = round(max(0.0, plan.confidence - 12), 1)
+            plan.confidence = round(base + (max(0.0, base - 12) - base) * scale, 1)
             reasons.append(f"🧠 Cerebro discrepa ({ia_conf:.0f}%): cautela.")
     else:   # ESPERAR
-        plan.confidence = round(max(0.0, plan.confidence - 6), 1)
+        plan.confidence = round(base + (max(0.0, base - 6) - base) * scale, 1)
         reasons.append("🧠 Cerebro aconseja ESPERAR: cautela añadida.")
     plan.rationale = reasons
     return plan

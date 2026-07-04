@@ -131,6 +131,36 @@ def live_winrate(symbol_key: str, min_samples: int = 8) -> float | None:
     return s["accuracy"] if s["n"] >= min_samples else None
 
 
+def ia_stats() -> dict:
+    """Mide cuánto ACIERTA el cerebro: compara la precisión de las operaciones donde la
+    IA CONFIRMÓ la dirección (marca '+iaok' en source) frente al total. Sirve para saber
+    si conviene fiarse más o menos del veredicto del cerebro."""
+    agree_n = agree_w = disc_n = disc_w = tot_n = tot_w = 0
+    for s in _resolved():
+        win = 1 if s["status"] == "win" else 0
+        tot_n += 1; tot_w += win
+        src = str(s.get("source") or "")
+        if "+iaok" in src:
+            agree_n += 1; agree_w += win
+        elif "+iano" in src:
+            disc_n += 1; disc_w += win
+    acc = lambda w, n: round(100 * w / n, 1) if n else 0.0
+    return {"agree_n": agree_n, "agree_acc": acc(agree_w, agree_n),
+            "disc_n": disc_n, "disc_acc": acc(disc_w, disc_n),
+            "overall_n": tot_n, "overall_acc": acc(tot_w, tot_n)}
+
+
+def ia_scale(min_samples: int = 12) -> float:
+    """PESO del cerebro (0.4..1.4) según su acierto histórico real. Si con muestra
+    suficiente las señales confirmadas por la IA ACIERTAN MÁS que la media, la IA pesa
+    más; si aciertan menos, pesa menos. Sin datos suficientes, peso neutro (1.0)."""
+    s = ia_stats()
+    if s["agree_n"] < min_samples:
+        return 1.0
+    edge = s["agree_acc"] - s["overall_acc"]      # cuánto mejora la IA sobre la media
+    return round(max(0.4, min(1.4, 1.0 + edge / 20.0)), 2)  # +/-1% acc -> +/-0.05 peso
+
+
 def evaluated() -> list:
     """Señales ya resueltas (acierto/fallo), ordenadas por tiempo."""
     return sorted(_resolved(), key=lambda s: float(s.get("entry_ts", 0)))

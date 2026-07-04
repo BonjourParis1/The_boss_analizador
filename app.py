@@ -186,7 +186,7 @@ if not is_authenticated():
 
 # Valores por defecto (los controles principales viven en la franja superior)
 for _k, _v in {"grp": "Todos", "symbol_key": SYMBOLS[0].key, "interval": "5m",
-               "duration": "1m", "chart_type": "🔴 Stream en vivo", "live": True,
+               "duration": "Auto", "chart_type": "🔴 Stream en vivo", "live": True,
                "limit": 200, "refresh": settings.refresh_seconds}.items():
     st.session_state.setdefault(_k, _v)
 
@@ -277,6 +277,15 @@ with st.sidebar:
             help="Endurece los filtros: exige más confianza, tendencia clara (ADX), que "
                  "el cerebro confirme y evita entradas pegadas a niveles. Menos señales, "
                  "pero de mayor calidad. Ideal para probar en demo con fiabilidad.")
+        st.session_state["session_filter"] = st.checkbox(
+            "🕒 Filtro de horario (evita baja liquidez)",
+            value=st.session_state.get("session_filter", True),
+            help="No opera en mercado cerrado ni en horas de baja liquidez (sesión "
+                 "asiática muerta en forex, fuera de Wall Street en acciones, madrugada "
+                 "en cripto): ahí los spreads y las falsas señales aumentan.")
+        # Sincroniza los filtros con el motor autónomo (corre en segundo plano)
+        autonomous.set_filters(st.session_state["session_filter"],
+                               st.session_state["high_precision"])
 
     with st.expander("💰 Capital y riesgo", expanded=False):
         from db import cloud as _cloud
@@ -376,7 +385,7 @@ def _opportunities(sk: str, chosen: str, news_score):
 
 INTERVALS = ["1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "1d", "1w", "1M"]
 CHART_TYPES = ["🔴 Stream en vivo", "Velas", "Velas 5s", "Velas 30s", "Línea en vivo"]
-DUR_LABELS = ["30s", "1m", "3m", "5m", "15m"]
+DUR_LABELS = ["Auto", "30s", "1m", "3m", "5m", "15m"]
 
 
 def render_toolbar():
@@ -399,9 +408,10 @@ def render_toolbar():
         "Gráfico", CHART_TYPES, index=CHART_TYPES.index(st.session_state.get("chart_type", CHART_TYPES[0])),
         help="«Stream en vivo» (cripto) fluctúa tick a tick como IQ Option.")
     st.session_state["duration"] = c[4].selectbox(
-        "⏱️ Duración", DUR_LABELS, index=DUR_LABELS.index(st.session_state.get("duration", "1m")),
+        "⏱️ Duración", DUR_LABELS, index=DUR_LABELS.index(st.session_state.get("duration", "Auto")),
         help="El asesor analiza varias temporalidades PARA este plazo y MANTIENE la "
-             "recomendación durante ese tiempo (no cambia cada minuto).")
+             "recomendación durante ese tiempo. «Auto»: el sistema elige el plazo "
+             "(30s/1m/3m/5m) según la volatilidad y la fuerza de la tendencia.")
     st.session_state["live"] = c[5].toggle("🔴 Live", value=st.session_state.get("live", True))
 
 
@@ -659,6 +669,29 @@ def _ia_dir_of(ia) -> str:
         str(ia.get("direccion", "")).upper(), "ESPERAR")
 
 
+@st.cache_data(show_spinner=False, ttl=20)
+def _resolve_duration(sk: str) -> str:
+    """AUTO: elige el plazo (30s/1m/3m/5m) según la VOLATILIDAD (ATR%) y la FUERZA de
+    tendencia (ADX). Mercado rápido -> plazos cortos; lento -> largos; tendencia fuerte
+    permite algo más de plazo para dejar correr el movimiento."""
+    try:
+        df = load_market(sk, "1m", 120)
+        last = df.iloc[-1]
+        price = float(last["close"]) or 1.0
+        atrp = (float(last["atr"]) / price) if price else 0.0
+        adx = float(last["adx"]) if "adx" in df else 0.0
+    except Exception:
+        return "1m"
+    strong = adx >= 25
+    if atrp >= 0.0025:            # muy volátil (cripto activo)
+        return "1m" if strong else "30s"
+    if atrp >= 0.0010:           # volatilidad media
+        return "3m" if strong else "1m"
+    if atrp >= 0.0004:           # baja
+        return "5m" if strong else "3m"
+    return "5m"                  # muy baja (forex/acciones tranquilos)
+
+
 def compute_locked_plan(sk: str, duration: str, news_score):
     """Multi-TF + BLOQUEO firme: una vez abierta, la operación se MANTIENE hasta
     vencer (nunca cambia de opinión a mitad de camino, como en IQ Option). Antes de
@@ -666,19 +699,31 @@ def compute_locked_plan(sk: str, duration: str, news_score):
     por un movimiento pasajero.
 
     La decisión COMBINA: técnico multi-temporalidad + tendencia de años + resultados
-    reales aprendidos + veredicto del cerebro (conocimiento). Todo pondera.
+    reales aprendidos + veredicto del cerebro (conocimiento). Todo pondera. Con «Auto»,
+    el sistema elige el plazo por sí mismo (se fija al abrir y se mantiene).
     """
     import time as _t
-    plan, sig_main, reading = _consensus_for(sk, duration, news_score)
     lock_key = f"lock:{sk}:{duration}"
     conf_key = f"confirm:{sk}:{duration}"
     now = _t.time()
+
+    # OPERACIÓN EN CURSO -> se mantiene intacta hasta vencer (con su plazo ya fijado)
+    lock = st.session_state.get(lock_key)
+    if lock and now < lock["until"]:
+        _, sig_main, reading = _consensus_for(sk, lock.get("dur_c", "1m"), news_score)
+        return lock["plan"], sig_main, reading, int(lock["until"] - now)
+
+    # Plazo CONCRETO: en «Auto» lo elige el sistema; si no, el que fijó el usuario
+    concrete = _resolve_duration(sk) if duration == "Auto" else duration
+    st.session_state[f"autodur:{sk}:{duration}"] = concrete
+
+    plan, sig_main, reading = _consensus_for(sk, concrete, news_score)
 
     # El CONOCIMIENTO del cerebro influye en la decisión (fusión con el plan técnico).
     # El veredicto está cacheado (3 min), así que no llama al modelo en cada refresco.
     _ia = None
     try:
-        _ia = _ia_verdict_cached(sk, duration)
+        _ia = _ia_verdict_cached(sk, concrete)
         plan = _fuse_ia(plan, _ia)
     except Exception:
         pass
@@ -693,6 +738,16 @@ def compute_locked_plan(sk: str, duration: str, news_score):
         plan.direction = "ESPERAR"
         plan.action_label, plan.icon = "ESPERAR", "⏸"
         plan.duration_label, plan.expiry_seconds = "—", 0
+
+    # 0) FILTRO DE SESIÓN/HORARIO: no operar en baja liquidez ni mercado cerrado
+    if plan.direction in ("SUBE", "BAJA") and st.session_state.get("session_filter", True):
+        try:
+            from analysis import sessions as _ss
+            _ok, _mot = _ss.tradeable(SYMBOLS_BY_KEY[sk], high_precision=_hp)
+            if not _ok:
+                _to_wait(f"⛔ {_mot}: fuera de horario de buena liquidez, mejor ESPERAR.")
+        except Exception:
+            pass
 
     if plan.direction in ("SUBE", "BAJA"):
         _rsi, _adx = sig_main.rsi, sig_main.adx
@@ -724,12 +779,7 @@ def compute_locked_plan(sk: str, duration: str, news_score):
         gate["mode"] = "🎯 Alta precisión"
     st.session_state[f"mode:{sk}:{duration}"] = gate
 
-    # 1) OPERACIÓN EN CURSO -> se mantiene intacta hasta vencer (sin flip-flop)
-    lock = st.session_state.get(lock_key)
-    if lock and now < lock["until"]:
-        return lock["plan"], sig_main, reading, int(lock["until"] - now)
-
-    # 2) SIN operación activa: umbral y confirmación ADAPTATIVOS (arriesga o es cauto)
+    # SIN operación activa: umbral y confirmación ADAPTATIVOS (arriesga o es cauto)
     can_open = (plan.direction in ("SUBE", "BAJA")
                 and plan.confidence >= gate["min_conf"])
     if can_open:
@@ -749,7 +799,8 @@ def compute_locked_plan(sk: str, duration: str, news_score):
                 + (f" · {', '.join(gate['why'])}" if gate['why'] else "") + ")."]
             st.session_state[lock_key] = {
                 "dir": plan.direction, "until": now + max(plan.expiry_seconds, 30),
-                "plan": plan, "entry_price": sig_main.price, "opened": now}
+                "plan": plan, "entry_price": sig_main.price, "opened": now,
+                "dur_c": concrete}
             st.session_state[conf_key] = None
             st.session_state["_new_trade_open"] = now
             return plan, sig_main, reading, int(plan.expiry_seconds)
@@ -860,6 +911,9 @@ def render_strip():
     except Exception:
         st.info(f"Cargando datos de {symbol.label}…")
         return
+    # Plazo concreto elegido (en «Auto», el que decidió el sistema) para mostrar/veredicto
+    dur_c = st.session_state.get(f"autodur:{sk}:{duration}", duration if duration != "Auto" else "1m")
+    dur_show = f"Auto→{dur_c}" if duration == "Auto" else duration
     st.session_state["_cur"] = {"reasons": plan.rationale,
                                 "sig_action": sig_main.action, "price": sig_main.price}
 
@@ -899,7 +953,7 @@ def render_strip():
         tag = f"{sk}:{plan.direction}:{duration}"
         if st.session_state.get("_last_tag") != tag:
             st.session_state["_last_tag"] = tag
-            st.toast(f"{plan.icon} {plan.action_label} {symbol.label} · {duration}", icon="🔔")
+            st.toast(f"{plan.icon} {plan.action_label} {symbol.label} · {dur_show}", icon="🔔")
             if st.session_state.get("sound_on", True):
                 components.html(C.alert_sound_html(plan.direction), height=0)
             feed = st.session_state.setdefault("plan_feed", [])
@@ -999,7 +1053,7 @@ def render_strip():
                           f"padding-top:6px;font-size:0.84rem;color:{T.GOLD};'>💰 {_rk['advice']}</div>")
 
     # --- Fusión con el cerebro IA (confirma / discrepa) ---
-    ia = _ia_verdict_cached(sk, duration)
+    ia = _ia_verdict_cached(sk, dur_c)
     ia_html = ""
     if ia:
         _map = {"COMPRA": "SUBE", "VENTA": "BAJA", "ESPERAR": "ESPERAR"}
@@ -1045,7 +1099,7 @@ def render_strip():
     with s[0]:
         st.markdown(
             f"<div class='gx-card' style='border:2px solid {color};margin-bottom:6px;'>"
-            f"<div class='gx-tag'>🎯 Plan consolidado · {symbol.label} · inversión {duration}</div>"
+            f"<div class='gx-tag'>🎯 Plan consolidado · {symbol.label} · inversión {dur_show}</div>"
             f"<div style='display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;'>"
             f"<span style='font-size:1.7rem;font-weight:800;color:{color};'>{plan.icon} {plan.action_label}</span>"
             f"<span style='font-size:1.15rem;font-weight:700;'>{plan.confidence:.0f}%</span>"

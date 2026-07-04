@@ -47,6 +47,8 @@ class _State:
         self.ia: dict = {}                # symbol_key -> {dir, conf, resumen} (veredicto IA)
         self.forex_focus = True           # priorizar Forex (y rotar el resto de mercados)
         self.research_cap = 2             # nº de señales que el cerebro verifica por pasada
+        self.session_filter = True        # evitar baja liquidez / mercado cerrado
+        self.high_precision = False       # operar solo lo mejor (filtros más duros)
 
 
 _S = _State()
@@ -109,6 +111,13 @@ def set_research_cap(n: int) -> None:
     conocimiento, pero más consumo de cuota de IA."""
     with _S.lock:
         _S.research_cap = max(0, min(10, int(n)))
+
+
+def set_filters(session_filter: bool, high_precision: bool) -> None:
+    """Sincroniza los filtros del terminal con el motor autónomo (horario y precisión)."""
+    with _S.lock:
+        _S.session_filter = bool(session_filter)
+        _S.high_precision = bool(high_precision)
 
 
 def _forex_open() -> bool:
@@ -212,11 +221,19 @@ def _scan_cycle(stop_event: threading.Event, min_conf: float, timeframe: str) ->
                     plan = _rg.apply_to_plan(plan, _reg)
             except Exception:
                 pass
-            # FILTROS DE PRECISIÓN (igual que el terminal): descarta chop y extremos
+            # FILTROS DE PRECISIÓN (igual que el terminal): sesión, chop y extremos
             if plan.is_actionable:
-                _bad = ((sig.adx is not None and sig.adx < 16)
+                _adx_min = 22 if _S.high_precision else 16
+                _bad = ((sig.adx is not None and sig.adx < _adx_min)
                         or (sig.rsi is not None and plan.direction == "SUBE" and sig.rsi >= 74)
                         or (sig.rsi is not None and plan.direction == "BAJA" and sig.rsi <= 26))
+                if not _bad and _S.session_filter:
+                    try:
+                        from analysis import sessions as _ss
+                        _ok, _ = _ss.tradeable(s, high_precision=_S.high_precision)
+                        _bad = not _ok
+                    except Exception:
+                        pass
                 if _bad:
                     plan.direction = "ESPERAR"
                     plan.action_label, plan.icon = "ESPERAR", "⏸"

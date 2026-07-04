@@ -749,6 +749,16 @@ def compute_locked_plan(sk: str, duration: str, news_score):
         except Exception:
             pass
 
+    # 0b) FILTRO DE HORA APRENDIDO: evita AUTOMÁTICAMENTE las horas donde el sistema
+    # ha demostrado (con muestra) perder más. Aprende de sus propios resultados.
+    if plan.direction in ("SUBE", "BAJA"):
+        try:
+            _hw = tracker.hour_winrate(symbol_key=sk) or tracker.hour_winrate()
+            if _hw is not None and _hw < 42:
+                _to_wait(f"⛔ Franja horaria poco rentable ({_hw:.0f}% histórico): mejor ESPERAR.")
+        except Exception:
+            pass
+
     if plan.direction in ("SUBE", "BAJA"):
         _rsi, _adx = sig_main.rsi, sig_main.adx
         _price, _atr = sig_main.price or 0.0, sig_main.atr or 0.0
@@ -1034,6 +1044,26 @@ def render_strip():
                       f"🧠 Modo <b style='color:{_mc};'>{_gate['mode']}</b> "
                       f"<span style='opacity:.7;'>(abre desde {_gate['min_conf']:.0f}%{_why})</span></div>")
 
+    # --- Indicador de LIQUIDEZ/horario en vivo (automático) ---
+    _liq_html = ""
+    try:
+        from analysis import sessions as _ss
+        _ls = _ss.session_state(symbol)
+        _lcol = {"alta": T.GREEN, "media": T.GOLD, "baja": T.RED, "cerrado": T.MUTED}.get(
+            _ls["quality"], T.MUTED)
+        _ldot = {"alta": "🟢", "media": "🟡", "baja": "🔴", "cerrado": "⚪"}.get(_ls["quality"], "⚪")
+        _hw = None
+        try:
+            _hw = tracker.hour_winrate(symbol_key=sk) or tracker.hour_winrate()
+        except Exception:
+            _hw = None
+        _hwtxt = f" · esta hora acierta {_hw:.0f}% histórico" if _hw is not None else ""
+        _liq_html = (f"<div style='font-size:0.8rem;color:{T.MUTED};margin-top:4px;'>"
+                     f"{_ldot} Liquidez <b style='color:{_lcol};'>{_ls['quality'].upper()}</b> "
+                     f"<span style='opacity:.7;'>· {C.esc(_ls['note'])}{_hwtxt}</span></div>")
+    except Exception:
+        pass
+
     # --- Gestor de riesgo: cuánto invertir según tu capital y la ventaja ---
     _risk_html = ""
     _cap = float(st.session_state.get("capital", 0) or 0)
@@ -1103,7 +1133,7 @@ def render_strip():
             f"<div style='display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;'>"
             f"<span style='font-size:1.7rem;font-weight:800;color:{color};'>{plan.icon} {plan.action_label}</span>"
             f"<span style='font-size:1.15rem;font-weight:700;'>{plan.confidence:.0f}%</span>"
-            f"<span style='font-size:0.85rem;color:{T.MUTED};'>{venc}</span></div>{_sent}{_mode_html}{_reg_html}{_acc}{_risk_html}{ia_html}</div>",
+            f"<span style='font-size:0.85rem;color:{T.MUTED};'>{venc}</span></div>{_sent}{_liq_html}{_mode_html}{_reg_html}{_acc}{_risk_html}{ia_html}</div>",
             unsafe_allow_html=True)
     with s[1]:
         if opportunities:
@@ -1581,6 +1611,25 @@ with tab_prec:
     m2.metric("Aciertos", g["wins"])
     m3.metric("Fallos", g["losses"])
     m4.metric("Precisión global", f"{g['accuracy']:.0f}%")
+
+    # ---- Rendimiento POR HORA (UTC): el sistema evita solo las franjas malas ----
+    _hs = tracker.hourly_stats()
+    if _hs:
+        st.markdown("#### ⏰ Precisión por hora del día (UTC)")
+        st.caption("El sistema aprende de esto y **evita automáticamente** las horas con "
+                   "menos de 42% de acierto (con muestra suficiente).")
+        _hrows = [{"hora": f"{h:02d}h", "Precisión %": v["acc"], "Total": v["total"]}
+                  for h, v in _hs.items()]
+        _hdf = pd.DataFrame(_hrows).set_index("hora")
+        st.bar_chart(_hdf["Precisión %"])
+        _good = [f"{h:02d}h ({v['acc']:.0f}%)" for h, v in _hs.items()
+                 if v["total"] >= 5 and v["acc"] >= 60]
+        _bad = [f"{h:02d}h ({v['acc']:.0f}%)" for h, v in _hs.items()
+                if v["total"] >= 5 and v["acc"] < 45]
+        if _good:
+            st.markdown("🟢 **Mejores horas:** " + " · ".join(_good))
+        if _bad:
+            st.markdown("🔴 **Horas a evitar (automático):** " + " · ".join(_bad))
 
     def _style_perf(row):
         """Verde si rinde bien, rojo si falla más que acierta (con muestra mínima)."""

@@ -187,6 +187,30 @@ def _breakdown(keyfn) -> dict:
                 "precisión": round(100 * v[0] / v[1], 1)} for k, v in agg.items()}
 
 
+def hourly_stats(symbol_key: str | None = None) -> dict:
+    """Precisión por HORA del día (UTC) a partir de resultados reales: sirve para que el
+    sistema aprenda EN QUÉ HORAS acierta más y evite automáticamente las peores."""
+    from collections import defaultdict
+    agg = defaultdict(lambda: [0, 0])   # hora -> [aciertos, total]
+    for s in _resolved(symbol_key):
+        try:
+            h = time.gmtime(float(s.get("entry_ts", 0))).tm_hour
+        except Exception:
+            continue
+        agg[h][0] += 1 if s["status"] == "win" else 0
+        agg[h][1] += 1
+    return {h: {"wins": w, "total": t, "acc": round(100 * w / t, 1) if t else 0.0}
+            for h, (w, t) in sorted(agg.items())}
+
+
+def hour_winrate(hour: int | None = None, symbol_key: str | None = None,
+                 min_samples: int = 8) -> float | None:
+    """Precisión histórica de una HORA (UTC) si hay muestra suficiente; None si no."""
+    h = hour if hour is not None else time.gmtime().tm_hour
+    hs = hourly_stats(symbol_key).get(h)
+    return hs["acc"] if hs and hs["total"] >= min_samples else None
+
+
 def breakdown_symbol() -> dict:
     return _breakdown(lambda s: s.get("symbol"))
 

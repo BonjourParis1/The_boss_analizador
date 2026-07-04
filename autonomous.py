@@ -234,6 +234,13 @@ def _scan_cycle(stop_event: threading.Event, min_conf: float, timeframe: str) ->
                         _bad = not _ok
                     except Exception:
                         pass
+                if not _bad:   # filtro de hora APRENDIDO (evita franjas poco rentables)
+                    try:
+                        _hw = tracker.hour_winrate(symbol_key=s.key) or tracker.hour_winrate()
+                        if _hw is not None and _hw < 42:
+                            _bad = True
+                    except Exception:
+                        pass
                 if _bad:
                     plan.direction = "ESPERAR"
                     plan.action_label, plan.icon = "ESPERAR", "⏸"

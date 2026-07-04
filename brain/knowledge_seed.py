@@ -12,7 +12,7 @@ Es idempotente: usa una versión (kb_seed_version en app_settings) para no dupli
 """
 from __future__ import annotations
 
-_SEED_VERSION = 11
+_SEED_VERSION = 12
 _KIND = "fundamento"
 _PREFIX = "Fundamentos de trading"
 
@@ -2468,10 +2468,245 @@ _BATCH11: list[tuple[str, str, str]] = [
      "incluso una buena señal se ejecuta mal."),
 ]
 
+# ---- LOTE 12: análisis fundamental y valoración por clase de activo ----
+_BATCH12: list[tuple[str, str, str]] = [
+    ("Análisis fundamental de acciones",
+     "El análisis fundamental estima el VALOR INTRÍNSECO de una empresa a partir de sus finanzas y su "
+     "negocio: cuenta de resultados (ingresos, beneficios), balance (activos, deuda) y flujo de caja, "
+     "más la calidad del negocio y su ventaja competitiva ('moat'). Compra si el precio está por "
+     "debajo del valor (margen de seguridad).",
+     "Mientras el técnico dice CUÁNDO, el fundamental dice QUÉ y POR QUÉ. Evalúa si la empresa gana "
+     "dinero de forma sostenible, crece, tiene deuda manejable y una ventaja duradera frente a "
+     "competidores. Sirve para el sesgo de medio/largo plazo y para elegir buenas empresas; el técnico "
+     "afina la entrada. Para el trader, aunque opere a corto, saber si una acción es sólida o frágil "
+     "ayuda a decidir la dirección y el riesgo."),
+
+    ("Ratios de valoración de acciones",
+     "Ratios clave para saber si una acción está cara o barata: PER (P/E, precio/beneficio), P/B "
+     "(precio/valor contable), P/S (precio/ventas) y PEG (PER ajustado por crecimiento). Se comparan "
+     "con el histórico de la empresa, su sector y el mercado, no en absoluto.",
+     "Un PER alto puede significar cara O que el mercado espera fuerte crecimiento; un PER bajo puede "
+     "ser ganga O una empresa en problemas ('value trap'). El PEG ~1 sugiere valoración razonable "
+     "respecto al crecimiento. El P/B es útil en bancos e industriales; el P/S, en empresas sin "
+     "beneficios aún. Ningún ratio aislado basta: dan CONTEXTO. Ayudan a evitar comprar euforia cara y "
+     "a detectar oportunidades infravaloradas."),
+
+    ("Beneficios, márgenes y crecimiento",
+     "El motor del precio de una acción a largo plazo son los BENEFICIOS. Métricas: BPA/EPS (beneficio "
+     "por acción), crecimiento de ingresos y de beneficios, y MÁRGENES (bruto, operativo, neto) que "
+     "miden cuánto de cada venta se convierte en beneficio. Empresas con márgenes altos y crecientes "
+     "suelen tener ventaja competitiva.",
+     "En los 'earnings' importa más la SORPRESA frente a lo esperado y el GUIDANCE (previsión) que el "
+     "dato pasado. Beneficios crecientes con márgenes estables o al alza es señal de calidad; márgenes "
+     "que se erosionan avisan de competencia o costes. El crecimiento sostenible (no comprado con "
+     "deuda) es lo valioso. Estos fundamentales explican por qué una acción sube durante años o se "
+     "desploma tras decepcionar."),
+
+    ("Balance y flujo de caja",
+     "El balance muestra la SOLIDEZ: activos, pasivos (DEUDA) y patrimonio. Demasiada deuda hace "
+     "frágil a una empresa (sobre todo con tipos altos). El FLUJO DE CAJA libre (FCF = caja operativa "
+     "menos inversiones) mide el dinero REAL que genera, más difícil de maquillar que el beneficio contable.",
+     "Una empresa puede reportar beneficios y aun así quebrar si se queda sin caja. Vigila la liquidez "
+     "(activos corrientes vs deuda a corto), el nivel de deuda frente a beneficios, y un FCF positivo "
+     "y creciente (señal de negocio sano que puede pagar dividendos, recomprar o crecer). El 'cash is "
+     "king': la caja real y una deuda controlada distinguen a las empresas robustas de las que "
+     "colapsan en una crisis de crédito."),
+
+    ("Dividendos: rentabilidad, payout y fechas",
+     "El dividendo es la parte del beneficio que la empresa reparte. La RENTABILIDAD por dividendo = "
+     "dividendo anual / precio. El PAYOUT = dividendos / beneficios (uno muy alto puede ser "
+     "insostenible). En la fecha 'ex-dividendo', quien compra ya NO cobra el próximo dividendo y el "
+     "precio suele caer aproximadamente por su importe.",
+     "Un dividendo estable y creciente indica un negocio maduro y confiable; una rentabilidad "
+     "demasiado alta puede señalar riesgo (precio caído por problemas) o un recorte inminente. El "
+     "ajuste del precio en la fecha ex-dividendo es normal (no es una caída 'real'): tenlo en cuenta "
+     "para no confundirlo con una señal técnica. Los dividendos aportan una parte importante del "
+     "retorno total a largo plazo en acciones e índices."),
+
+    ("Growth vs value (crecimiento y valor)",
+     "Hay dos grandes estilos de acciones: CRECIMIENTO ('growth', empresas que crecen rápido, "
+     "reinvierten, valoraciones altas, sensibles a los tipos) y VALOR ('value', empresas maduras, "
+     "baratas frente a sus fundamentales, suelen pagar dividendos). Cada estilo lidera en distintos "
+     "entornos.",
+     "Growth (tecnología) brilla con tipos bajos y optimismo; sufre cuando suben los tipos (su valor "
+     "depende de beneficios futuros descontados). Value resiste mejor en entornos de tipos altos e "
+     "inflación. La 'rotación' entre growth y value es un tema recurrente del mercado. Para el trader, "
+     "saber en qué régimen estamos ayuda a elegir qué acciones y sectores tienen viento a favor. Ambos "
+     "estilos ganan en su momento del ciclo."),
+
+    ("Capitalización y estilo (large/small cap)",
+     "La capitalización de mercado (precio × número de acciones) clasifica a las empresas: GRANDES "
+     "(large cap, muy líquidas y estables), MEDIANAS y PEQUEÑAS (small cap, más volátiles, mayor "
+     "potencial y mayor riesgo). Los índices suelen dominarlos las grandes.",
+     "Las small caps ofrecen más crecimiento potencial pero son más volátiles, ilíquidas y sensibles "
+     "al ciclo (sufren en recesión, brillan en recuperación temprana: 'efecto enero'). Las large caps "
+     "(megacaps tecnológicas) dominan los índices ponderados por capitalización, así que unas pocas "
+     "mueven al S&P. Conocer el tamaño ayuda a entender la volatilidad esperada y el comportamiento "
+     "según el ciclo. Ajusta el riesgo al tamaño del activo."),
+
+    ("Recompras y desdoblamientos (buybacks y splits)",
+     "Una RECOMPRA (buyback) es la empresa comprando sus propias acciones: reduce el número en "
+     "circulación, sube el beneficio por acción y suele apoyar el precio. Un SPLIT (desdoblamiento) "
+     "divide la acción (p.ej. 2x1: doble de acciones a mitad de precio) sin cambiar el valor total.",
+     "Las recompras devuelven capital al accionista y señalan confianza (aunque a veces se hacen con "
+     "deuda o en máximos, lo cual es discutible). Un split no crea valor, solo baja el precio nominal "
+     "para hacerla más accesible; el 'reverse split' (agrupar) suele indicar una acción muy caída. No "
+     "confundas el ajuste de precio por un split con un movimiento real. Son eventos corporativos que "
+     "afectan al gráfico y conviene conocer."),
+
+    ("Cómo se construyen los índices",
+     "Un índice agrupa muchas acciones en un solo número. La mayoría (S&P 500, Nasdaq 100) se ponderan "
+     "por CAPITALIZACIÓN: las empresas más grandes pesan más, así que unas pocas megacaps mueven el "
+     "índice. El Dow Jones se pondera por PRECIO (raro). Hay índices de igual ponderación (equal weight).",
+     "Implicación: en un índice ponderado por capitalización, la salud del mercado puede estar oculta "
+     "si solo suben 5-6 gigantes mientras el resto cae (mala AMPLITUD). Comparar el índice normal con "
+     "su versión de igual ponderación revela si el rally es amplio o concentrado. Entender la "
+     "construcción ayuda a interpretar qué mueve realmente al índice y a valorar la solidez de una "
+     "tendencia. La amplitud confirma o cuestiona el movimiento."),
+
+    ("Qué son los ETFs",
+     "Un ETF (fondo cotizado) replica un índice, sector, materia o estrategia y se compra/vende como "
+     "una acción, con bajas comisiones (ratio de gastos/TER). Permiten diversificar o exponerse a un "
+     "tema con una sola operación (SPY para el S&P, XLE para energía, GLD para oro).",
+     "Ventajas: diversificación instantánea, liquidez y coste bajo. Cuidado con los ETFs APALANCADOS "
+     "e INVERSOS (2x, -1x): por su reajuste diario, SE EROSIONAN en mercados laterales y no son para "
+     "mantener a largo plazo. Verifica la liquidez del ETF y si replica física o sintéticamente. Los "
+     "ETFs son la forma más práctica de operar índices, sectores y materias, y una herramienta clave "
+     "de asignación de activos para el minorista."),
+
+    ("Renta fija: bonos, precio y rendimiento",
+     "Un bono es un préstamo: pagas un precio y recibes cupones y el principal al vencimiento. Regla "
+     "básica: el PRECIO del bono y su RENDIMIENTO se mueven de forma INVERSA (si suben los tipos de "
+     "mercado, los bonos existentes valen menos, y viceversa). La DURACIÓN mide cuánto cae el bono "
+     "por cada subida de tipos.",
+     "Los bonos son la mayor clase de activo y la brújula macro: sus rendimientos guían al resto de "
+     "mercados. Bonos largos (alta duración) son muy sensibles a los tipos; los cortos, menos. En "
+     "'risk-off' se compran bonos (refugio), bajando su rendimiento. Entender la relación precio-"
+     "rendimiento y la duración ayuda a leer el contexto de tipos que mueve acciones, oro y divisas, "
+     "aunque no operes bonos directamente."),
+
+    ("Diferenciales de crédito como termómetro",
+     "El 'diferencial de crédito' (credit spread) es el rendimiento EXTRA que paga un bono corporativo "
+     "(o de riesgo) frente a la deuda pública 'segura'. Cuando los diferenciales SE AMPLÍAN, el "
+     "mercado teme impagos (estrés, risk-off); cuando se estrechan, hay confianza (risk-on).",
+     "Los diferenciales de crédito suelen ANTICIPAR el estrés antes que la bolsa: una ampliación "
+     "brusca avisa de problemas financieros y recesión. Índices como el 'high yield' (bonos basura) "
+     "son termómetros de riesgo. Para el trader de acciones/índices, unos diferenciales que se "
+     "disparan son una alerta para reducir riesgo. Es un indicador macro fiable del apetito por el "
+     "riesgo, complementario al VIX y a la curva de tipos."),
+
+    ("Fundamentales del oro",
+     "El precio del oro responde a factores fundamentales claros: se mueve INVERSO al dólar y a los "
+     "TIPOS DE INTERÉS REALES (nominal menos inflación); sube con el miedo, la geopolítica y la "
+     "inflación; y lo apoyan las COMPRAS de bancos centrales. No genera rentas, así que su coste de "
+     "oportunidad sube con los tipos reales.",
+     "Cuando los tipos reales caen (o son negativos) y el dólar se debilita, el oro tiene viento a "
+     "favor; cuando los tipos reales suben con fuerza, sufre. Como refugio, brilla en crisis y "
+     "aversión al riesgo. La demanda física (joyería, bancos centrales, ETFs) y la geopolítica añaden "
+     "soporte. Combinar estos DRIVERS fundamentales con el análisis técnico da una lectura mucho más "
+     "fiable del oro que el gráfico solo."),
+
+    ("Fundamentales del petróleo",
+     "El petróleo se rige por OFERTA y DEMANDA globales. Oferta: decisiones de la OPEP+ (recortes o "
+     "aumentos), producción de EE. UU. (shale), capacidad ociosa y geopolítica de zonas productoras. "
+     "Demanda: crecimiento económico mundial, estaciones (conducción, calefacción) y el dólar (precio en USD).",
+     "Datos clave: los INVENTARIOS semanales de la EIA en EE. UU. mueven el precio con fuerza "
+     "(descensos = más demanda/menos oferta = alcista). Recortes de la OPEP+ tienden a subir el "
+     "precio; recesión y dólar fuerte lo bajan. La geopolítica (conflictos en productores) dispara la "
+     "volatilidad. Entender estos fundamentales evita operar el crudo 'a ciegas' y da contexto a las "
+     "señales técnicas en un activo muy volátil y noticioso."),
+
+    ("Materias primas: categorías y drivers",
+     "Las materias primas se agrupan en ENERGÍA (petróleo, gas), METALES preciosos (oro, plata) e "
+     "industriales (cobre), y AGRÍCOLAS (trigo, maíz, soja, café). Cada grupo tiene sus drivers, pero "
+     "comparten sensibilidad al dólar (precio en USD), al crecimiento global y a la estacionalidad y el clima.",
+     "El COBRE ('Dr. Copper') es un termómetro de la economía (mucha demanda industrial). Las "
+     "agrícolas dependen del clima y las cosechas (sequías, heladas disparan precios). La energía, de "
+     "la geopolítica y la OPEP. Un dólar fuerte suele presionar a todas (encarece en otras divisas). "
+     "Conocer qué mueve a cada materia evita sorpresas y ayuda a anticipar tendencias de fondo, que el "
+     "técnico luego cronometra."),
+
+    ("Fundamentales de las divisas (forex)",
+     "El valor de una divisa depende de factores macro: TIPOS DE INTERÉS (el driver principal: dinero "
+     "busca mayor rendimiento), INFLACIÓN (alta erosiona la divisa), balanza comercial/cuenta "
+     "corriente, crecimiento (PIB), estabilidad política y política del banco central. Se opera "
+     "siempre en pares (una divisa contra otra).",
+     "El diferencial de tipos entre dos países y su TENDENCIA (quién sube y quién baja) marca el sesgo "
+     "de fondo de un par (divergencia de bancos centrales). La inflación y las expectativas mueven las "
+     "expectativas de tipos, y estas la divisa. El dólar (DXY) es el eje del sistema. Combinar estos "
+     "fundamentales con la técnica y las sesiones da una visión completa del forex, más allá del gráfico."),
+
+    ("Qué da valor a una criptomoneda",
+     "El valor de una cripto no viene de beneficios, sino de: la RED y su adopción (efecto red, "
+     "usuarios, volumen), la UTILIDAD (¿resuelve algo? pagos, contratos inteligentes, DeFi), la "
+     "SEGURIDAD/descentralización (hashrate, validadores), la ESCASEZ (oferta limitada, como los 21 "
+     "millones de BTC) y la actividad de desarrollo.",
+     "Bitcoin vale por ser dinero digital escaso, seguro y descentralizado ('oro digital'); Ethereum, "
+     "por ser la plataforma de contratos inteligentes y aplicaciones. Muchas altcoins tienen poca "
+     "utilidad real y son especulación pura. Evaluar la propuesta de valor, la adopción y la seguridad "
+     "de una red separa proyectos sólidos de humo. El análisis on-chain mide parte de esto. "
+     "Fundamentales imprescindibles antes de operar una cripto por convicción."),
+
+    ("Tokenomics (economía del token)",
+     "La 'tokenomics' es la economía de un token: OFERTA total y en circulación, EMISIÓN/inflación "
+     "(cuántos se crean), QUEMAS (burns, que reducen oferta = deflacionario), DISTRIBUCIÓN (¿concentrada "
+     "en pocos?) y VESTING/desbloqueos (cuándo entran al mercado tokens de fundadores/inversores, "
+     "creando presión vendedora).",
+     "Una oferta que se inunda de nuevos tokens (alta inflación o desbloqueos grandes) presiona el "
+     "precio a la baja aunque el proyecto sea bueno. Mecanismos de quema o de 'staking' que retiran "
+     "oferta pueden apoyarlo. Una distribución muy concentrada es riesgo de manipulación. Revisar la "
+     "tokenomics (calendario de desbloqueos, emisión) es clave antes de operar una cripto a medio "
+     "plazo: la oferta y la demanda del token determinan su precio tanto como la narrativa."),
+
+    ("Inflación y su efecto por clase de activo",
+     "La inflación (subida general de precios) afecta distinto a cada activo: perjudica a los BONOS "
+     "(sus pagos fijos pierden valor), es mixta para las ACCIONES (las de poder de fijación de precios "
+     "resisten; las 'growth' sufren por tipos más altos), y suele favorecer a los ACTIVOS REALES "
+     "(oro, materias, inmuebles).",
+     "La inflación alta empuja a los bancos centrales a SUBIR tipos, lo que fortalece la divisa pero "
+     "presiona bolsa y oro (por el coste de oportunidad). La inflación baja/deflación favorece a bonos "
+     "y growth. Por eso los datos de IPC mueven todos los mercados: cambian las expectativas de tipos. "
+     "Saber en qué régimen de inflación estamos orienta qué clases de activo tienen viento a favor o "
+     "en contra. Contexto macro esencial."),
+
+    ("Tipos de interés y su efecto por clase de activo",
+     "Los tipos de interés son el 'precio del dinero' y la variable macro más influyente. Subidas de "
+     "tipos: bajan los BONOS (sube su rendimiento), presionan a las ACCIONES de crecimiento (descuentan "
+     "beneficios futuros), fortalecen la DIVISA (atrae capital) y son viento en contra del ORO (mayor "
+     "coste de oportunidad). Bajadas: lo contrario.",
+     "Tipos altos frenan la economía y el crédito; tipos bajos estimulan el riesgo ('don't fight the "
+     "Fed'). Los mercados descuentan las EXPECTATIVAS de tipos, así que reaccionan al TONO del banco "
+     "central (hawkish/dovish) más que al movimiento ya esperado. Entender hacia dónde van los tipos "
+     "da el sesgo de fondo para acciones, bonos, divisas, oro y cripto. Es la marea que levanta o "
+     "hunde a todos los barcos."),
+
+    ("Liquidez global, oferta monetaria y mercados",
+     "La LIQUIDEZ global (dinero disponible en el sistema, ligado a la oferta monetaria M2 y a la "
+     "política de los bancos centrales) es un motor de fondo de los activos de riesgo: cuando los "
+     "bancos centrales inyectan liquidez (bajar tipos, QE), suelen subir bolsa y cripto; cuando la "
+     "retiran (subir tipos, QT), el riesgo se resiente.",
+     "'La marea de liquidez levanta todos los barcos': gran parte de los grandes mercados alcistas "
+     "coinciden con expansión de liquidez, y las caídas con su retirada. Cripto y activos "
+     "especulativos son especialmente sensibles. Vigilar la dirección de la política monetaria global "
+     "(Fed, BCE, etc.) y la liquidez da el contexto más amplio para el sesgo de riesgo. Es el telón de "
+     "fondo macro que condiciona a todos los mercados a la vez."),
+
+    ("Análisis fundamental y técnico: combinarlos",
+     "El análisis FUNDAMENTAL explica el QUÉ y el POR QUÉ (valor, drivers macro, salud del activo); el "
+     "TÉCNICO, el CUÁNDO y el CÓMO (timing, niveles, tendencia, gestión). No son rivales: combinarlos "
+     "da una ventaja mayor que cualquiera por separado.",
+     "Enfoque potente: usa el fundamental para el SESGO direccional de fondo (¿tipos, ciclo, "
+     "valoración a favor o en contra?) y el técnico para la EJECUCIÓN (entrada en zona, confirmación, "
+     "stop, objetivo). Operar técnicamente a favor del viento fundamental mejora la probabilidad; "
+     "ignorar el fundamental te expone a sorpresas (una gran noticia rompe el gráfico). Este sistema "
+     "une ambos: contexto (tendencia de años, noticias, conocimiento) + señal técnica + gestión. La "
+     "sinergia es la clave."),
+]
+
 # Todos los lotes y el conjunto completo (para count() y recuperación)
 _BATCHES: dict[int, list[tuple[str, str, str]]] = {
     1: _BATCH1, 2: _BATCH2, 3: _BATCH3, 4: _BATCH4, 5: _BATCH5, 6: _BATCH6,
-    7: _BATCH7, 8: _BATCH8, 9: _BATCH9, 10: _BATCH10, 11: _BATCH11}
+    7: _BATCH7, 8: _BATCH8, 9: _BATCH9, 10: _BATCH10, 11: _BATCH11, 12: _BATCH12}
 ENTRIES: list[tuple[str, str, str]] = [e for v in sorted(_BATCHES) for e in _BATCHES[v]]
 
 

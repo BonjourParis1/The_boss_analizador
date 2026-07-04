@@ -224,7 +224,8 @@ def _scan_cycle(stop_event: threading.Event, min_conf: float, timeframe: str) ->
             # FILTROS DE PRECISIÓN (igual que el terminal): sesión, chop y extremos
             if plan.is_actionable:
                 _adx_min = 22 if _S.high_precision else 16
-                _bad = ((sig.adx is not None and sig.adx < _adx_min)
+                _bad = (bool(sig.atr_spike)
+                        or (sig.adx is not None and sig.adx < _adx_min)
                         or (sig.rsi is not None and plan.direction == "SUBE" and sig.rsi >= 74)
                         or (sig.rsi is not None and plan.direction == "BAJA" and sig.rsi <= 26))
                 if not _bad and _S.session_filter:

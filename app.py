@@ -780,9 +780,23 @@ def compute_locked_plan(sk: str, duration: str, news_score):
         elif (plan.direction == "BAJA" and sig_main.support and _near
               and 0 <= (_price - sig_main.support) <= _near):
             _to_wait("⛔ Precio pegado al SOPORTE: poco recorrido a la baja, ESPERAR.")
-        # 4) Modo ALTA PRECISIÓN: exige que el cerebro CONFIRME (no solo que no discrepe)
+        # 4) Pico de volatilidad anómalo (noticia/latigazo): mercado errático
+        elif sig_main.atr_spike:
+            _to_wait("⛔ Pico de volatilidad anómalo (posible noticia/latigazo): ESPERAR.")
+        # 5) Modo ALTA PRECISIÓN: exige que el cerebro CONFIRME (no solo que no discrepe)
         elif _hp and _ia is not None and _ia_dir_of(_ia) != plan.direction:
             _to_wait("⛔ Alta precisión: el cerebro no confirma la dirección, ESPERAR.")
+
+    # 6) FILTRO DE VENTAJA (payout): en opciones binarias, solo operar si la probabilidad
+    # estimada supera el punto de equilibrio del pago. Sin ventaja, no hay negocio.
+    if plan.direction in ("SUBE", "BAJA"):
+        _payout = float(st.session_state.get("payout_pct", 85) or 85) / 100.0
+        _be = 100.0 / (1.0 + _payout) if _payout > 0 else 54.0    # % de acierto de equilibrio
+        _wr = tracker.live_winrate(sk)
+        _prob = plan.confidence if _wr is None else 0.6 * plan.confidence + 0.4 * _wr
+        if _prob < _be + 4:      # exige un margen sobre el equilibrio
+            _to_wait(f"⛔ Sin ventaja para el pago {_payout*100:.0f}% "
+                     f"(necesitas >{_be:.0f}% y el estimado es {_prob:.0f}%): ESPERAR.")
 
     # El sistema decide SOLO su apetito de riesgo según el contexto (adaptativo)
     gate = _adaptive_gate(sk, plan, sig_main)

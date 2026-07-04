@@ -34,6 +34,7 @@ class Signal:
     rsi: float | None = None
     atr: float | None = None
     adx: float | None = None         # fuerza de tendencia (Wilder): <20 rango, >25 tendencia
+    atr_spike: bool = False          # pico de volatilidad anómalo (posible noticia/latigazo)
     news_score: float | None = None  # sentimiento de noticias (-1..1)
     trend: str | None = None         # alcista | bajista | lateral
     patterns: list[str] = field(default_factory=list)  # patrones de velas detectados
@@ -180,6 +181,17 @@ def analyze(symbol_key: str, df_ind: pd.DataFrame,
 
     # --- Gestión de riesgo basada en ATR ---
     atr_val = float(last["atr"]) if pd.notna(last["atr"]) else 0.0
+    # Pico de volatilidad ANÓMALO (posible noticia/latigazo): ATR muy por encima de su
+    # media reciente -> mercado erratico, señales poco fiables en el corto plazo.
+    atr_spike = False
+    try:
+        _a = df_ind["atr"].dropna()
+        if len(_a) >= 12:
+            _med = float(_a.iloc[-21:-1].median())
+            if _med > 0 and atr_val > 1.9 * _med:
+                atr_spike = True
+    except Exception:
+        atr_spike = False
     stop_loss = take_profit = None
     if action == BUY and atr_val > 0:
         stop_loss = round(price - 1.5 * atr_val, 6)
@@ -200,6 +212,7 @@ def analyze(symbol_key: str, df_ind: pd.DataFrame,
         rsi=round(rsi_val, 1),
         atr=round(atr_val, 6),
         adx=round(float(last["adx"]), 1) if "adx" in df_ind and pd.notna(last["adx"]) else None,
+        atr_spike=atr_spike,
         news_score=news_score,
         trend=trend,
         patterns=patterns_names or [],

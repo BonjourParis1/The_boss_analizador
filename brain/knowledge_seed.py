@@ -12,7 +12,7 @@ Es idempotente: usa una versión (kb_seed_version en app_settings) para no dupli
 """
 from __future__ import annotations
 
-_SEED_VERSION = 9
+_SEED_VERSION = 10
 _KIND = "fundamento"
 _PREFIX = "Fundamentos de trading"
 
@@ -2016,10 +2016,236 @@ _BATCH9: list[tuple[str, str, str]] = [
      "volumen en rupturas de bases (taza con asa, CAN SLIM)."),
 ]
 
+# ---- LOTE 10: playbooks por activo, patrones intradía, relaciones macro y rutinas ----
+_BATCH10: list[tuple[str, str, str]] = [
+    ("Playbook: Ethereum y altcoins",
+     "Ethereum (ETH) es la segunda cripto y líder de las altcoins. Suele seguir a Bitcoin pero con "
+     "MÁS beta (amplifica los movimientos). La 'altseason' llega cuando la dominancia de BTC cae y el "
+     "capital rota a ETH y altcoins. Sensible a gas/red, staking, ETFs y al apetito de riesgo general.",
+     "Plan con ETH/altcoins: primero mira a BTC y su dominancia (si BTC cae, las alts caen más; si BTC "
+     "se estabiliza tras subir, puede empezar altseason). Opera las alts MÁS fuertes (fuerza relativa) "
+     "solo en tendencia alcista de BTC. Usa stops amplios (volatilidad extrema) y tamaño reducido; las "
+     "alts pequeñas son ilíquidas y manipulables. El ETH/BTC ratio indica si ETH lidera o rezaga. "
+     "Evita perseguir 'pumps' parabólicos: espera retrocesos a zonas de valor."),
+
+    ("Playbook: GBP/USD ('Cable')",
+     "El GBP/USD ('Cable') es un par mayor VOLÁTIL, con rangos amplios. Se mueve sobre todo en la "
+     "sesión de Londres, reacciona al Banco de Inglaterra (BoE), a los datos del Reino Unido y al "
+     "riesgo político (elecciones, tensiones). Sensible también al dólar (DXY) y al sentimiento risk-on/off.",
+     "Plan con Cable: opera en la sesión de Londres y el solape con Nueva York (máxima liquidez); "
+     "alinéate con el sesgo del dólar y del BoE; respeta niveles redondos y soportes/resistencias. Por "
+     "su volatilidad, usa stops adecuados (ATR alto) y evita el minuto de las noticias del Reino Unido "
+     "y de EE. UU. El riesgo político puede provocar gaps y latigazos: reduce tamaño ante eventos. "
+     "Buen par para tendencia, exigente para scalping por su ruido."),
+
+    ("Playbook: USD/JPY",
+     "El USD/JPY se rige por el DIFERENCIAL DE TIPOS EE.UU.–Japón y por los rendimientos de los bonos "
+     "de EE. UU.: si suben los tipos/rendimientos USA, el par tiende a subir. El yen (JPY) es refugio: "
+     "en risk-off SUBE (el par baja). El Banco de Japón (BoJ) y sus intervenciones pueden mover el par con fuerza.",
+     "Plan con USD/JPY: vigila los rendimientos de los bonos de EE. UU. (correlación positiva con el "
+     "par) y el tono de la Fed vs BoJ. En pánico de mercado (risk-off), espera fortaleza del yen "
+     "(caídas del par) aunque los tipos digan otra cosa. Cuidado con las INTERVENCIONES del BoJ en "
+     "niveles extremos (movimientos bruscos). Es un par clave del 'carry trade': se deshace violentamente "
+     "en risk-off. Opera con el contexto macro, no solo el gráfico."),
+
+    ("Playbook: S&P 500",
+     "El S&P 500 (SPY/ES) es el índice de referencia del mercado de EE. UU. y termómetro global. "
+     "Sensible a tipos de interés, resultados empresariales, el VIX y la AMPLITUD (breadth): una "
+     "subida sostenida por pocas acciones es frágil. Los futuros (ES) operan casi 24h; la sesión "
+     "clave es la de Nueva York.",
+     "Plan con el S&P: define el sesgo de fondo con la tendencia (diario/semanal) y el entorno de "
+     "tipos; usa la apertura de Wall Street para rupturas (ORB) y niveles del día previo; vigila el VIX "
+     "(miedo) y la amplitud (línea A/D, TICK). Reacciona a la Fed y a los datos macro (evita el "
+     "impacto). Los índices se confirman entre sí (S&P, Nasdaq, Dow). Es más 'ordenado' que activos "
+     "individuales: respeta medias y niveles con confirmación de volumen."),
+
+    ("Playbook: Plata (Silver)",
+     "La plata (Silver/XAG) es un metal HÍBRIDO: refugio como el oro pero con fuerte componente "
+     "INDUSTRIAL. Es más volátil que el oro (mayor beta) y con más ruido. Sigue la dirección del oro "
+     "pero exagera sus movimientos. El ratio oro/plata (cuántas onzas de plata equivalen a una de oro) "
+     "tiende a revertir a la media.",
+     "Plan con la plata: usa el oro y el dólar (DXY) como brújula (dólar débil y tipos reales a la "
+     "baja la favorecen); opera con stops amplios por su volatilidad. Cuando el ratio oro/plata está "
+     "en un extremo histórico, suele corregir (plata muy barata frente al oro = posible recuperación). "
+     "Añade el factor de demanda industrial (ciclo económico). La plata premia a quien respeta su "
+     "volatilidad con tamaño prudente; castiga el exceso de apalancamiento."),
+
+    ("Patrones por hora del día",
+     "El día de trading tiene ritmos: la APERTURA (primera hora) suele ser la más volátil y direccional; "
+     "el MEDIODÍA ('lunch lull') pierde volumen y se vuelve lateral/sucio; y la ÚLTIMA hora ('power "
+     "hour') recupera volumen y movimiento. Operar en la hora equivocada da señales de baja calidad.",
+     "Uso práctico: busca rupturas y tendencia en la apertura y el power hour; evita perseguir "
+     "movimientos en el lunch lull (rango errático, falsas rupturas). En forex, los picos son las "
+     "aperturas de Londres y Nueva York y su solape. Alinear la señal con la hora de mayor "
+     "probabilidad mejora los resultados. Muchas 'malas rachas' vienen de operar en horas de baja "
+     "liquidez: elige tus ventanas."),
+
+    ("Día de tendencia vs día de rango",
+     "Hay dos tipos de día: de TENDENCIA (abre cerca de un extremo y cierra cerca del contrario, un "
+     "solo sentido) y de RANGO (oscila entre soporte y resistencia sin dirección). Identificarlo "
+     "temprano decide la táctica: seguir tendencia o fade de extremos.",
+     "Pistas de día de tendencia: apertura con fuerza, ruptura del balance inicial que se ACEPTA "
+     "(no vuelve), pocas velas en contra. Día de rango: la apertura vuelve dentro del rango previo, "
+     "los extremos se rechazan. En día de tendencia, no operes reversiones (te arrolla); en día de "
+     "rango, no persigas rupturas (te barren). Adaptar el estilo al carácter del día es una habilidad "
+     "clave del day trading en índices, forex y cripto."),
+
+    ("Estrategia: cierre de gap (gap fill)",
+     "En acciones e índices, un GAP de apertura (salto respecto al cierre previo) a menudo se 'rellena' "
+     "cuando el precio vuelve al cierre anterior. Los gaps PEQUEÑOS sin noticia tienden a rellenarse "
+     "(fade); los GRANDES con catalizador fuerte suelen continuar ('gap and go'). Distinguirlos es la clave.",
+     "Plan: un gap moderado en contra de la tendencia y sin noticia relevante se puede operar hacia el "
+     "cierre previo (fade del gap) con confirmación de rechazo. Un gap grande con volumen y noticia "
+     "(earnings) suele continuar: opera a favor tras un pequeño retroceso ('gap and go'). Marca el "
+     "cierre previo como objetivo/nivel. Gestiona el riesgo: si el 'fade' no funciona rápido, puede ser "
+     "un gap de continuación. Estrategia clásica de la apertura bursátil."),
+
+    ("Estrategia: ruptura del rango asiático (forex)",
+     "En forex, la sesión ASIÁTICA suele ser tranquila y forma un rango estrecho. La estrategia marca "
+     "el máximo y el mínimo de ese rango y opera su RUPTURA en la apertura de Londres, cuando entra la "
+     "liquidez y el movimiento direccional del día. El otro extremo del rango sirve de stop.",
+     "Pasos: (1) delimita el rango asiático (máx/mín). (2) espera la apertura de Londres. (3) opera la "
+     "ruptura con volumen/impulso en su dirección; stop al otro lado del rango; objetivo = amplitud del "
+     "rango o niveles clave. Filtra con la tendencia mayor y evita días de noticias importantes. Cuidado "
+     "con la 'falsa ruptura' inicial (barrido de liquidez) antes del movimiento real: la 'turtle soup' "
+     "puede aplicarse si la ruptura falla."),
+
+    ("Estrategia: operar tras la noticia (retest)",
+     "En vez de operar EN el dato (lotería de spreads y latigazos), una táctica más segura es esperar a "
+     "que el mercado reaccione, rompa un nivel por la noticia y luego lo RETESTEE: se entra en el "
+     "retest a favor de la nueva tendencia, con el impulso ya definido y los spreads normalizados.",
+     "Pasos: (1) marca el nivel clave antes del dato y NO operes en el impacto. (2) tras la reacción, "
+     "espera que el precio rompa y vuelva a probar el nivel roto (ahora soporte/resistencia). (3) entra "
+     "con confirmación en la dirección del movimiento post-noticia; stop al otro lado. Deja que el "
+     "mercado 'digiera' la noticia y muestre su sesgo. Convierte un evento peligroso en una entrada "
+     "estructurada. Aplica a forex, índices y materias en datos macro/earnings."),
+
+    ("Estacionalidad del calendario",
+     "Existen sesgos estadísticos de calendario: el 'Santa Claus rally' (fortaleza a fin de año), el "
+     "'efecto enero' (small caps), 'sell in May and go away' (verano más flojo en bolsa) y el efecto "
+     "'turn of the month' (fuerza en torno al cambio de mes por flujos). Son PROBABILIDADES históricas, no certezas.",
+     "Úsalos como contexto de fondo que refuerza (no sustituye) una tesis técnica. Los flujos "
+     "institucionales (nóminas, rebalanceos de fin de mes/trimestre) crean patrones recurrentes. No "
+     "operes 'solo por el calendario', pero si la estacionalidad y el gráfico coinciden, la probabilidad "
+     "mejora. Verifica con datos actuales: los patrones estacionales se debilitan cuando se vuelven "
+     "muy conocidos. Aplican sobre todo a índices y acciones."),
+
+    ("Medidor de fuerza de divisas",
+     "En forex conviene medir la FUERZA RELATIVA de cada divisa comparándola en todos sus pares: si el "
+     "euro sube frente al dólar, la libra, el yen y el franco a la vez, el euro está fuerte 'de verdad'. "
+     "La mejor operación es comprar la divisa MÁS fuerte contra la MÁS débil.",
+     "Un movimiento en EUR/USD puede deberse a un euro fuerte O a un dólar débil: el medidor de fuerza "
+     "lo distingue. Operar 'fuerte vs débil' maximiza el impulso y la probabilidad, frente a operar dos "
+     "divisas ambas neutrales. Combina la fuerza de divisas con la estructura técnica del par elegido. "
+     "Es una forma de aplicar la fuerza relativa (concepto universal) al mundo forex, mejorando la "
+     "selección del par a operar."),
+
+    ("Trades de correlación (materias y divisas)",
+     "Algunas divisas están ligadas a materias primas: el dólar australiano (AUD) correlaciona con el "
+     "ORO y con el ciclo de materias; el dólar canadiense (CAD) con el PETRÓLEO; la corona noruega "
+     "(NOK) con el crudo. Estas relaciones sirven de confirmación y de alerta de divergencias.",
+     "Ejemplo: si el oro sube con fuerza, el AUD suele acompañar (Australia es gran exportador); si el "
+     "petróleo cae, el CAD se debilita (USD/CAD sube). Cuando la materia y su divisa DIVERGEN, avisa de "
+     "un posible ajuste. Úsalas como confluencia intermercado: confirma tu tesis en el par con su "
+     "materia asociada. Conocer estos enlaces mejora las decisiones en forex y materias, y evita "
+     "operar contra una relación de fondo."),
+
+    ("Divergencia de bancos centrales",
+     "Una de las fuerzas más potentes en forex es la DIVERGENCIA de política monetaria: cuando un banco "
+     "central sube tipos (hawkish) mientras otro los baja o mantiene (dovish), la divisa del primero "
+     "tiende a fortalecerse frente a la del segundo de forma sostenida (sesgo de medio plazo).",
+     "Operar 'a favor de la divergencia' (largo en la divisa del banco que endurece, corto en la del "
+     "que relaja) alinea la operación con un viento macro de fondo. El mercado descuenta las "
+     "EXPECTATIVAS de tipos, así que importa la sorpresa frente a lo esperado. Vigila reuniones, actas "
+     "y discursos de la Fed, BCE, BoE, BoJ. Esta lógica de tipos guía las tendencias de fondo de los "
+     "pares mayores; el técnico da el timing."),
+
+    ("Relación bonos-acciones y curva de tipos",
+     "Bonos y acciones suelen moverse de forma relacionada: en 'risk-on', suben las acciones y bajan "
+     "los bonos (sube su rendimiento); en 'risk-off', se buscan bonos (refugio). La CURVA de tipos "
+     "(corto vs largo plazo) es una brújula macro: una curva INVERTIDA (corto rinde más que largo) ha "
+     "precedido recesiones.",
+     "Subidas rápidas de los rendimientos suelen presionar a las acciones de crecimiento (tech). El "
+     "rendimiento del bono a 10 años es una referencia clave del apetito de riesgo. Para el trader de "
+     "índices, vigilar bonos y curva da contexto de fondo: operar largos de riesgo con rendimientos "
+     "disparándose es ir contra la marea. La macro (tipos, curva) enmarca; el gráfico ejecuta. "
+     "Relación esencial entre renta fija y variable."),
+
+    ("Teoría de la 'sonrisa del dólar'",
+     "La 'sonrisa del dólar' (Stephen Jen) explica cuándo se fortalece el USD: en los DOS extremos. "
+     "En pánico global (risk-off) sube como refugio; y en fuerte crecimiento de EE. UU. (mejor que el "
+     "resto) también sube. Se DEBILITA en el medio: crecimiento global sincronizado y moderado, con "
+     "apetito de riesgo.",
+     "Es una forma 'U' (sonrisa): dólar fuerte en miedo y en dominio económico USA; débil en la zona "
+     "cómoda intermedia. Ayuda a interpretar por qué el DXY sube tanto en crisis como en auges de EE. "
+     "UU. Para el trader: identifica en qué parte de la sonrisa estamos para anticipar el sesgo del "
+     "dólar, que mueve forex, materias y mercados emergentes. Marco macro útil para el contexto de fondo."),
+
+    ("Rotación sectorial con ETFs",
+     "El mercado de acciones se divide en SECTORES (tecnología XLK, energía XLE, financieras XLF, salud "
+     "XLV, consumo, utilities XLU…), y el capital ROTA entre ellos según el ciclo económico. Ver qué "
+     "sector lidera o rezaga (fuerza relativa) da pistas de la fase del mercado y de dónde operar.",
+     "En expansión temprana lideran tecnología y consumo discrecional; en fases tardías/inflacionarias, "
+     "energía y materiales; en contracción, defensivos (salud, utilities, consumo básico). Operar los "
+     "sectores y acciones más FUERTES al alza y los más débiles a la baja aprovecha la rotación. Los "
+     "ETFs sectoriales permiten leer el mercado 'por dentro'. La amplitud sectorial confirma o "
+     "cuestiona la salud de un rally del índice."),
+
+    ("Dominancia de BTC y rotación cripto",
+     "En cripto, la DOMINANCIA de Bitcoin (BTC.D, % de capitalización que es BTC) guía la rotación. "
+     "BTC.D subiendo = el dinero se refugia en BTC (alts débiles); BTC.D cayendo con BTC estable o "
+     "subiendo = 'altseason' (las altcoins superan a BTC). Es la brújula para decidir entre BTC y alts.",
+     "Secuencia típica de ciclo: sube BTC primero (dominancia alta), luego rota a ETH (large caps) y "
+     "después a altcoins pequeñas (dominancia baja, altseason). Operar altcoins con BTC cayendo es "
+     "peligroso (caen más). Vigila BTC.D + el par ETH/BTC para el timing de rotación. Combina esta "
+     "lectura macro-cripto con el on-chain, el funding y la estructura técnica de cada moneda. Guía "
+     "específica y muy útil del mercado cripto."),
+
+    ("Revisión semanal y calificación de operaciones",
+     "El progreso viene de REVISAR: cada semana repasa tus operaciones, califica cada setup (A/B/C "
+     "según confluencia y ejecución), y separa lo que funciona de lo que no. Anota qué activos, horas, "
+     "estrategias y estados emocionales dan mejores y peores resultados. Sin revisión, repites errores.",
+     "Preguntas de la revisión: ¿seguí mi plan? ¿tomé solo setups A? ¿respeté stops y tamaño? ¿qué "
+     "patrón se repite en mis pérdidas? Con los datos, DOBLA en lo que funciona y elimina lo que no. La "
+     "mejora es un bucle: operar → registrar → revisar → ajustar. Este sistema hace ese bucle con datos "
+     "(precisión por activo/duración); tú puedes hacerlo también a nivel de proceso y disciplina. La "
+     "consistencia nace de la revisión honesta."),
+
+    ("Regla de riesgo diario (circuit breaker personal)",
+     "Además del riesgo por operación (1-2%), fija un TOPE de pérdida DIARIA (p.ej. 3-6% o un número de "
+     "operaciones perdedoras) y, al alcanzarlo, DETENTE por hoy. Es tu 'circuit breaker' personal "
+     "contra el tilt y el revenge trading, que evita convertir un mal día en un desastre.",
+     "Tras varias pérdidas seguidas, el juicio se deteriora y la tentación de 'recuperar' crece: parar "
+     "protege el capital y la mente. Igualmente, considera un tope tras un gran día ganador (para no "
+     "devolverlo por exceso de confianza). La disciplina de horario y de límites diarios distingue al "
+     "profesional del jugador. Un sistema automatizado ayuda, pero la regla del día es tuya. Protege "
+     "tu capital y tu estabilidad emocional."),
+
+    ("Ejemplo de dimensionamiento de posición",
+     "El tamaño se calcula desde el RIESGO, no desde el capricho. Fórmula: riesgo en dinero = capital × "
+     "% de riesgo; tamaño = riesgo en dinero / distancia al stop. Así cada operación arriesga lo mismo, "
+     "sin importar el activo ni la amplitud del stop.",
+     "Ejemplo: capital 1.000, riesgo 2% = 20 de riesgo. Si el stop está a 50 puntos, el tamaño = 20/50 "
+     "= 0,4 por punto. Si el stop fuera de 100 puntos, el tamaño baja a 0,2 (mismo riesgo, 20). Con "
+     "esto, un stop más ancho NO significa más riesgo: significa menos tamaño. Ajusta el stop al ATR y "
+     "el tamaño a la fórmula. Este cálculo, aplicado siempre, mantiene el riesgo homogéneo y controlado "
+     "en todos los mercados y es la base de la supervivencia."),
+
+    ("Incluir los costes en la esperanza",
+     "La rentabilidad REAL es la esperanza BRUTA menos los COSTES (spread, comisiones, slippage, "
+     "financiación). Un sistema con ventaja pequeña puede volverse perdedor tras costes, sobre todo en "
+     "scalping y en binarias (payout <100%). Calcula siempre la esperanza NETA, no la ideal del backtest.",
+     "Ejemplo: si tu ventaja media es +0,3R por operación pero los costes te cuestan 0,2R, la esperanza "
+     "neta es solo +0,1R: frágil. Operar menos veces pero de más calidad reduce el peso de los costes. "
+     "En binarias, el 'coste' estructural es el payout inferior al 100%: exige una ventaja clara por "
+     "encima del punto de equilibrio. Ignorar los costes es el error que hace fracasar sistemas que "
+     "'parecían' ganadores. Sé honesto con los números."),
+]
+
 # Todos los lotes y el conjunto completo (para count() y recuperación)
 _BATCHES: dict[int, list[tuple[str, str, str]]] = {
     1: _BATCH1, 2: _BATCH2, 3: _BATCH3, 4: _BATCH4, 5: _BATCH5,
-    6: _BATCH6, 7: _BATCH7, 8: _BATCH8, 9: _BATCH9}
+    6: _BATCH6, 7: _BATCH7, 8: _BATCH8, 9: _BATCH9, 10: _BATCH10}
 ENTRIES: list[tuple[str, str, str]] = [e for v in sorted(_BATCHES) for e in _BATCHES[v]]
 
 

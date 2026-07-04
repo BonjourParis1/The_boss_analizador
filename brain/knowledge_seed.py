@@ -12,7 +12,7 @@ Es idempotente: usa una versión (kb_seed_version en app_settings) para no dupli
 """
 from __future__ import annotations
 
-_SEED_VERSION = 7
+_SEED_VERSION = 8
 _KIND = "fundamento"
 _PREFIX = "Fundamentos de trading"
 
@@ -1592,9 +1592,227 @@ _BATCH7: list[tuple[str, str, str]] = [
      "el vencimiento. Es contexto avanzado útil en índices y acciones con mercado de opciones líquido."),
 ]
 
+# ---- LOTE 8: cuantitativo/algorítmico, carteras, grandes maestros y playbooks ----
+_BATCH8: list[tuple[str, str, str]] = [
+    ("Trading sistemático y algorítmico",
+     "El trading sistemático opera reglas OBJETIVAS y probadas, sin emoción: define entradas, "
+     "salidas y tamaño de forma mecánica, se puede backtestear y ejecutar de manera consistente. "
+     "Su ventaja no es la genialidad puntual, sino la DISCIPLINA repetible y medible a lo largo de "
+     "muchas operaciones.",
+     "Frente al discrecional (juicio humano), el sistemático elimina el miedo, el FOMO y la duda, y "
+     "permite validar la ventaja con datos. Requiere: reglas claras, backtest honesto (con costes y "
+     "sin sobreajuste), y disciplina para SEGUIR el sistema aun en rachas malas. Un sistema mediocre "
+     "ejecutado con consistencia suele batir a uno brillante mal ejecutado. Este propio motor es un "
+     "sistema: reglas + aprendizaje de resultados reales."),
+
+    ("Machine learning en trading (con honestidad)",
+     "El aprendizaje automático puede hallar patrones en los datos, pero su gran enemigo es el "
+     "SOBREAJUSTE (overfitting): memorizar el pasado y fallar en vivo. Claves para que sea fiable: "
+     "muchos datos, validación fuera de muestra, pocas variables relevantes y evitar el 'data "
+     "snooping' (probar mil cosas hasta que una parezca funcionar por azar).",
+     "Un modelo debe generalizar, no memorizar: se valida con datos que no vio (walk-forward, "
+     "validación cruzada) e incluyendo costes. Las 'features' (indicadores) deben tener lógica, no "
+     "ser ruido. Un ML honesto da PROBABILIDADES, no certezas, y se combina con reglas y gestión de "
+     "riesgo. Este sistema aprende de los resultados reales (aciertos/fallos) para ajustar la "
+     "confianza, con esa cautela anti-sobreajuste."),
+
+    ("Sistema mecánico vs discrecional",
+     "El enfoque MECÁNICO sigue reglas fijas (objetivo, backtesteable, sin emoción). El DISCRECIONAL "
+     "usa el juicio del operador para adaptarse al contexto. Ambos pueden ganar; lo peligroso es "
+     "mezclarlos mal: saltarse las reglas 'por intuición' suele destruir la ventaja del sistema.",
+     "El mecánico aporta consistencia y permite medir el edge; el discrecional aporta flexibilidad "
+     "pero depende de la disciplina y experiencia, y es difícil de validar. Muchos profesionales usan "
+     "un núcleo sistemático con un filtro discrecional acotado (p.ej. evitar noticias). Si eliges "
+     "reglas, RESPÉTALAS; si eres discrecional, ten un plan y un diario. La incoherencia es el "
+     "verdadero enemigo, en cualquier mercado."),
+
+    ("Ejecución algorítmica (TWAP/VWAP, trocear)",
+     "Ejecutar bien importa tanto como decidir. Órdenes grandes se TROCEAN para reducir el impacto en "
+     "el precio: TWAP reparte la ejecución uniformemente en el tiempo; la ejecución tipo VWAP la "
+     "reparte según el volumen del día. Así se entra/sale cerca del precio medio sin mover el mercado.",
+     "En activos poco líquidos, lanzar todo a mercado provoca slippage y mueve el precio en tu contra. "
+     "Fraccionar en el tiempo (TWAP) o según el perfil de volumen (VWAP) mejora el precio medio de "
+     "ejecución. Para el operador minorista, la lección es: usa límites, evita horas ilíquidas y no "
+     "muevas tamaños grandes de golpe. La calidad de ejecución protege el 'edge' de una buena señal."),
+
+    ("Harry Markowitz — Teoría Moderna de Carteras",
+     "Harry Markowitz (Nobel, Teoría Moderna de Carteras, 1952) demostró que combinar activos POCO "
+     "correlacionados reduce el riesgo total sin sacrificar retorno: la diversificación es 'el único "
+     "almuerzo gratis'. La 'frontera eficiente' es el conjunto de carteras con el mejor retorno para "
+     "cada nivel de riesgo.",
+     "Lo que importa no es el riesgo de cada activo aislado, sino cómo se COMBINAN (correlaciones). "
+     "Dos activos volátiles pero poco correlacionados pueden formar una cartera más estable. "
+     "Diversificar entre clases (acciones, bonos, oro, cripto) y estilos reduce la volatilidad de la "
+     "cuenta. Principio base de la construcción de carteras: no pongas todo en una sola apuesta ni en "
+     "apuestas que suben/bajan juntas."),
+
+    ("William Sharpe — CAPM, beta y ratio de Sharpe",
+     "William Sharpe (Nobel) desarrolló el CAPM y el famoso RATIO DE SHARPE (retorno en exceso por "
+     "unidad de volatilidad). Distingue BETA (exposición al mercado, riesgo sistemático) de ALFA "
+     "(retorno extra por habilidad, más allá del mercado). Mide si el retorno compensa el riesgo asumido.",
+     "Beta 1 = se mueve como el mercado; >1 amplifica; <1 amortigua. Ganar solo por beta (subir "
+     "cuando todo sube) no es habilidad; el alfa sí. El Sharpe permite comparar estrategias con "
+     "criterio: un retorno alto con volatilidad enorme puede tener peor Sharpe que uno moderado y "
+     "estable. Busca alfa real y buen Sharpe, no solo retorno bruto. Vale para carteras y sistemas en cualquier mercado."),
+
+    ("Diversificación y correlación en la cartera",
+     "Diversificar de verdad exige activos con BAJA correlación: tener 10 cripto es casi una sola "
+     "apuesta (se mueven juntas). Mezclar clases que reaccionan distinto a los eventos (acciones, "
+     "bonos, oro, dólar, cripto) suaviza la curva de capital y reduce el riesgo de un golpe único.",
+     "Las correlaciones CAMBIAN: en pánico (risk-off) muchos activos caen juntos (la correlación "
+     "sube justo cuando más querrías diversificación). Por eso se añaden refugios (oro, dólar, bonos) "
+     "y se controla el riesgo AGREGADO. Diversificación no es tener muchas posiciones, sino tener "
+     "apuestas poco relacionadas. Es la primera línea de defensa del capital en cualquier entorno."),
+
+    ("Rebalanceo de cartera",
+     "Rebalancear es devolver la cartera a sus pesos objetivo vendiendo lo que subió mucho y "
+     "comprando lo que quedó rezagado. Impone disciplina (vender caro, comprar barato), controla el "
+     "riesgo (evita que un activo domine) y captura la reversión a la media entre clases de activos.",
+     "Sin rebalanceo, una posición ganadora crece hasta concentrar el riesgo de toda la cuenta. "
+     "Rebalancear por calendario (trimestral) o por umbrales (cuando un peso se desvía X%) mantiene "
+     "el perfil de riesgo deseado. Tiene coste (comisiones/impuestos), así que no se abusa. Es una "
+     "herramienta de gestión de riesgo de cartera, complementaria a la gestión por operación."),
+
+    ("Asignación de activos (estratégica y táctica)",
+     "La asignación de activos (cómo repartes el capital entre clases) explica la mayor parte del "
+     "resultado a largo plazo, más que la selección individual. La ESTRATÉGICA fija pesos de base "
+     "(p.ej. 60% acciones / 40% bonos); la TÁCTICA los ajusta según el ciclo, la tendencia o el momentum.",
+     "Una cartera clásica 60/40 busca equilibrio crecimiento/estabilidad. Estrategias tácticas usan "
+     "filtros (MM200, momentum) para reducir exposición en mercados bajistas. La lección para el "
+     "trader: decide primero CUÁNTO riesgo total y en qué clases, y luego las operaciones concretas. "
+     "La asignación marca el rumbo; el trading fino, la ejecución. Aplica a carteras multi-mercado."),
+
+    ("Ray Dalio — All Weather y risk parity",
+     "Ray Dalio (Bridgewater, 'Principles') diseñó la cartera 'All Weather' basada en RISK PARITY: "
+     "equilibrar el RIESGO (no el capital) entre activos que se comportan bien en distintos entornos "
+     "económicos (crecimiento/recesión, inflación/deflación), para rendir en 'cualquier clima'.",
+     "Risk parity asigna más peso a activos de baja volatilidad (bonos) y menos a los volátiles "
+     "(acciones) para igualar su contribución al riesgo total. La idea de Dalio: no sabemos qué "
+     "entorno vendrá, así que preparamos la cartera para todos, diversificando por MOTORES económicos, "
+     "no solo por activos. Su marco de la 'máquina económica' (ciclos de crédito) ayuda a entender el "
+     "contexto macro que mueve todos los mercados."),
+
+    ("Benjamin Graham — margen de seguridad y Mr. Market",
+     "Benjamin Graham ('El Inversor Inteligente'), padre del value investing y maestro de Buffett, "
+     "aporta dos ideas atemporales: el MARGEN DE SEGURIDAD (comprar con suficiente descuento para "
+     "protegerte de errores) y 'Mr. Market' (el mercado como un socio maníaco-depresivo que cada día "
+     "te ofrece precios emocionales).",
+     "Mr. Market unos días está eufórico (precios altos) y otros deprimido (precios de saldo): tú "
+     "decides si le haces caso o aprovechas sus excesos. El margen de seguridad es gestión de riesgo "
+     "pura: no pagues de más, deja colchón para el error. Aunque es inversión de valor, la lección "
+     "sirve al trader: aprovecha el pánico/euforia ajenos y protégete siempre con un margen."),
+
+    ("Warren Buffett — largo plazo y círculo de competencia",
+     "Warren Buffett enseña paciencia, pensar a LARGO PLAZO, operar dentro de tu 'círculo de "
+     "competencia' (lo que entiendes) y ser 'temeroso cuando otros son codiciosos y codicioso cuando "
+     "otros temen'. Prioriza no perder: sus reglas 1 (no perder dinero) y 2 (no olvidar la 1).",
+     "Aunque Buffett es inversor, sus principios aplican al trading: opera lo que comprendes, evita la "
+     "sobreactividad, controla la emoción y protege el capital por encima de todo. El interés "
+     "compuesto a largo plazo premia la CONSISTENCIA y la paciencia sobre los golpes de suerte. Menos "
+     "operaciones y mejores, dentro de tu competencia, superan a la hiperactividad indisciplinada."),
+
+    ("Jesse Livermore — lecciones clásicas",
+     "Jesse Livermore ('Reminiscences of a Stock Operator', de Edwin Lefèvre) dejó lecciones eternas: "
+     "opera A FAVOR de la tendencia, entra en 'pivotal points' (puntos de ruptura clave), corta "
+     "pérdidas rápido, NUNCA promedies a la baja, y gana el dinero grande 'sentándote' en las "
+     "operaciones correctas, no operando sin parar.",
+     "Livermore insistía en la PACIENCIA ('el dinero se hace esperando, no operando'), en respetar la "
+     "tendencia y en la disciplina de aceptar pérdidas pequeñas. También advirtió contra la emoción y "
+     "el exceso de apalancamiento (que a él mismo le arruinó). Un siglo después, sus principios "
+     "—tendencia, timing, gestión de pérdidas y paciencia— siguen vigentes en todos los mercados."),
+
+    ("William O'Neil — CAN SLIM y fuerza relativa",
+     "William O'Neil ('How to Make Money in Stocks', fundador de IBD) creó el método CAN SLIM para "
+     "acciones de crecimiento: busca fuerte crecimiento de beneficios, liderazgo (alta FUERZA "
+     "RELATIVA), respaldo institucional y compra rupturas de bases sólidas (como la taza con asa) en "
+     "un mercado alcista.",
+     "CAN SLIM combina fundamentales (beneficios crecientes) con técnico (rupturas con volumen, líderes "
+     "del mercado) y timing (operar con la tendencia general al alza). Enfatiza cortar pérdidas al "
+     "7-8% y comprar solo los LÍDERES, no los rezagados. Aporta un marco disciplinado y basado en "
+     "evidencia para seleccionar y cronometrar acciones de alto momentum."),
+
+    ("Nicolas Darvas — teoría de las cajas",
+     "Nicolas Darvas ('How I Made $2,000,000 in the Stock Market') desarrolló la 'teoría de las cajas': "
+     "el precio se mueve en rangos (cajas) sucesivos; se compra la RUPTURA de la caja al alza con "
+     "volumen y se sube el stop bajo la nueva caja, dejando correr la tendencia por escalones.",
+     "Es seguimiento de tendencia por rupturas con gestión por 'cajas': cada nuevo rango más alto "
+     "confirma la fuerza y protege ganancias con un stop ascendente. Darvas ignoraba el ruido y solo "
+     "actuaba en rupturas claras de líderes en tendencia. Su método, sencillo y disciplinado, prefigura "
+     "el trading por rupturas y el trailing stop estructural usados hoy en todos los mercados."),
+
+    ("Ed Seykota — trend following sistemático",
+     "Ed Seykota (pionero de los sistemas informatizados, entrevistado en 'Market Wizards') es "
+     "referencia del trend following sistemático. Frases clave: 'los elementos del buen trading son "
+     "cortar pérdidas, cortar pérdidas y cortar pérdidas'; y 'todos obtienen del mercado lo que "
+     "realmente quieren' (la psicología manda).",
+     "Seykota operaba señales mecánicas de tendencia con gestión de riesgo estricta y una fuerte "
+     "conciencia psicológica: seguir el sistema, controlar el riesgo por operación y no dejar que la "
+     "emoción rompa las reglas. Su legado une sistematización, seguimiento de tendencia y dominio "
+     "mental. Recuerda que el mejor sistema fracasa si el operador no tiene la disciplina de ejecutarlo."),
+
+    ("Druckenmiller y Soros — macro y asimetría",
+     "Stanley Druckenmiller y George Soros son leyendas del trading MACRO. Enseñan a apostar FUERTE "
+     "cuando la convicción y la asimetría son altas ('no importa si aciertas, sino cuánto ganas "
+     "cuando aciertas y cuánto pierdes cuando fallas') y a recortar rápido cuando la tesis falla.",
+     "Druckenmiller: concentra el capital en tus mejores ideas (con gestión de riesgo), no lo diluyas "
+     "en muchas mediocres. Soros: busca reflexividad y desequilibrios macro, y no teme cambiar de "
+     "opinión al instante si los hechos cambian. Lección: la GESTIÓN del tamaño según la convicción y "
+     "la flexibilidad para admitir errores importan más que 'tener razón'. Aplicable al posicionamiento en cualquier mercado."),
+
+    ("Inversión sistemática (dollar cost averaging)",
+     "El 'dollar cost averaging' (DCA) invierte una cantidad FIJA a intervalos regulares, sin intentar "
+     "cronometrar el mercado. Compra más unidades cuando el precio está bajo y menos cuando está alto, "
+     "promediando el coste y reduciendo el riesgo de entrar todo en el peor momento.",
+     "Es una estrategia de acumulación de largo plazo (muy usada en índices y en Bitcoin) que quita "
+     "emoción y timing a la ecuación. No maximiza el retorno teórico, pero reduce el arrepentimiento y "
+     "el riesgo de mal timing, y es sostenible psicológicamente. Complementa (no sustituye) al trading "
+     "activo: sirve para la parte 'inversión' de una estrategia global de gestión del capital."),
+
+    ("Interés compuesto y consistencia",
+     "El interés compuesto —reinvertir las ganancias— hace crecer el capital de forma EXPONENCIAL con "
+     "el tiempo. En trading, ganancias porcentuales modestas pero CONSISTENTES, compuestas, superan a "
+     "los golpes espectaculares seguidos de grandes pérdidas. La regularidad vence a la brillantez errática.",
+     "La otra cara: las pérdidas también componen y la recuperación es asimétrica (perder 50% exige "
+     "ganar 100%). Por eso proteger el capital y evitar grandes drawdowns es clave para que el "
+     "compounding trabaje a tu favor. Objetivo realista: una ventaja pequeña, gestión de riesgo "
+     "estricta y consistencia durante mucho tiempo. La paciencia y el compounding son el verdadero motor de la riqueza."),
+
+    ("Playbook: Bitcoin (hábitos y niveles)",
+     "Bitcoin (BTC): activo 24/7, muy volátil, líder de todo el mercado cripto (dominancia). Respeta "
+     "niveles redondos psicológicos (20k, 50k, 100k), reacciona a funding/open interest y "
+     "liquidaciones, y sigue ciclos ligados al halving. Sensible al entorno risk-on/risk-off y a la "
+     "liquidez global.",
+     "Plan de trabajo con BTC: define el sesgo con la tendencia de fondo (semanal/diario) y el "
+     "on-chain (flujos de exchanges); opera en zonas clave con confirmación; usa stops AMPLIOS por su "
+     "alta volatilidad (ATR) y tamaño reducido. Vigila la dominancia (guía a las altcoins), el funding "
+     "(exceso de apalancamiento) y los fines de semana (menor liquidez, mechas). Evita perseguir "
+     "velas parabólicas: espera retrocesos a zonas de valor."),
+
+    ("Playbook: Oro (drivers y comportamiento)",
+     "El oro (XAU/Gold) es refugio de valor. Sube con el miedo, la geopolítica y la inflación; se "
+     "mueve INVERSO al dólar (DXY) y a los tipos de interés REALES (nominal menos inflación). "
+     "Respeta niveles redondos (2000, 3000) y tiende a movimientos tendenciales largos en crisis.",
+     "Plan con el oro: comprueba el DXY y los tipos reales (dólar débil + tipos reales a la baja = "
+     "viento a favor); úsalo como cobertura en entornos risk-off. Reacciona a bancos centrales y "
+     "datos de inflación (evita operar en el dato). Combina el sesgo macro con niveles técnicos y "
+     "confirmación. La plata amplifica sus movimientos con más ruido. El oro premia la paciencia en "
+     "tendencias de fondo, no el scalping errático."),
+
+    ("Playbook: EUR/USD e índices",
+     "EUR/USD: el par más líquido; se mueve por el DÓLAR (DXY), el diferencial de tipos Fed–BCE y los "
+     "datos macro (NFP, IPC). Mayor rango en el solape Londres–Nueva York. Índices (S&P 500, Nasdaq): "
+     "gran actividad en la apertura de Wall Street, sensibles a tipos, bonos y al VIX.",
+     "Plan con EUR/USD: opera en horas líquidas, alinea con el sesgo del dólar y evita el minuto de las "
+     "noticias de alto impacto; respeta soportes/resistencias y medias. Plan con índices: usa la "
+     "apertura para rupturas del rango (ORB), vigila el VIX (miedo) y los rendimientos de bonos, y "
+     "recuerda que los índices se confirman entre sí. En ambos, el mismo método (tendencia > zona > "
+     "gatillo > gestión) calibrado a su volatilidad y horario."),
+]
+
 # Todos los lotes y el conjunto completo (para count() y recuperación)
 _BATCHES: dict[int, list[tuple[str, str, str]]] = {
-    1: _BATCH1, 2: _BATCH2, 3: _BATCH3, 4: _BATCH4, 5: _BATCH5, 6: _BATCH6, 7: _BATCH7}
+    1: _BATCH1, 2: _BATCH2, 3: _BATCH3, 4: _BATCH4, 5: _BATCH5,
+    6: _BATCH6, 7: _BATCH7, 8: _BATCH8}
 ENTRIES: list[tuple[str, str, str]] = [e for v in sorted(_BATCHES) for e in _BATCHES[v]]
 
 

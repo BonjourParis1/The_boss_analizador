@@ -500,10 +500,29 @@ def _ia_verdict_cached(sk: str, duration: str):
                 ex.append("Eventos macro: " + "; ".join(e["event"] for e in mc))
         except Exception:
             pass
-        return llm.structured_verdict(sig_main, SYMBOLS_BY_KEY[sk].label,
-                                      [i.title for i in digest.items], "  ".join(ex))
+        v = llm.structured_verdict(sig_main, SYMBOLS_BY_KEY[sk].label,
+                                   [i.title for i in digest.items], "  ".join(ex))
+        # Transparencia: qué FUNDAMENTOS (de los 302) aplicó el cerebro a este caso
+        try:
+            v["fundamentos"] = _applied_fundamentals(sk, sig_main)
+        except Exception:
+            pass
+        return v
     except Exception:
         return None
+
+
+def _applied_fundamentals(sk: str, sig) -> list:
+    """Títulos de los fundamentos MÁS RELEVANTES al caso (lo que el cerebro aplica)."""
+    from db import cloud as _c
+    q = (f"{SYMBOLS_BY_KEY[sk].label} {sig.action} {sig.trend or ''} "
+         f"{' '.join(sig.patterns or [])} tendencia soporte resistencia riesgo gestión")
+    out = []
+    for k in (_c.knowledge_search(q, limit=4) or []):
+        name = (k.get("source") or "").replace("Fundamentos de trading · ", "").strip()
+        if name and name not in out:
+            out.append(name)
+    return out
 
 
 def _confirm_seconds(expiry_seconds: int) -> int:
@@ -905,9 +924,12 @@ def render_strip():
             badge = f"<span style='color:{T.RED};font-weight:700;'>⚠ IA discrepa</span>"
         else:
             badge = f"<span style='color:{T.MUTED};'>IA: {ia.get('direccion','')}</span>"
+        _funds = ia.get("fundamentos") or []
+        _funds_html = (f"<div style='font-size:0.74rem;color:{T.MUTED};margin-top:3px;'>"
+                       f"📚 Aplicó: {C.esc(' · '.join(_funds[:3]))}</div>") if _funds else ""
         ia_html = (f"<div style='margin-top:6px;border-top:1px solid {T.BORDER};padding-top:6px;"
                    f"font-size:0.82rem;'>🧠 {badge} · {C.esc(ia.get('confianza','—'))}% — "
-                   f"{C.esc(ia.get('resumen',''))}</div>")
+                   f"{C.esc(ia.get('resumen',''))}{_funds_html}</div>")
 
     s = st.columns([1.8, 1.5, 1.4])
     with s[0]:
@@ -1543,6 +1565,14 @@ with tab_brain:
                             pass
                         col = T.GREEN if v.get("direccion") == "COMPRA" else \
                             T.RED if v.get("direccion") == "VENTA" else T.GOLD
+                        try:
+                            _fund = _applied_fundamentals(sk, sig)
+                        except Exception:
+                            _fund = []
+                        _fund_html = (f"<div style='margin-top:6px;border-top:1px solid {T.BORDER};"
+                                      f"padding-top:6px;font-size:0.8rem;color:{T.MUTED};'>"
+                                      f"📚 Fundamentos aplicados: "
+                                      f"{C.esc(' · '.join(_fund))}</div>") if _fund else ""
                         st.markdown(
                             f"<div class='gx-card' style='border:2px solid {col};'>"
                             f"<div class='gx-tag'>Veredicto IA · {C.esc(label)}</div>"
@@ -1552,6 +1582,7 @@ with tab_brain:
                             f"<div style='margin-top:6px;color:{T.MUTED};'>⚠️ {C.esc(v.get('riesgos',''))}</div>"
                             + (f"<div style='margin-top:4px;color:{T.MUTED};'>Niveles: "
                                f"{C.esc(v.get('niveles_clave',''))}</div>" if v.get('niveles_clave') else "")
+                            + _fund_html
                             + "</div>", unsafe_allow_html=True)
                     except Exception:
                         st.markdown(llm.reason_trade(sig, label, titles, extra_context=extra))

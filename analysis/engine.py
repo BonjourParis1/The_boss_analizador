@@ -33,6 +33,7 @@ class Signal:
     take_profit: float | None = None
     rsi: float | None = None
     atr: float | None = None
+    adx: float | None = None         # fuerza de tendencia (Wilder): <20 rango, >25 tendencia
     news_score: float | None = None  # sentimiento de noticias (-1..1)
     trend: str | None = None         # alcista | bajista | lateral
     patterns: list[str] = field(default_factory=list)  # patrones de velas detectados
@@ -198,6 +199,7 @@ def analyze(symbol_key: str, df_ind: pd.DataFrame,
         take_profit=take_profit,
         rsi=round(rsi_val, 1),
         atr=round(atr_val, 6),
+        adx=round(float(last["adx"]), 1) if "adx" in df_ind and pd.notna(last["adx"]) else None,
         news_score=news_score,
         trend=trend,
         patterns=patterns_names or [],

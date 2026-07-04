@@ -63,6 +63,26 @@ def atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
     return tr.ewm(alpha=1 / period, min_periods=period, adjust=False).mean()
 
 
+def adx(df: pd.DataFrame, period: int = 14) -> pd.Series:
+    """ADX (Wilder): mide la FUERZA de la tendencia (0-100), no su dirección.
+    <20 = mercado sin tendencia (rango/chop, señales poco fiables); >25 = tendencia clara."""
+    high, low, close = df["high"], df["low"], df["close"]
+    up = high.diff()
+    down = -low.diff()
+    plus_dm = up.where((up > down) & (up > 0), 0.0)
+    minus_dm = down.where((down > up) & (down > 0), 0.0)
+    prev_close = close.shift(1)
+    tr = pd.concat([(high - low), (high - prev_close).abs(),
+                    (low - prev_close).abs()], axis=1).max(axis=1)
+    atr_ = tr.ewm(alpha=1 / period, min_periods=period, adjust=False).mean()
+    plus_di = 100 * plus_dm.ewm(alpha=1 / period, min_periods=period,
+                                adjust=False).mean() / atr_.replace(0, np.nan)
+    minus_di = 100 * minus_dm.ewm(alpha=1 / period, min_periods=period,
+                                  adjust=False).mean() / atr_.replace(0, np.nan)
+    dx = 100 * (plus_di - minus_di).abs() / (plus_di + minus_di).replace(0, np.nan)
+    return dx.ewm(alpha=1 / period, min_periods=period, adjust=False).mean().fillna(0.0)
+
+
 def compute_all(df: pd.DataFrame) -> pd.DataFrame:
     """Agrega todas las columnas de indicadores a una copia del DataFrame."""
     out = df.copy()
@@ -81,6 +101,7 @@ def compute_all(df: pd.DataFrame) -> pd.DataFrame:
     out["bb_upper"] = bb_up
     out["bb_lower"] = bb_low
     out["atr"] = atr(out)
+    out["adx"] = adx(out)
     return out
 
 
@@ -112,4 +133,8 @@ def snapshot_text(df) -> str:
         p.append("precio sobre EMA50" if c > float(r["ema_50"]) else "precio bajo EMA50")
     if "atr" in df:
         p.append(f"ATR {float(r['atr']):.4f}")
+    if "adx" in df:
+        _a = float(r["adx"])
+        _t = "sin tendencia (rango)" if _a < 20 else "tendencia clara" if _a > 25 else "tendencia débil"
+        p.append(f"ADX {_a:.0f} ({_t})")
     return ("Indicadores actuales: " + " · ".join(p) + ".") if p else ""

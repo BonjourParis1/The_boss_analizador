@@ -271,6 +271,12 @@ with st.sidebar:
                              "pero más consumo de la cuota de IA.")
         st.session_state["research_cap"] = _rc
         autonomous.set_research_cap(_rc)
+        st.session_state["high_precision"] = st.checkbox(
+            "🎯 Alta precisión (opera solo lo mejor)",
+            value=st.session_state.get("high_precision", False),
+            help="Endurece los filtros: exige más confianza, tendencia clara (ADX), que "
+                 "el cerebro confirme y evita entradas pegadas a niveles. Menos señales, "
+                 "pero de mayor calidad. Ideal para probar en demo con fiabilidad.")
 
     with st.expander("💰 Capital y riesgo", expanded=False):
         from db import cloud as _cloud
@@ -451,6 +457,13 @@ def _consensus_for(sk: str, duration: str, news_score):
             plan.confidence = round(0.7 * plan.confidence + 0.3 * wp, 1)
             plan.rationale = list(plan.rationale) + [
                 f"Autoaprendizaje (resultados reales): probabilidad de acierto {wp:.0f}%"]
+            # FILTRO DURO: si el modelo aprendido ve baja probabilidad, NO operar
+            if wp < 44:
+                plan.direction = "ESPERAR"
+                plan.action_label, plan.icon = "ESPERAR", "⏸"
+                plan.duration_label, plan.expiry_seconds = "—", 0
+                plan.rationale = list(plan.rationale) + [
+                    f"⛔ El modelo aprendido da baja probabilidad ({wp:.0f}%): mejor ESPERAR."]
     except Exception:
         pass
     return plan, sig_main, reading
@@ -672,20 +685,43 @@ def compute_locked_plan(sk: str, duration: str, news_score):
     # Recuerda si el cerebro CONFIRMÓ la dirección (para medir su acierto real después)
     st.session_state[f"iadir:{sk}:{duration}"] = _ia_dir_of(_ia)
 
-    # FILTRO DE PRECISIÓN: no perseguir extremos de RSI (no comprar sobrecomprado ni
-    # vender sobrevendido en el corto plazo: suele revertir y baja la tasa de acierto).
-    _rsi = sig_main.rsi
-    if _rsi is not None:
-        if (plan.direction == "SUBE" and _rsi >= 74) or (plan.direction == "BAJA" and _rsi <= 26):
-            plan.rationale = list(plan.rationale) + [
-                f"⛔ RSI en extremo ({_rsi:.0f}) contra una entrada por impulso: "
-                f"riesgo de reversión, mejor ESPERAR."]
-            plan.direction = "ESPERAR"
-            plan.action_label, plan.icon = "ESPERAR", "⏸"
-            plan.duration_label, plan.expiry_seconds = "—", 0
+    # ===== FILTROS DE PRECISIÓN (menos señales, pero de más calidad) =====
+    _hp = bool(st.session_state.get("high_precision", False))
+
+    def _to_wait(motivo):
+        plan.rationale = list(plan.rationale) + [motivo]
+        plan.direction = "ESPERAR"
+        plan.action_label, plan.icon = "ESPERAR", "⏸"
+        plan.duration_label, plan.expiry_seconds = "—", 0
+
+    if plan.direction in ("SUBE", "BAJA"):
+        _rsi, _adx = sig_main.rsi, sig_main.adx
+        _price, _atr = sig_main.price or 0.0, sig_main.atr or 0.0
+        _near = 0.35 * _atr if _atr else 0.0   # "pegado a un nivel" relativo a la volatilidad
+        # 1) No perseguir extremos de RSI (reversión probable en el corto plazo)
+        if _rsi is not None and ((plan.direction == "SUBE" and _rsi >= 74)
+                                 or (plan.direction == "BAJA" and _rsi <= 26)):
+            _to_wait(f"⛔ RSI en extremo ({_rsi:.0f}): riesgo de reversión, mejor ESPERAR.")
+        # 2) Mercado SIN tendencia (ADX bajo): las señales de impulso fallan más
+        elif _adx is not None and _adx < (22 if _hp else 16):
+            _to_wait(f"⛔ Sin tendencia (ADX {_adx:.0f}, mercado en rango): señal poco "
+                     f"fiable, mejor ESPERAR.")
+        # 3) No entrar PEGADO a un nivel en contra (poco recorrido, mala relación R/B)
+        elif (plan.direction == "SUBE" and sig_main.resistance and _near
+              and 0 <= (sig_main.resistance - _price) <= _near):
+            _to_wait("⛔ Precio pegado a la RESISTENCIA: poco recorrido al alza, ESPERAR.")
+        elif (plan.direction == "BAJA" and sig_main.support and _near
+              and 0 <= (_price - sig_main.support) <= _near):
+            _to_wait("⛔ Precio pegado al SOPORTE: poco recorrido a la baja, ESPERAR.")
+        # 4) Modo ALTA PRECISIÓN: exige que el cerebro CONFIRME (no solo que no discrepe)
+        elif _hp and _ia is not None and _ia_dir_of(_ia) != plan.direction:
+            _to_wait("⛔ Alta precisión: el cerebro no confirma la dirección, ESPERAR.")
 
     # El sistema decide SOLO su apetito de riesgo según el contexto (adaptativo)
     gate = _adaptive_gate(sk, plan, sig_main)
+    if _hp:   # alta precisión: exige más confianza para abrir
+        gate["min_conf"] = max(gate["min_conf"], 72.0)
+        gate["mode"] = "🎯 Alta precisión"
     st.session_state[f"mode:{sk}:{duration}"] = gate
 
     # 1) OPERACIÓN EN CURSO -> se mantiene intacta hasta vencer (sin flip-flop)

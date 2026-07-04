@@ -212,6 +212,15 @@ def _scan_cycle(stop_event: threading.Event, min_conf: float, timeframe: str) ->
                     plan = _rg.apply_to_plan(plan, _reg)
             except Exception:
                 pass
+            # FILTROS DE PRECISIÓN (igual que el terminal): descarta chop y extremos
+            if plan.is_actionable:
+                _bad = ((sig.adx is not None and sig.adx < 16)
+                        or (sig.rsi is not None and plan.direction == "SUBE" and sig.rsi >= 74)
+                        or (sig.rsi is not None and plan.direction == "BAJA" and sig.rsi <= 26))
+                if _bad:
+                    plan.direction = "ESPERAR"
+                    plan.action_label, plan.icon = "ESPERAR", "⏸"
+                    plan.expiry_seconds = 0
             # Si es candidata, el CEREBRO la verifica con su CONOCIMIENTO + resultados
             # reales y se FUNDE su veredicto en la decisión (con cooldown/cap de cuota).
             # Así el motor autónomo decide en conjunto, igual que el terminal.

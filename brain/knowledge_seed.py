@@ -12,7 +12,7 @@ Es idempotente: usa una versión (kb_seed_version en app_settings) para no dupli
 """
 from __future__ import annotations
 
-_SEED_VERSION = 12
+_SEED_VERSION = 13
 _KIND = "fundamento"
 _PREFIX = "Fundamentos de trading"
 
@@ -2703,10 +2703,244 @@ _BATCH12: list[tuple[str, str, str]] = [
      "sinergia es la clave."),
 ]
 
+# ---- LOTE 13: cripto/DeFi práctico, realidad operativa y rutinas ----
+_BATCH13: list[tuple[str, str, str]] = [
+    ("DeFi (finanzas descentralizadas)",
+     "DeFi son servicios financieros (prestar, pedir prestado, intercambiar, ganar interés) que "
+     "funcionan con CONTRATOS INTELIGENTES en blockchain, sin bancos ni intermediarios. Protocolos "
+     "como Aave (préstamos) o Uniswap (intercambio) permiten operar directamente desde tu wallet, "
+     "24/7 y sin permisos.",
+     "Ventajas: acceso abierto, transparencia y control de tus fondos. Riesgos REALES: fallos o "
+     "'hackeos' de los contratos inteligentes (pérdida total sin recurso), protocolos fraudulentos, "
+     "y alta complejidad. En DeFi no hay servicio de atención ni reversión de errores: si firmas algo "
+     "malicioso o el contrato falla, pierdes. Usa protocolos auditados y consolidados, y no arriesgues "
+     "más de lo que puedes perder. Es innovador pero de alto riesgo técnico."),
+
+    ("Staking y recompensas (Proof of Stake)",
+     "El 'staking' consiste en BLOQUEAR tus criptomonedas para ayudar a asegurar una red de tipo "
+     "Proof of Stake (como Ethereum) y, a cambio, recibir RECOMPENSAS (un rendimiento). Es una forma "
+     "de generar ingresos pasivos con tus monedas mientras contribuyes a la seguridad de la red.",
+     "Consideraciones: el capital suele quedar BLOQUEADO un tiempo (no puedes venderlo al instante) y "
+     "el precio del token puede caer más que lo que ganas en recompensas. En algunos casos hay "
+     "'slashing' (penalización por mal comportamiento del validador). El rendimiento real depende del "
+     "precio del activo, no solo del % anunciado. Es interesante para tenedores de largo plazo, pero "
+     "no elimina el riesgo de mercado del propio token."),
+
+    ("Pools de liquidez, AMM e impermanent loss",
+     "Los exchanges descentralizados usan 'creadores de mercado automáticos' (AMM): en lugar de un "
+     "libro de órdenes, hay POOLS de liquidez donde los usuarios depositan dos tokens y cobran una "
+     "parte de las comisiones. Es la base de plataformas como Uniswap.",
+     "Riesgo clave: la PÉRDIDA IMPERMANENTE ('impermanent loss'): si los precios de los dos tokens "
+     "divergen, el valor de tu depósito puede quedar por debajo de simplemente HABERLOS MANTENIDO. "
+     "Las comisiones ganadas pueden o no compensarlo. Proveer liquidez no es 'dinero gratis': implica "
+     "riesgo de mercado y de contrato. Entiende la pérdida impermanente antes de aportar a un pool; "
+     "es un concepto que muchos ignoran y les cuesta caro."),
+
+    ("Yield farming y sus riesgos",
+     "El 'yield farming' busca los mayores rendimientos moviendo capital entre protocolos DeFi "
+     "(préstamos, pools, recompensas en tokens). Puede ofrecer APYs altísimos, pero esos números "
+     "suelen ser INSOSTENIBLES y esconden riesgos enormes: es de lo más arriesgado del ecosistema.",
+     "Peligros: 'rug pulls' (los creadores desaparecen con los fondos), exploits de contratos, tokens "
+     "de recompensa que se desploman (el APY 'real' se evapora), y complejidad que oculta el riesgo. "
+     "Un rendimiento del 1000% anual es una señal de ALARMA, no una oportunidad segura. Si algo "
+     "promete rentabilidad imposible, probablemente sea una trampa (como enseñó Terra/LUNA). Extrema "
+     "prudencia y solo con capital que puedas perder por completo."),
+
+    ("Wallets: caliente vs fría y la seed phrase",
+     "Una wallet CALIENTE (conectada a internet: app, extensión) es cómoda pero más vulnerable; una "
+     "wallet FRÍA (hardware, offline) es mucho más segura para guardar cantidades importantes. La "
+     "'seed phrase' (frase semilla de 12-24 palabras) es la LLAVE MAESTRA de tus fondos.",
+     "Reglas de oro: NUNCA compartas ni fotografíes tu seed phrase; guárdala offline y en lugar "
+     "seguro; quien la tenga controla tus fondos para siempre. Desconfía de webs/personas que la "
+     "piden (es siempre una estafa). Usa wallet fría para el 'ahorro' y caliente solo para lo "
+     "operativo. La seguridad de tus claves es TU responsabilidad: en cripto no hay banco que revierta "
+     "un robo. 'Not your keys, not your coins'."),
+
+    ("Comisiones de red (gas) y congestión",
+     "Cada transacción en blockchain paga una comisión de red ('gas'), que remunera a los validadores. "
+     "En redes como Ethereum, el gas SUBE cuando hay mucha demanda (congestión), pudiendo hacer "
+     "antieconómicas las operaciones pequeñas. Otras redes (capa 2, alternativas) ofrecen comisiones más bajas.",
+     "Para operar cripto on-chain, ten en cuenta el gas: en momentos de alta actividad puede costar "
+     "más que la propia operación pequeña. Planifica transacciones en horas de menor congestión o usa "
+     "redes/capa 2 más baratas. En exchanges centralizados no pagas gas por operar dentro, pero sí "
+     "comisiones de trading y de retiro. Las comisiones erosionan el resultado, sobre todo en "
+     "operativa frecuente: inclúyelas en tus cálculos."),
+
+    ("Puentes (bridges) y riesgo cross-chain",
+     "Un 'bridge' (puente) mueve activos entre distintas blockchains (p.ej. de Ethereum a otra red). "
+     "Son útiles para aprovechar comisiones o aplicaciones de otras cadenas, pero históricamente han "
+     "sido uno de los mayores objetivos de HACKEOS (Ronin, Wormhole: cientos de millones robados).",
+     "Al usar un bridge confías en su contrato inteligente y su seguridad: si lo hackean, puedes "
+     "perder los fondos en tránsito. Usa puentes consolidados y auditados, mueve importes que puedas "
+     "permitirte perder y evita puentes nuevos o poco conocidos. La interoperabilidad entre cadenas "
+     "añade comodidad pero también SUPERFICIE DE ATAQUE. Es un riesgo técnico específico de la "
+     "operativa cripto multi-cadena que conviene conocer."),
+
+    ("Airdrops: oportunidades y estafas",
+     "Un 'airdrop' es un reparto GRATUITO de tokens, normalmente a usuarios activos de un protocolo, "
+     "como recompensa o marketing. Pueden ser una oportunidad real (proyectos legítimos recompensando "
+     "a sus usuarios), pero también un cebo habitual de ESTAFAS de 'phishing'.",
+     "Regla de seguridad: un airdrop legítimo NUNCA te pide tu seed phrase ni que 'conectes y firmes' "
+     "en webs dudosas. Los falsos airdrops buscan que autorices contratos maliciosos que vacían tu "
+     "wallet. Investiga el proyecto, usa wallets separadas para reclamar cosas nuevas y desconfía de "
+     "lo 'gratis' con urgencia. La avaricia por un airdrop es la puerta de muchos robos. Prudencia y "
+     "verificación siempre."),
+
+    ("NFTs: qué son y sus riesgos",
+     "Los NFT (tokens no fungibles) representan la propiedad de un activo digital ÚNICO (arte, "
+     "coleccionables, ítems de juego) en blockchain. A diferencia de una cripto (fungible, "
+     "intercambiable), cada NFT es distinto. Vivieron una burbuja especulativa con precios "
+     "desorbitados y posterior colapso.",
+     "Riesgos: la mayoría son ILÍQUIDOS (difíciles de vender) y muchos han perdido casi todo su valor; "
+     "el mercado es especulativo y propenso a manipulación ('wash trading') y estafas. El valor "
+     "depende de la demanda y la comunidad, no de flujos de caja. Tratar un NFT como inversión "
+     "'segura' es un error; es un activo de altísimo riesgo y baja liquidez. Como con todo, invierte "
+     "solo lo que puedas perder y entiende lo que compras."),
+
+    ("Cuenta demo vs cuenta real",
+     "Una cuenta DEMO (dinero virtual) sirve para aprender la plataforma y practicar una estrategia "
+     "SIN riesgo. Es imprescindible al empezar, pero tiene un límite: no reproduce la PSICOLOGÍA de "
+     "arriesgar dinero real (el miedo y la codicia solo aparecen con tu capital en juego).",
+     "Usa la demo para dominar la mecánica, validar reglas y coger confianza; luego pasa a real con "
+     "tamaño MUY pequeño para afrontar la parte emocional gradualmente. Muchos ganan en demo y pierden "
+     "en real por la presión psicológica. No te quedes eternamente en demo (no entrenas la mente) ni "
+     "saltes a real con tamaño grande. La transición controlada (demo → real pequeño → escalar) es el "
+     "camino sensato de aprendizaje."),
+
+    ("Expectativas realistas y tamaño de cuenta",
+     "El trading NO es hacerse rico rápido. Los retornos consistentes son porcentajes modestos "
+     "compuestos en el tiempo; prometer 'doblar la cuenta cada mes' es la fantasía que arruina a los "
+     "novatos (les empuja a apalancarse y sobre-operar). Con una cuenta pequeña, los costes y la "
+     "tentación de arriesgar de más juegan en contra.",
+     "Expectativas sanas: sobrevivir primero, ser consistente, y dejar que el interés compuesto "
+     "trabaje. Una cuenta pequeña dificulta vivir del trading a corto plazo (por eso muchos "
+     "sobre-arriesgan y la revientan). Trata el crecimiento como un maratón, no un sprint: protege el "
+     "capital, opera bien y escala con el tiempo. La paciencia y las expectativas realistas evitan las "
+     "decisiones desesperadas que destruyen cuentas."),
+
+    ("Fiscalidad y registro de operaciones",
+     "En la mayoría de países, las ganancias del trading TRIBUTAN y las pérdidas pueden compensar. "
+     "Llevar un REGISTRO detallado de todas las operaciones (fechas, precios, resultado, comisiones) "
+     "es imprescindible para declarar correctamente y para analizar tu desempeño. Esto no es asesoría "
+     "fiscal: consulta a un profesional según tu país.",
+     "Un buen registro sirve doble: cumplir con Hacienda y MEDIR tu sistema (precisión, expectativa, "
+     "mejores setups). Guarda los informes de tu bróker/exchange. Ten en cuenta que operar mucho "
+     "genera muchos eventos fiscales y comisiones. La operativa profesional incluye la parte "
+     "administrativa: sin registro, ni declaras bien ni sabes si realmente ganas tras costes e "
+     "impuestos. Ordena tus números desde el principio."),
+
+    ("Estructura de comisiones por instrumento",
+     "Cada instrumento tiene su estructura de costes: en acciones/ETFs, comisión por operación y "
+     "spread; en forex/CFD, spread y a veces comisión más FINANCIACIÓN nocturna (swap); en futuros, "
+     "comisión por contrato; en cripto, comisiones 'maker/taker' y de retiro. En binarias, el 'coste' "
+     "es el payout inferior al 100%.",
+     "Conocer y comparar los costes es parte de elegir dónde y qué operar: en operativa frecuente "
+     "(scalping) las comisiones y el spread pesan muchísimo; en swing/posición, la financiación "
+     "nocturna acumula. Un bróker con spreads amplios erosiona incluso una buena estrategia. Calcula "
+     "el coste TOTAL por operación y réstalo de tu esperanza. Minimizar costes (sin sacrificar "
+     "seguridad/regulación) mejora directamente tu rentabilidad neta."),
+
+    ("Sesgo de supervivencia y 'gurús'",
+     "En redes sociales solo se ven los GANADORES (o quienes lo aparentan): capturas de operaciones "
+     "acertadas, coches de lujo, 'señales infalibles'. Es SESGO DE SUPERVIVENCIA: los muchos que "
+     "pierden no se muestran. La mayoría de 'gurús' gana vendiendo cursos/señales, no operando.",
+     "Alerta ante: promesas de ganancias garantizadas, urgencia para comprar, exhibición de lujo en "
+     "vez de método, y ausencia de gestión de riesgo. Pide historial VERIFICABLE (no capturas "
+     "editables). Aprende de fuentes serias y contrastadas, no de vendedores de humo. El trading real "
+     "es probabilidades, pérdidas incluidas y trabajo constante; quien te vende lo contrario busca tu "
+     "dinero, no tu éxito. Escepticismo sano ante el marketing."),
+
+    ("Copy trading y señales: riesgos",
+     "Copiar operaciones de otros ('copy trading') o seguir 'señales' parece un atajo, pero tiene "
+     "riesgos: no controlas las decisiones, el historial pasado NO garantiza el futuro, los incentivos "
+     "pueden estar desalineados (quien vende señales gana aunque tú pierdas) y copias sin entender "
+     "el porqué ni la gestión de riesgo.",
+     "Un trader a copiar puede tener buenas rachas y luego reventar con una mala gestión que no ves. "
+     "Si usas copy/señales: verifica un historial LARGO y real (con drawdowns), entiende su estilo y "
+     "riesgo, empieza con tamaño mínimo y nunca delegues toda tu gestión de riesgo. Lo ideal es "
+     "APRENDER a decidir por ti mismo; copiar a ciegas te deja indefenso cuando el otro falla. Úsalo "
+     "como aprendizaje, no como sustituto del criterio propio."),
+
+    ("Disciplina de retiro de beneficios",
+     "Un error común es dejar TODO el capital y las ganancias siempre en la cuenta ('dinero de "
+     "Monopoly'): así es fácil arriesgarlo con ligereza. Retirar periódicamente una parte de los "
+     "beneficios los CONVIERTE en reales, asegura el progreso y reduce la tentación de sobre-arriesgar.",
+     "Definir una regla de retiro (p.ej. sacar un % de las ganancias cada mes/trimestre) da tangibilidad "
+     "al éxito y protege frente a devolver todo en un mal momento. A la vez, reinvertir una parte "
+     "aprovecha el interés compuesto: hay que equilibrar retirar (seguridad) y componer (crecimiento). "
+     "Retirar beneficios también refuerza la mentalidad de negocio: el trading debe PAGARTE, no ser un "
+     "juego eterno. Disciplina financiera, no solo de trading."),
+
+    ("Tratar el trading como un negocio",
+     "El trading rentable se gestiona como un NEGOCIO, no como un juego de azar: con un plan escrito, "
+     "reglas, control de riesgo, contabilidad de ingresos y costes, KPIs (precisión, expectativa, "
+     "drawdown) y revisión periódica. Los aficionados buscan emoción; los profesionales buscan un "
+     "PROCESO consistente y rentable.",
+     "Elementos de negocio: capital de trabajo (tu cuenta), gestión de riesgo (control de calidad), "
+     "métricas (¿el proceso da beneficio neto?), mejora continua (diario y revisión) y disciplina "
+     "operativa (horario, activos, límites). Separar las emociones de las decisiones y medir todo "
+     "distingue a quien perdura de quien quiebra. Este sistema aporta ese rigor: reglas + aprendizaje "
+     "de resultados. Adóptalo también en tu proceso personal."),
+
+    ("Preparación diaria y watchlist",
+     "Los buenos resultados empiezan ANTES de operar: revisa el calendario económico del día (eventos "
+     "de alto impacto a evitar), el contexto de mercado (tendencia, riesgo on/off) y prepara una "
+     "WATCHLIST de activos con niveles marcados y posibles setups. Operar improvisando genera "
+     "decisiones de baja calidad.",
+     "Rutina pre-mercado: ¿qué noticias hay hoy? ¿cuál es el sesgo de fondo? ¿qué activos están en "
+     "zona interesante? Marca soportes/resistencias y define, para cada uno, qué setup buscarías y "
+     "qué NO harías. Así, cuando el mercado se mueve, ejecutas un plan en vez de reaccionar con "
+     "emoción. La preparación reduce el estrés, evita sorpresas (eventos) y eleva la calidad de las "
+     "entradas. La ventaja se construye antes de la primera operación."),
+
+    ("Plan de contingencia (fallos técnicos)",
+     "El trading depende de tecnología que PUEDE fallar: se cae internet, la luz, la plataforma del "
+     "bróker, o tu equipo. Un plan de contingencia evita que un fallo técnico se convierta en una "
+     "pérdida catastrófica cuando tienes posiciones abiertas.",
+     "Medidas: usa STOPS que vivan en el servidor del bróker (no solo en tu pantalla), ten el teléfono "
+     "de la mesa del bróker para cerrar por voz si la plataforma cae, dispón de una conexión de "
+     "respaldo (datos móviles) y no operes sin protección durante eventos si tu conexión es frágil. "
+     "Reduce tamaño si tu setup técnico es poco fiable. Prever el fallo es parte de la gestión de "
+     "riesgo: no dejes tu capital a merced de un corte de luz en el peor momento."),
+
+    ("Paper trading y forward testing",
+     "Antes de arriesgar dinero real con una estrategia nueva, pruébala EN VIVO pero sin dinero "
+     "('paper trading' / forward testing): ejecutas las señales en tiempo real y anotas resultados. "
+     "Complementa al backtest (histórico) validando que la estrategia funciona en el mercado ACTUAL y "
+     "que TÚ puedes ejecutarla.",
+     "El backtest puede engañar (sobreajuste, datos perfectos); el forward test revela problemas "
+     "reales: slippage, dudas de ejecución, si el edge sigue vivo. Hazlo durante un tiempo suficiente "
+     "(muestra) antes de comprometer capital, y luego empieza con tamaño mínimo. Este propio sistema "
+     "aprende en vivo de resultados reales, que es la validación más honesta. Probar antes de escalar "
+     "ahorra pérdidas y da confianza fundada."),
+
+    ("Estrategia: swing trading (proceso)",
+     "El swing trading captura movimientos de VARIOS DÍAS a semanas, con menos ruido que el intradía. "
+     "Proceso: define la tendencia en temporalidad alta (diario/semanal), espera un retroceso a una "
+     "zona (media, soporte, Fibonacci) o una ruptura, entra con confirmación y gestiona la operación "
+     "durante días con stops más amplios.",
+     "Ventajas: menos tiempo frente a la pantalla, menos costes por operación y menos estrés que el "
+     "scalping; permite dejar correr tendencias. Requiere PACIENCIA (aguantar oscilaciones sin salir "
+     "por miedo) y aceptar el riesgo de gaps de un día para otro (dimensiona por ello). Usa el "
+     "análisis multi-temporalidad (sesgo en el alto, timing en el medio) y mueve el stop a break-even "
+     "cuando avance. Estilo ideal para quien no puede vigilar el mercado todo el día."),
+
+    ("Estrategia: ruptura de máximos de 52 semanas",
+     "Comprar la ruptura de los MÁXIMOS de 52 semanas (nuevo máximo anual) es una estrategia de "
+     "momentum respaldada por Darvas y O'Neil: los activos en máximos históricos tienden a seguir "
+     "subiendo (no hay 'resistencia' por encima, todos los compradores están en ganancia). Se opera con "
+     "volumen y a favor de la tendencia.",
+     "Lógica: un nuevo máximo refleja fuerza y demanda; los que esperaban 'vender en break-even' ya no "
+     "existen por encima. Se compra la ruptura (idealmente de una base sólida, tipo taza con asa) con "
+     "volumen creciente; stop bajo la base; se deja correr con trailing. Riesgo: falsas rupturas en "
+     "mercados débiles (filtra con la tendencia general del índice). Es lo contrario de 'comprar "
+     "barato': aquí compras FUERZA. Muy usada en acciones líderes e índices."),
+]
+
 # Todos los lotes y el conjunto completo (para count() y recuperación)
 _BATCHES: dict[int, list[tuple[str, str, str]]] = {
-    1: _BATCH1, 2: _BATCH2, 3: _BATCH3, 4: _BATCH4, 5: _BATCH5, 6: _BATCH6,
-    7: _BATCH7, 8: _BATCH8, 9: _BATCH9, 10: _BATCH10, 11: _BATCH11, 12: _BATCH12}
+    1: _BATCH1, 2: _BATCH2, 3: _BATCH3, 4: _BATCH4, 5: _BATCH5, 6: _BATCH6, 7: _BATCH7,
+    8: _BATCH8, 9: _BATCH9, 10: _BATCH10, 11: _BATCH11, 12: _BATCH12, 13: _BATCH13}
 ENTRIES: list[tuple[str, str, str]] = [e for v in sorted(_BATCHES) for e in _BATCHES[v]]
 
 

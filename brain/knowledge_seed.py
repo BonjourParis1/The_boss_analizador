@@ -12,7 +12,7 @@ Es idempotente: usa una versión (kb_seed_version en app_settings) para no dupli
 """
 from __future__ import annotations
 
-_SEED_VERSION = 6
+_SEED_VERSION = 7
 _KIND = "fundamento"
 _PREFIX = "Fundamentos de trading"
 
@@ -1376,9 +1376,225 @@ _BATCH6: list[tuple[str, str, str]] = [
      "con el tiempo, con honestidad (probabilidades, no certezas)."),
 ]
 
+# ---- LOTE 7: gestión monetaria matemática, momentum, finanzas conductuales, datos ----
+_BATCH7: list[tuple[str, str, str]] = [
+    ("Ralph Vince — Optimal f (matemática del dinero)",
+     "Ralph Vince ('The Mathematics of Money Management') formuló la 'f óptima': la fracción del "
+     "capital por operación que MAXIMIZA el crecimiento geométrico dado tu histórico de ganancias/"
+     "pérdidas. La f óptima completa es muy agresiva (grandes drawdowns); en la práctica se usa una "
+     "fracción de ella.",
+     "Igual que Kelly, optimal f busca el tamaño que más hace crecer la cuenta a largo plazo, pero "
+     "operar a la f completa produce oscilaciones brutales y riesgo de ruina si las estimaciones "
+     "fallan. Los profesionales usan 'f fraccional' (una parte de la óptima) para suavizar el "
+     "drawdown. Lección: el TAMAÑO de posición, no la entrada, domina el resultado a largo plazo; "
+     "calcúlalo con datos reales y con margen de seguridad."),
+
+    ("Ryan Jones — Fixed Ratio position sizing",
+     "Ryan Jones ('The Trading Game') propuso el 'Fixed Ratio': aumentar el tamaño solo cuando la "
+     "ganancia acumulada alcanza un múltiplo (delta) del beneficio por contrato. Crece más despacio "
+     "que optimal f al principio (protege) y acelera cuando hay colchón de ganancias.",
+     "Frente al 'fixed fractional' (arriesgar siempre un % fijo), el fixed ratio ajusta cuán rápido "
+     "escalas según cuánto has ganado ya. Un delta grande = crecimiento conservador; pequeño = "
+     "agresivo. La idea clave: escalar el tamaño de forma controlada a medida que la cuenta crece, "
+     "sin exponerte de más al principio. Es gestión monetaria disciplinada aplicable a cualquier mercado."),
+
+    ("Ed Thorp — Kelly aplicado a los mercados",
+     "Ed Thorp ('Beat the Market', 'A Man for All Markets'), matemático que venció al blackjack y a "
+     "Wall Street, popularizó el criterio de Kelly para dimensionar apuestas/operaciones según la "
+     "ventaja. Demostró que con un edge real y un sizing correcto se crece de forma óptima y se "
+     "evita la ruina.",
+     "Thorp enseña que primero necesitas una VENTAJA medible; luego el tamaño óptimo (Kelly) "
+     "maximiza el crecimiento, pero conviene usar Kelly fraccional para reducir volatilidad. Sin "
+     "ventaja, ningún sizing ayuda. Su legado une matemática, gestión de riesgo y disciplina: apostar "
+     "poco cuando la ventaja es pequeña y evitar el riesgo de ruina por encima de todo."),
+
+    ("Michael Covel — Trend Following",
+     "Michael Covel ('Trend Following') documentó que seguir tendencias es una ventaja histórica "
+     "robusta: no se predice, se REACCIONA. Se gana en pocas operaciones muy grandes (las grandes "
+     "tendencias) y se pierde poco en muchas pequeñas, con gestión de riesgo estricta.",
+     "El seguidor de tendencia acepta muchas pérdidas pequeñas y algunas ganancias enormes: la "
+     "distribución es asimétrica y la disciplina para cortar pérdidas es esencial. No intenta acertar "
+     "el techo/suelo; entra en la fuerza y deja correr con trailing stop. Funciona en materias, "
+     "índices, forex y cripto en horizontes de swing/posición. Requiere aguantar rachas laterales sin abandonar."),
+
+    ("Meb Faber — el filtro de la media de 200",
+     "Meb Faber ('A Quantitative Approach to Tactical Asset Allocation') mostró que una regla simple "
+     "—estar comprado solo cuando el precio está por encima de su media de ~200 sesiones (10 meses), "
+     "y fuera cuando está por debajo— reduce drásticamente los grandes drawdowns con retornos "
+     "similares.",
+     "Es un FILTRO DE RÉGIMEN: opera al alza solo en 'modo alcista' (sobre la MM200) y evita el "
+     "mercado en 'modo bajista' (bajo la MM200), esquivando lo peor de las caídas. No mejora tanto el "
+     "retorno como REDUCE el riesgo y la volatilidad. Regla mecánica, sin emoción, verificada con "
+     "datos largos. Aplícala como filtro de fondo para saber cuándo el viento sopla a favor."),
+
+    ("Gary Antonacci — Dual Momentum",
+     "Gary Antonacci ('Dual Momentum Investing') combina dos momentums: RELATIVO (elegir el activo "
+     "más fuerte frente a otros) y ABSOLUTO (operarlo solo si su propia tendencia es positiva frente "
+     "a un activo seguro). La combinación mejora el retorno ajustado a riesgo y evita mercados bajistas.",
+     "El momentum relativo selecciona a los líderes; el absoluto (trend filter) te saca cuando "
+     "incluso el líder cae. Así se capturan tendencias fuertes y se evita el desastre en caídas "
+     "generalizadas. Es la base de la rotación entre activos/clases por fuerza. Principio aplicable a "
+     "acciones, índices, materias y cripto: compra lo fuerte, pero solo si su tendencia es al alza."),
+
+    ("Kahneman y Tversky — Teoría Prospectiva",
+     "Daniel Kahneman y Amos Tversky (Teoría Prospectiva, Nobel de Kahneman) demostraron la AVERSIÓN "
+     "A LA PÉRDIDA: perder duele psicológicamente ~2 veces más que el placer de ganar lo mismo. Por "
+     "eso los traders cierran ganancias pronto (miedo) y aguantan pérdidas (esperanza), justo al revés.",
+     "Somos irracionales bajo incertidumbre: sobrevaloramos lo seguro frente a lo probable y "
+     "cambiamos de conducta según cómo se 'enmarca' una decisión. Consecuencia práctica: hay que "
+     "IMPONER reglas (stop, objetivos, dejar correr ganancias) para contrarrestar el instinto. "
+     "'Thinking, Fast and Slow' de Kahneman es lectura de referencia. Entender el sesgo es el primer "
+     "paso para no ser su víctima en cualquier mercado."),
+
+    ("Sesgos cognitivos del trader",
+     "El cerebro nos engaña: sesgo de CONFIRMACIÓN (solo ves lo que apoya tu idea), de RECENCIA "
+     "(sobrepesar lo último), de ANCLAJE (fijarte en un precio de referencia), coste HUNDIDO "
+     "(aguantar por lo ya perdido) y falacia del jugador (creer que 'toca' un giro). Todos dañan la ejecución.",
+     "Contramedidas: un plan escrito y una checklist objetiva; buscar activamente la tesis CONTRARIA; "
+     "un diario para detectar patrones de error; y aceptar que cada operación es independiente (el "
+     "mercado no 'debe' nada). Un sistema mecánico ayuda porque ejecuta sin estos sesgos. Reconocer el "
+     "sesgo en el momento y volver a las reglas es una habilidad clave del trader profesional."),
+
+    ("El efecto disposición",
+     "El 'efecto disposición' (Shefrin y Statman) es la tendencia documentada a VENDER LOS GANADORES "
+     "demasiado pronto y AGUANTAR LOS PERDEDORES demasiado tiempo. Es el error más común y caro, y "
+     "nace de la aversión a la pérdida: cerrar una pérdida 'duele' y se pospone.",
+     "Es lo contrario de lo correcto ('corta pérdidas, deja correr ganancias'). Combatirlo: define el "
+     "stop y el objetivo ANTES de entrar y respétalos; usa trailing stop para dejar correr; nunca "
+     "muevas el stop en contra para no 'realizar' la pérdida. Medir tus operaciones en R revela si "
+     "sufres este efecto. Corregirlo transforma la curva de resultados en cualquier mercado."),
+
+    ("Nassim Taleb — cisnes negros y antifragilidad",
+     "Nassim Taleb ('Fooled by Randomness', 'The Black Swan', 'Antifragile') advierte de los eventos "
+     "raros y extremos ('cisnes negros') que los modelos subestiman (colas gruesas). Lo esencial no es "
+     "predecirlos, sino SOBREVIVIRLOS: evitar la ruina y buscar exposiciones de riesgo asimétrico.",
+     "Claves: nunca te expongas a una pérdida que te saque del juego (riesgo de ruina); prefiere "
+     "payoffs convexos (pierdes poco, puedes ganar mucho); desconfía de la falsa precisión y del "
+     "apalancamiento excesivo. 'Antifrágil' = beneficiarse del desorden. En trading: gestión de riesgo "
+     "que resista shocks (stops, tamaño prudente, no vender volatilidad a lo loco). Sobrevivir primero, optimizar después."),
+
+    ("Burton Malkiel y la eficiencia del mercado",
+     "Burton Malkiel ('A Random Walk Down Wall Street') y Eugene Fama (Hipótesis del Mercado "
+     "Eficiente) sostienen que gran parte del movimiento es aleatorio y difícil de batir de forma "
+     "consistente. Enseña HUMILDAD: la mayoría no supera al mercado y los costes/impuestos restan.",
+     "Aunque existan ineficiencias explotables (de ahí el trading técnico y cuantitativo), conviene "
+     "asumir que el edge es pequeño y frágil: exige evidencia, gestiona costes y desconfía de patrones "
+     "que pueden ser ruido. Esta perspectiva escéptica protege de sobreconfianza y de 'ver' señales "
+     "donde no las hay. Combina técnica con humildad estadística: opera tu ventaja, pero sin creerte infalible."),
+
+    ("Larry Connors — reversión a la media (RSI-2)",
+     "Larry Connors y Cesar Alvarez ('Short Term Trading Strategies That Work') probaron con datos "
+     "estrategias de REVERSIÓN A LA MEDIA de corto plazo, como el RSI de 2 periodos: en mercados sobre "
+     "su media de 200, comprar cuando el RSI(2) cae a valores extremos (<5-10) y salir al rebotar.",
+     "La lógica: en tendencia alcista, los retrocesos bruscos (sobreventa de muy corto plazo) tienden "
+     "a rebotar. Se opera A FAVOR de la tendencia mayor (filtro MM200) comprando el miedo pasajero. "
+     "Es lo opuesto a seguir rupturas: aquí se compra debilidad temporal en un contexto alcista. "
+     "Requiere disciplina y salidas rápidas. Enfoque cuantitativo, medible y aplicable a índices/acciones/cripto."),
+
+    ("Pairs trading y arbitraje estadístico",
+     "El pairs trading (arbitraje estadístico) es MERCADO-NEUTRAL: se opera el diferencial (spread) "
+     "entre dos activos muy correlacionados/cointegrados. Cuando el spread se aleja de su media, se "
+     "vende el fuerte y se compra el débil, apostando a que vuelvan a converger.",
+     "No apuesta a la dirección del mercado sino a la RELACIÓN entre dos activos (dos acciones del "
+     "mismo sector, dos cripto correlacionadas). Requiere que la relación sea estable (cointegración) "
+     "y gestión del riesgo si se rompe. Es una estrategia de reversión a la media relativa, poco "
+     "correlacionada con el mercado general, que diversifica el 'edge'. Concepto cuantitativo clásico y fiable."),
+
+    ("Trend following vs reversión a la media",
+     "Existen dos grandes ventajas (edges) casi opuestas: SEGUIR TENDENCIA (comprar fuerza, vender "
+     "debilidad; gana en mercados direccionales) y REVERSIÓN A LA MEDIA (comprar debilidad, vender "
+     "fuerza; gana en rangos). Aplicar la equivocada al régimen actual pierde dinero.",
+     "El truco es identificar el RÉGIMEN (ADX, MM200, volatilidad) y usar el edge adecuado: "
+     "seguimiento en tendencia fuerte; reversión en rango/baja volatilidad. Muchos sistemas robustos "
+     "combinan ambos con un filtro de régimen. No hay un método único correcto; hay que casar la "
+     "táctica con las condiciones. Esta flexibilidad, con reglas claras, es señal de madurez en cualquier mercado."),
+
+    ("Tipos de órdenes",
+     "Órdenes básicas: de MERCADO (ejecuta ya al mejor precio, con posible slippage), LÍMITE (solo a "
+     "tu precio o mejor, puede no ejecutarse), STOP (se activa al tocar un nivel, para cortar pérdidas "
+     "o romper), STOP-LÍMITE (stop que luego pone un límite) y TRAILING (stop que sigue al precio).",
+     "La OCO ('one cancels other') une objetivo y stop: al ejecutar uno, cancela el otro. Usa límite "
+     "para entrar con precisión y control de coste; mercado cuando la ejecución inmediata importa más "
+     "que el precio exacto. El stop es imprescindible para gestionar riesgo. Elegir bien el tipo de "
+     "orden reduce slippage y ejecuta tu plan tal como lo diseñaste, en cualquier mercado."),
+
+    ("Vigencia de la orden y ejecución",
+     "La 'vigencia' (time in force) define cuánto vive una orden: DÍA (expira al cierre), GTC "
+     "('good till cancelled', hasta cancelar), IOC ('immediate or cancel', ejecuta lo posible ya y "
+     "cancela el resto) y FOK ('fill or kill', todo o nada al instante). Afecta cómo y cuándo entras.",
+     "En mercados poco líquidos, una orden grande a mercado puede tener 'impacto' (mueve el precio en "
+     "tu contra). Fraccionar la orden o usar límites reduce ese impacto. IOC/FOK sirven para no "
+     "quedar con ejecuciones parciales no deseadas. Conocer estos detalles de microestructura mejora "
+     "la calidad de ejecución, sobre todo en scalping y en activos con poca profundidad."),
+
+    ("Apalancamiento y margen",
+     "El apalancamiento permite controlar una posición grande con poco capital (margen). AMPLIFICA "
+     "por igual ganancias Y pérdidas: 10x significa que un movimiento del 10% en contra liquida tu "
+     "margen. El 'margin call' o liquidación cierra la posición forzosamente al agotarse la garantía.",
+     "El apalancamiento es la causa número uno de ruina de traders novatos: convierte un movimiento "
+     "normal en catastrófico. Úsalo con extrema prudencia: el tamaño de la posición debe fijarse por "
+     "el RIESGO (distancia al stop y 1-2% del capital), no por el margen disponible. En cripto y "
+     "forex el apalancamiento alto es tentador y peligroso. Menos apalancamiento = más supervivencia."),
+
+    ("Ratios de rendimiento: Sortino y Calmar",
+     "Además del Sharpe (retorno por unidad de riesgo total), el SORTINO penaliza solo la volatilidad "
+     "a la BAJA (la que duele), y el CALMAR relaciona el retorno anual con el MÁXIMO DRAWDOWN. Miden "
+     "la calidad del rendimiento ajustada al riesgo que de verdad importa.",
+     "Un sistema puede tener buen retorno pero drawdowns insoportables: Calmar lo revela (retorno/"
+     "peor caída). Sortino distingue la volatilidad 'mala' (caídas) de la 'buena' (subidas). Úsalos "
+     "para comparar sistemas/activos con criterio, no solo por la ganancia bruta. Un rendimiento "
+     "estable con drawdown contenido es preferible a uno alto pero errático. Aplican a cualquier estrategia y mercado."),
+
+    ("Volatility targeting y filtro de régimen",
+     "El 'volatility targeting' ajusta el tamaño de posición para mantener CONSTANTE la volatilidad "
+     "del riesgo: cuando el activo (o la cartera) está más volátil, reduces tamaño; cuando está "
+     "tranquilo, lo aumentas. Combinado con un filtro de régimen (MM200) mejora el retorno ajustado a riesgo.",
+     "Sin ajuste, una posición 'normal' arriesga mucho más en épocas volátiles. Dimensionar por "
+     "volatilidad (ATR) normaliza el riesgo en el tiempo y entre activos. Un filtro de régimen "
+     "(operar a favor solo sobre la MM200) evita lo peor de los mercados bajistas. Juntas, dan una "
+     "curva de capital más suave y controlada, principio usado por fondos cuantitativos en todos los mercados."),
+
+    ("Fuentes de datos fiables",
+     "Para datos de calidad usa fuentes primarias: FRED (Reserva Federal de EE. UU.) para macro, las "
+     "webs oficiales de exchanges y de los bancos centrales, TradingView para gráficos, y CoinGecko/"
+     "CoinMarketCap para datos de cripto. Verifica siempre el origen antes de fiarte de una cifra.",
+     "Datos fiables evitan decisiones sobre rumores o cifras manipuladas. FRED ofrece series "
+     "históricas gratuitas (tipos, inflación, empleo). Los exchanges publican precio y volumen "
+     "reales; para cripto, CoinGecko agrega múltiples mercados. Cruza fuentes cuando algo sea "
+     "importante. Un análisis solo es tan bueno como los datos que lo alimentan: prioriza lo oficial y contrastado."),
+
+    ("Análisis on-chain en cripto",
+     "En cripto existe una fuente única: los datos ON-CHAIN (la propia cadena de bloques), provistos "
+     "por plataformas como Glassnode. Métricas como flujos hacia/desde exchanges, direcciones activas, "
+     "SOPR y MVRV muestran qué hacen realmente los tenedores, algo imposible en mercados tradicionales.",
+     "Grandes salidas de monedas desde exchanges suelen indicar acumulación (menos oferta para vender, "
+     "sesgo alcista); grandes entradas, posible presión vendedora. El MVRV compara el precio con el "
+     "coste medio de los tenedores (extremos marcan techos/suelos). El on-chain complementa al análisis "
+     "técnico con la conducta real de la red. Es conocimiento específico y fiable para Bitcoin y cripto."),
+
+    ("Cripto: halving, funding y open interest",
+     "El BTC tiene ciclos ligados al 'halving' (cada ~4 años se reduce a la mitad la emisión), "
+     "históricamente asociados a grandes movimientos. El 'funding rate' de futuros perpetuos y el "
+     "'open interest' (contratos abiertos) revelan el apalancamiento y el sesgo del mercado cripto.",
+     "Funding muy positivo = exceso de largos apalancados (riesgo de purga a la baja); muy negativo = "
+     "exceso de cortos (posible squeeze al alza). Subidas fuertes de open interest con precio plano "
+     "avisan de apalancamiento acumulado y volatilidad inminente (liquidaciones en cascada). Estas "
+     "métricas, junto al on-chain y la dominancia BTC, dan una lectura del riesgo específica y fiable en cripto."),
+
+    ("Griegas de opciones y posicionamiento de dealers",
+     "Aunque no operes opciones, su mercado influye en el subyacente. Las 'griegas' miden sensibilidad: "
+     "delta (dirección), gamma (cambio de delta), theta (decaimiento temporal) y vega (volatilidad). "
+     "El posicionamiento de los 'dealers' (gamma/GEX) y el 'max pain' pueden imantar el precio cerca "
+     "de vencimientos.",
+     "Con gamma positiva, los dealers estabilizan (compran caídas, venden subidas): el precio tiende a "
+     "'pegarse' a niveles; con gamma negativa, amplifican los movimientos (volatilidad). El 'max pain' "
+     "es el precio donde expira sin valor el mayor número de opciones, y suele atraer al subyacente en "
+     "el vencimiento. Es contexto avanzado útil en índices y acciones con mercado de opciones líquido."),
+]
+
 # Todos los lotes y el conjunto completo (para count() y recuperación)
 _BATCHES: dict[int, list[tuple[str, str, str]]] = {
-    1: _BATCH1, 2: _BATCH2, 3: _BATCH3, 4: _BATCH4, 5: _BATCH5, 6: _BATCH6}
+    1: _BATCH1, 2: _BATCH2, 3: _BATCH3, 4: _BATCH4, 5: _BATCH5, 6: _BATCH6, 7: _BATCH7}
 ENTRIES: list[tuple[str, str, str]] = [e for v in sorted(_BATCHES) for e in _BATCHES[v]]
 
 

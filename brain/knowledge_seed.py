@@ -12,7 +12,7 @@ Es idempotente: usa una versión (kb_seed_version en app_settings) para no dupli
 """
 from __future__ import annotations
 
-_SEED_VERSION = 10
+_SEED_VERSION = 11
 _KIND = "fundamento"
 _PREFIX = "Fundamentos de trading"
 
@@ -2242,10 +2242,236 @@ _BATCH10: list[tuple[str, str, str]] = [
      "'parecían' ganadores. Sé honesto con los números."),
 ]
 
+# ---- LOTE 11: casos históricos (crisis/burbujas) como lecciones + glosario ----
+_BATCH11: list[tuple[str, str, str]] = [
+    ("Anatomía de una burbuja",
+     "Charles Kindleberger ('Manias, Panics, and Crashes') describió las fases de toda burbuja: "
+     "DESPLAZAMIENTO (algo nuevo entusiasma), AUGE (sube el crédito y la participación), EUFORIA "
+     "(precios irracionales, 'esta vez es diferente'), toma de beneficios de los listos, y PÁNICO/"
+     "colapso cuando la multitud huye a la vez.",
+     "El patrón se repite en siglos y mercados: apalancamiento creciente, historias que justifican "
+     "cualquier precio, entrada masiva de novatos en el pico y crac brutal. Señales de alerta: "
+     "valoraciones extremas, FOMO generalizado, apalancamiento récord y desprecio del riesgo. Para el "
+     "trader: la euforia es peligrosa aunque el precio suba; protege ganancias, reduce apalancamiento "
+     "y desconfía del 'esta vez es diferente'. Las burbujas terminan siempre."),
+
+    ("Tulipomanía y la burbuja de los Mares del Sur",
+     "La tulipomanía (Holanda, 1637) y la burbuja de los Mares del Sur (1720) son las manías "
+     "especulativas clásicas: precios que se dispararon por pura especulación y crédito, hasta "
+     "colapsar y arruinar a multitudes. Hasta Isaac Newton perdió una fortuna en los Mares del Sur.",
+     "Lección atemporal: la naturaleza humana (codicia, manada, FOMO) no cambia; solo cambian los "
+     "activos de moda. Cuando un precio sube 'porque va a subir' y todos hablan de ello, el riesgo es "
+     "máximo. Newton dijo poder calcular el movimiento de los astros, pero no la locura de la gente. "
+     "Estos episodios recuerdan mantener la cabeza fría, gestionar el riesgo y no confundir una "
+     "manía con una inversión."),
+
+    ("Crash de 1929 y la Gran Depresión",
+     "El crac de octubre de 1929 puso fin a los 'felices años 20': la especulación masiva COMPRANDO "
+     "A MARGEN (con dinero prestado) infló la bolsa; cuando cayó, las llamadas de margen forzaron "
+     "ventas en cascada. Siguió la Gran Depresión, con caídas de ~89% desde el pico y años de ruina.",
+     "Lección principal: el APALANCAMIENTO amplifica el desastre. Comprar a crédito multiplica las "
+     "ganancias en el auge y aniquila el capital en la caída (margin calls forzando ventas que hunden "
+     "más el precio). También muestra que las recuperaciones pueden tardar AÑOS. Gestión de riesgo, "
+     "apalancamiento prudente y no 'apostar la casa' son lecciones nacidas de 1929, válidas hoy en "
+     "cualquier mercado."),
+
+    ("Lunes Negro de 1987",
+     "El 19 de octubre de 1987 el Dow Jones cayó ~22,6% EN UN SOLO DÍA (el peor porcentaje diario de "
+     "la historia), sin una noticia clara que lo justificara. Lo amplificaron el 'program trading' y "
+     "los 'seguros de cartera' (ventas automáticas que se retroalimentaron en cascada).",
+     "Lección: los sistemas automáticos y el apalancamiento pueden crear cascadas de venta que se "
+     "autoalimentan (feedback negativo). Un mercado puede desplomarse sin motivo fundamental evidente, "
+     "solo por dinámica de flujos y pánico. De aquí nacieron los 'circuit breakers'. Para el trader: "
+     "los movimientos extremos ocurren (colas gruesas), los stops pueden ejecutarse muy lejos, y no "
+     "conviene estar sobreapalancado ante lo imprevisible."),
+
+    ("LTCM 1998: apalancamiento y riesgo de cola",
+     "Long-Term Capital Management, un fondo con premios Nobel (Merton, Scholes), usó un "
+     "APALANCAMIENTO enorme confiando en modelos. En 1998, el impago de Rusia disparó correlaciones y "
+     "pérdidas que sus modelos creían 'imposibles'; casi provocó una crisis sistémica y la Fed "
+     "organizó su rescate.",
+     "Lección: la genialidad y los modelos NO salvan del riesgo de cola ni del apalancamiento "
+     "excesivo. En crisis, las correlaciones se van a 1 y lo 'imposible' ocurre. Un edge real puede "
+     "arruinarte si el tamaño/apalancamiento te expone a la ruina en el evento raro. Sobrevivir "
+     "primero: tamaño prudente, sin apalancamiento extremo, y respeto por las colas. La humildad ante "
+     "la incertidumbre es gestión de riesgo."),
+
+    ("Burbuja punto-com (2000)",
+     "A finales de los 90, cualquier empresa 'punto-com' se disparaba sin beneficios ni modelo de "
+     "negocio ('ojos' en vez de ingresos). El Nasdaq alcanzó su pico en marzo de 2000 y luego se "
+     "desplomó ~78% en los años siguientes, arruinando a quienes compraron la euforia en el techo.",
+     "Lección: en la euforia se ignoran los fundamentales y se paga cualquier precio por una historia. "
+     "Muchas empresas quebraron; algunas (Amazon) sobrevivieron tras caer >90%. La tecnología era real, "
+     "pero las VALORACIONES eran insostenibles. Distingue la innovación (buena) de la burbuja de "
+     "precios (peligrosa). Para el trader: la fuerza relativa y la tendencia importan, pero el riesgo "
+     "de comprar en la cima de una manía es de ruina."),
+
+    ("Crisis financiera global de 2008",
+     "La burbuja inmobiliaria de EE. UU. y las hipotecas 'subprime' empaquetadas en productos "
+     "complejos y apalancados provocaron, con la quiebra de Lehman Brothers (septiembre 2008), una "
+     "crisis sistémica: congelación del crédito, caídas de ~50% en bolsa y recesión global.",
+     "Lecciones: el riesgo oculto y el apalancamiento del sistema pueden estallar de golpe; la "
+     "confianza (liquidez) desaparece en un instante; y lo 'seguro' (hipotecas AAA) puede no serlo. "
+     "Los bancos centrales respondieron con rescates y QE. Para el trader: vigila el riesgo "
+     "sistémico y de crédito, no te fíes de la calma aparente, y recuerda que en el pánico casi todo "
+     "cae junto. La gestión de riesgo y la liquidez son la diferencia entre sobrevivir o no."),
+
+    ("Flash Crash de 2010",
+     "El 6 de mayo de 2010, el Dow cayó cerca de 1.000 puntos en MINUTOS y se recuperó casi igual de "
+     "rápido. La liquidez desapareció de golpe (algoritmos retirándose), algunas acciones se operaron "
+     "a céntimos o miles de dólares por instantes. Fue un colapso de MICROESTRUCTURA, no de fundamentales.",
+     "Lección: en momentos de estrés, la liquidez puede evaporarse y los precios saltar de forma "
+     "absurda; los STOPS de mercado se ejecutan a precios terribles (slippage brutal). Por eso, en "
+     "activos o momentos ilíquidos, cuidado con confiar solo en stops de mercado y no colocarlos en "
+     "niveles obvios. Los flash crashes se repiten (mini-versiones en cripto y otros). Prepárate para "
+     "lo extremo con tamaño y órdenes adecuadas."),
+
+    ("Crisis del euro y 'whatever it takes' (2010-2012)",
+     "La crisis de deuda europea (Grecia y periféricos) amenazó la existencia del euro. Los "
+     "rendimientos de la deuda se dispararon y el pánico se extendió. En julio de 2012, Mario Draghi "
+     "(BCE) prometió hacer 'lo que sea necesario' ('whatever it takes') y calmó los mercados casi de inmediato.",
+     "Lección: los BANCOS CENTRALES son actores decisivos; una sola frase creíble puede cambiar la "
+     "tendencia de mercados enteros. Operar contra una intervención masiva de un banco central es "
+     "peligroso ('don't fight the central bank'). La política monetaria y la credibilidad mueven bonos, "
+     "divisas y bolsa. Para el trader: entiende quién tiene el poder de cambiar el juego y no te "
+     "posiciones ciegamente contra él."),
+
+    ("El franco suizo de 2015 (cisne negro de forex)",
+     "El 15 de enero de 2015, el Banco Nacional Suizo ELIMINÓ por sorpresa el suelo de 1,20 en EUR/CHF. "
+     "El franco se disparó ~30% en minutos, con gaps enormes. Muchos traders y varios brokers "
+     "quebraron (saldos negativos imposibles de cubrir): un cisne negro de manual en forex.",
+     "Lecciones: los 'pegs' y suelos ROMPEN, y cuando lo hacen el movimiento es instantáneo y sin "
+     "liquidez (los stops no protegen, hay gaps). El apalancamiento convirtió posiciones normales en "
+     "ruinas y saldos negativos. Reafirma: cuidado con el apalancamiento, con la falsa seguridad de "
+     "niveles 'defendidos', y con el riesgo de contraparte (broker). Lo 'imposible' ocurre; el tamaño "
+     "prudente es tu única defensa real."),
+
+    ("Brexit 2016",
+     "El 23 de junio de 2016, el referéndum del Brexit sorprendió con la victoria del 'Leave'. La "
+     "libra (GBP) se desplomó durante la noche a mínimos de décadas con volatilidad extrema, mientras "
+     "las encuestas y los mercados habían descontado lo contrario. Un evento binario de alto impacto.",
+     "Lección: los eventos políticos BINARIOS (referéndums, elecciones) crean riesgo de gap enorme e "
+     "impredecible; el mercado puede descontar un resultado y equivocarse. Mantener posiciones "
+     "apalancadas de corto plazo sobre estos eventos es una lotería. Lo prudente suele ser reducir "
+     "exposición antes y operar la tendencia YA formada después. La incertidumbre política se traduce "
+     "en volatilidad y saltos; gestiónala con tamaño y prudencia."),
+
+    ("Volmageddon 2018 (colapso del short-vol)",
+     "El 5 de febrero de 2018, un repunte del VIX hizo colapsar los productos que APOSTABAN CONTRA la "
+     "volatilidad (como el ETN 'XIV', que cayó ~96% y se liquidó). Muchos habían vendido volatilidad "
+     "durante años cobrando primas pequeñas... hasta que un día el riesgo de cola los borró.",
+     "Lección clásica de asimetría: vender volatilidad (o cualquier estrategia de 'recoger centavos "
+     "delante de una apisonadora') gana poco y constante hasta la catástrofe. La distribución de "
+     "resultados con cola izquierda gorda arruina. Desconfía de estrategias con muchas ganancias "
+     "pequeñas y una pérdida potencial enorme (como la martingala). Prefiere payoffs convexos y protege "
+     "siempre la cola. La volatilidad reprimida explota."),
+
+    ("Crash del COVID (marzo 2020)",
+     "En febrero-marzo de 2020, la pandemia provocó el desplome más RÁPIDO de la historia: el S&P 500 "
+     "cayó ~34% en unas cinco semanas, con circuit breakers activados varios días. Luego, ante el "
+     "estímulo masivo de la Fed y los gobiernos, el mercado se recuperó con igual velocidad.",
+     "Lecciones: los cracks pueden ser vertiginosos y globales (todo cae junto, la correlación va a 1); "
+     "pero la respuesta de los bancos centrales (liquidez, tipos) puede girar el mercado de golpe. El "
+     "pánico extremo (VIX >80) coincidió con el suelo. Para el trader: gestiona el riesgo antes del "
+     "shock, no vendas en el pánico máximo, y respeta el poder de la liquidez de los bancos centrales "
+     "para cambiar la tendencia. La velocidad de 2020 redefinió lo posible."),
+
+    ("GameStop y las meme stocks (2021)",
+     "En enero de 2021, operadores minoristas coordinados (foros como WallStreetBets) provocaron un "
+     "'short squeeze' en GameStop (GME) y otras acciones muy cortas: el precio se multiplicó, fondos "
+     "cortos sufrieron pérdidas enormes y algunos brokers RESTRINGIERON la compra en pleno frenesí.",
+     "Lecciones: una posición corta muy MASIFICADA es combustible para un squeeze (los cortos "
+     "atrapados compran y disparan el precio); el 'gamma squeeze' de opciones amplifica. El sentimiento "
+     "social y la coordinación minorista pueden mover mercados a corto plazo, pero la mayoría que "
+     "entró tarde perdió cuando reventó. Cuidado con perseguir manías parabólicas y con el "
+     "posicionamiento extremo (contrarian). La liquidez y las reglas del broker importan."),
+
+    ("Colapso de Terra/LUNA y UST (2022)",
+     "En mayo de 2022, la stablecoin ALGORÍTMICA UST (Terra) perdió su paridad con el dólar y su token "
+     "LUNA entró en una espiral de muerte: se hiperinfló hasta casi cero, borrando decenas de miles de "
+     "millones en días. El mecanismo 'reflexivo' que la sostenía se volvió en su contra.",
+     "Lecciones: las stablecoins ALGORÍTMICAS (sin respaldo real sólido) son frágiles y pueden colapsar "
+     "en una espiral reflexiva; rendimientos 'garantizados' altísimos (Anchor pagaba ~20%) son una "
+     "señal de alarma. El contagio arrastró a todo el sector cripto. Verifica el RESPALDO de cualquier "
+     "stablecoin y desconfía de lo que promete rentabilidad imposible. En cripto, el riesgo de "
+     "protocolo/token es tan real como el de mercado."),
+
+    ("Caída de FTX (2022)",
+     "En noviembre de 2022, FTX —el segundo mayor exchange de cripto— quebró en días al descubrirse "
+     "que había USADO los fondos de sus clientes. Millones de usuarios perdieron acceso a su dinero. "
+     "Fue un caso de FRAUDE y mala gestión, no de mercado, con enorme contagio de confianza.",
+     "Lección capital: el riesgo de CONTRAPARTE/custodia es real; 'not your keys, not your coins'. Un "
+     "exchange grande y 'respetable' puede ser insolvente o fraudulento. Mitigación: usa plataformas "
+     "reguladas y solventes, no dejes más fondos de los necesarios, y para el largo plazo considera la "
+     "autocustodia. Ninguna estrategia te protege si pierdes los fondos por el colapso del custodio. "
+     "La seguridad de dónde guardas el dinero es parte de la gestión de riesgo."),
+
+    ("Reflexividad (George Soros)",
+     "George Soros formuló la REFLEXIVIDAD: los precios no solo reflejan los fundamentales, también los "
+     "INFLUYEN, en un bucle de retroalimentación. Precios al alza mejoran el sentimiento y el acceso a "
+     "crédito, que suben más los precios... hasta que el bucle se invierte y crea el crac. Explica auges y burbujas.",
+     "La reflexividad rompe la idea de mercados perfectamente eficientes: las percepciones cambian la "
+     "realidad, que cambia las percepciones. Para el trader: en tendencias fuertes, el bucle "
+     "reflexivo puede llevar los precios más lejos y más tiempo de lo 'razonable' (no luches contra "
+     "la tendencia solo por valoración); pero cuando el bucle se agota, el giro es violento. Reconocer "
+     "en qué fase del bucle estamos ayuda a operar auges y colapsos con respeto."),
+
+    ("Lecciones transversales de las crisis",
+     "Todas las crisis comparten patrones: APALANCAMIENTO excesivo, exceso de confianza, liquidez que "
+     "desaparece justo cuando se necesita, correlaciones que se van a 1, y la multitud entrando en el "
+     "pico y huyendo en el suelo. 'La historia no se repite, pero rima' (atribuido a Mark Twain).",
+     "Conclusiones para operar: (1) el apalancamiento es la causa número uno de ruina; (2) gestiona "
+     "SIEMPRE el riesgo, la calma engaña; (3) la diversificación falla en el pánico, ten refugios/"
+     "efectivo; (4) los stops pueden fallar por gaps: el tamaño prudente es la defensa real; (5) no "
+     "sigas a la manada en los extremos. Estudiar las crisis pasadas prepara para las futuras, aunque "
+     "cambien de disfraz. Sobrevivir es ganar."),
+
+    ("Glosario esencial: posiciones y órdenes",
+     "Términos base: LARGO (compras esperando que suba), CORTO (vendes en descubierto esperando que "
+     "baje), STOP-LOSS (orden que cierra para limitar pérdidas), TAKE-PROFIT (cierra en ganancia), "
+     "SPREAD (diferencia compra/venta), SLIPPAGE (ejecución a peor precio), DRAWDOWN (caída desde un máximo).",
+     "Más términos: 'liquidar' (cerrar una posición), 'apalancamiento' (operar con más de tu capital), "
+     "'margen' (garantía requerida), 'exposición' (cuánto riesgo tienes abierto), 'volatilidad' "
+     "(magnitud de las oscilaciones). Dominar el vocabulario evita errores costosos por malentendidos. "
+     "Un largo gana si sube; un corto gana si baja. El stop-loss es imprescindible en toda operación. "
+     "Estos conceptos son la base común de todos los mercados."),
+
+    ("Glosario esencial: forex y apalancamiento",
+     "En forex: un PIP es el menor movimiento estándar de un par (habitualmente el 4º decimal, o el 2º "
+     "en pares con yen). Un LOTE estándar son 100.000 unidades (mini 10.000, micro 1.000). El "
+     "APALANCAMIENTO (p.ej. 1:30, 1:100) permite controlar una posición grande con poco MARGEN (garantía).",
+     "El valor de un pip depende del tamaño de la posición: en un lote estándar, ~10 unidades de la "
+     "divisa cotizada por pip. El apalancamiento amplifica ganancias y pérdidas por igual: 1:100 "
+     "significa que un 1% en contra puede borrar tu margen. Calcula el tamaño por el RIESGO (distancia "
+     "al stop y 1-2% del capital), no por el margen disponible. Entender pips, lotes y margen es "
+     "imprescindible para dimensionar y gestionar el riesgo en forex."),
+
+    ("Mercado alcista vs bajista (definiciones)",
+     "Un mercado ALCISTA ('bull') es una tendencia sostenida al alza (suele definirse por una subida "
+     ">20% desde mínimos); uno BAJISTA ('bear') es una caída sostenida (>20% desde máximos). Hay "
+     "tendencias SECULARES (años/décadas) y CÍCLICAS (meses/pocos años) dentro de ellas.",
+     "En mercado alcista, las estrategias al alza (comprar retrocesos, seguir tendencia) funcionan "
+     "mejor; en bajista, los rebotes son para vender y las caídas más rápidas. Reconocer el RÉGIMEN "
+     "(alcista/bajista/lateral) con medias largas y estructura evita aplicar la táctica equivocada. "
+     "Los 'rallies de mercado bajista' (rebotes fuertes dentro de una tendencia bajista) engañan a "
+     "muchos. Alinear la operativa con el mercado mayor es de las decisiones más rentables."),
+
+    ("Liquidez y profundidad: por qué importan",
+     "La LIQUIDEZ es la facilidad de comprar/vender sin mover el precio; la PROFUNDIDAD es cuánto "
+     "volumen aguanta cada nivel del libro. Un activo líquido (majors de forex, grandes índices, BTC) "
+     "tiene spreads estrechos y ejecución fiable; uno ilíquido (small caps, altcoins) da spreads "
+     "amplios, slippage y saltos.",
+     "Operar en activos y horas líquidas reduce costes y sorpresas; en ilíquidos, una orden grande "
+     "mueve el precio en tu contra y los stops se ejecutan lejos. La liquidez DESAPARECE en crisis "
+     "(flash crashes). Prefiere mercados profundos para operar con tamaño; en ilíquidos, reduce tamaño "
+     "y usa límites. La liquidez es un factor de riesgo tan importante como la dirección: sin ella, "
+     "incluso una buena señal se ejecuta mal."),
+]
+
 # Todos los lotes y el conjunto completo (para count() y recuperación)
 _BATCHES: dict[int, list[tuple[str, str, str]]] = {
-    1: _BATCH1, 2: _BATCH2, 3: _BATCH3, 4: _BATCH4, 5: _BATCH5,
-    6: _BATCH6, 7: _BATCH7, 8: _BATCH8, 9: _BATCH9, 10: _BATCH10}
+    1: _BATCH1, 2: _BATCH2, 3: _BATCH3, 4: _BATCH4, 5: _BATCH5, 6: _BATCH6,
+    7: _BATCH7, 8: _BATCH8, 9: _BATCH9, 10: _BATCH10, 11: _BATCH11}
 ENTRIES: list[tuple[str, str, str]] = [e for v in sorted(_BATCHES) for e in _BATCHES[v]]
 
 

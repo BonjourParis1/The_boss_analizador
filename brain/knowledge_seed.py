@@ -12,7 +12,7 @@ Es idempotente: usa una versión (kb_seed_version en app_settings) para no dupli
 """
 from __future__ import annotations
 
-_SEED_VERSION = 8
+_SEED_VERSION = 9
 _KIND = "fundamento"
 _PREFIX = "Fundamentos de trading"
 
@@ -1809,10 +1809,217 @@ _BATCH8: list[tuple[str, str, str]] = [
      "gatillo > gestión) calibrado a su volatilidad y horario."),
 ]
 
+# ---- LOTE 9: microestructura/subastas, estadística, gestión de crisis e instrumentos ----
+_BATCH9: list[tuple[str, str, str]] = [
+    ("Teoría de subastas y Market Profile",
+     "Peter Steidlmayer creó el Market Profile / Teoría de Subastas: el mercado es una SUBASTA "
+     "continua que busca precios donde se negocia volumen (equilibrio) y rechaza donde no. Conceptos: "
+     "TPO (tiempo-precio), balance inicial (rango de la primera hora), área de valor (~70% del "
+     "volumen) y POC (precio de control).",
+     "El precio pasa de FASES DE EQUILIBRIO (rango, área de valor amplia) a DESEQUILIBRIO (tendencia, "
+     "que crea 'single prints' y extensiones del rango). Operar dentro del área de valor favorece la "
+     "reversión a la media; la ruptura del balance inicial con aceptación favorece la tendencia. Es un "
+     "marco para entender DÓNDE el mercado acepta o rechaza precio, complementario a soporte/resistencia y VWAP."),
+
+    ("Subastas de apertura y cierre",
+     "Las bolsas casan órdenes en SUBASTAS de apertura y cierre a un precio único de equilibrio. La "
+     "subasta de CIERRE concentra un volumen enorme (fondos e índices ejecutan ahí) y fija el precio "
+     "oficial del día; la de APERTURA descuenta las noticias nocturnas y suele generar volatilidad y gaps.",
+     "La primera hora tras la apertura marca el 'balance inicial' y suele ser la más volátil y "
+     "direccional (útil para ORB). El cierre (última media hora) mueve mucho volumen por rebalanceos y "
+     "'market on close'. Conocer estos momentos ayuda a elegir cuándo operar (aperturas para "
+     "rupturas) y a evitar el ruido de las subastas si no es tu estrategia. Aplica a acciones e índices."),
+
+    ("Proveedores y tomadores de liquidez (maker/taker)",
+     "En cada operación hay un 'maker' (pone liquidez con órdenes LÍMITE en el libro) y un 'taker' "
+     "(la consume con órdenes de MERCADO). El taker paga el spread y suele pagar más comisión; el "
+     "maker cobra o paga menos. El spread bid-ask es el coste inmediato de entrar y salir.",
+     "En scalping y alta frecuencia, ser maker (límites) reduce costes pero arriesga no ejecutar; ser "
+     "taker garantiza ejecución pero paga spread + posible slippage. En activos ilíquidos el spread es "
+     "ancho y castiga. Elegir el tipo de orden según prisa vs coste, y operar en horas líquidas, "
+     "protege tus resultados. La microestructura (quién provee liquidez) explica parte del movimiento intradía."),
+
+    ("La distribución de los retornos no es normal",
+     "Los retornos de los mercados NO siguen una campana de Gauss: tienen COLAS GRUESAS (curtosis "
+     "alta) y sesgo. Los movimientos extremos ocurren mucho más a menudo de lo que predice el modelo "
+     "normal, y las caídas suelen ser más bruscas que las subidas (sesgo negativo en acciones).",
+     "Consecuencia práctica: los modelos que asumen normalidad SUBESTIMAN el riesgo de eventos "
+     "extremos (crashes). Por eso stops, tamaño prudente y evitar apalancamiento excesivo son vitales: "
+     "el 'evento de 6 sigma' que 'no debería pasar nunca' pasa. Planifica para las colas, no para el "
+     "promedio. La volatilidad además se agrupa: las grandes sacudidas vienen en tandas."),
+
+    ("Significancia estadística y tamaño de muestra",
+     "Una estrategia necesita una MUESTRA suficiente para saber si su ventaja es real o suerte. Con "
+     "pocas operaciones, cualquier resultado (bueno o malo) puede ser azar. La ley de los grandes "
+     "números dice que solo con muchas repeticiones la media converge a la esperanza real del sistema.",
+     "Juzgar un sistema por 10 operaciones es engañoso; se necesitan decenas o cientos para tener "
+     "confianza estadística. Igual que no cambias de sistema por 3 pérdidas seguidas (normales), no te "
+     "enamoras por 3 aciertos. Mide con muestra amplia, intervalos de confianza y fuera de muestra. "
+     "Este sistema muestra la precisión con el número de operaciones evaluadas justo por esto: sin muestra, no hay conclusión."),
+
+    ("Sesgo de minería de datos (data mining)",
+     "Si pruebas MIL combinaciones de indicadores/parámetros, algunas 'funcionarán' de maravilla en el "
+     "pasado solo por AZAR (multiple testing / p-hacking). Ese brillo no se repite en vivo. Es la "
+     "trampa más común del backtesting y la razón de que muchos 'sistemas ganadores' fracasen al operar.",
+     "Defensas: parte de una HIPÓTESIS con lógica (no busques a ciegas), usa pocos parámetros, valida "
+     "fuera de muestra y con walk-forward, y desconfía de resultados demasiado perfectos. Cuantas más "
+     "cosas pruebas, más probable es encontrar un falso positivo. La robustez (funcionar con reglas "
+     "simples en datos no vistos) importa más que optimizar el pasado. Honestidad estadística ante todo."),
+
+    ("Volatilidad: agrupamiento y persistencia",
+     "La volatilidad se AGRUPA (volatility clustering): a días tranquilos siguen días tranquilos, y a "
+     "sacudidas fuertes siguen más sacudidas. Es persistente y predecible en parte (modelos GARCH), "
+     "aunque la DIRECCIÓN del precio no lo sea. La volatilidad sube en las caídas y baja en las subidas lentas.",
+     "Uso práctico: tras un pico de volatilidad, espera más volatilidad (amplía stops, reduce tamaño); "
+     "tras compresión prolongada, prepárate para una expansión (squeeze). Dimensionar por volatilidad "
+     "(ATR / volatility targeting) normaliza el riesgo en el tiempo. Saber que 'la calma engendra "
+     "calma y la tormenta, tormenta' ayuda a gestionar el riesgo en cualquier mercado."),
+
+    ("Value at Risk (VaR) y Expected Shortfall",
+     "El VaR estima la pérdida máxima esperada con cierta probabilidad en un horizonte (p.ej. 'con "
+     "95% de confianza no perderé más de X en un día'). El Expected Shortfall (CVaR) mide la pérdida "
+     "MEDIA cuando se supera el VaR: describe mejor la severidad de las COLAS que el VaR solo.",
+     "Advertencia (Taleb): el VaR puede dar falsa seguridad porque ignora cuán MALO es el peor caso más "
+     "allá del umbral, y asume distribuciones que subestiman las colas. Úsalo como referencia de riesgo, "
+     "no como garantía. Complementa con pruebas de estrés (¿qué pasa en un −20%?) y con el CVaR. La "
+     "gestión de riesgo debe preparar para el escenario extremo, no solo para el 95% normal."),
+
+    ("Drawdown y tiempo bajo el agua",
+     "El drawdown es la caída desde un máximo de capital hasta el siguiente mínimo; el 'tiempo bajo el "
+     "agua' es cuánto tardas en recuperar ese máximo. Ambos miden el DOLOR real de una estrategia: un "
+     "sistema puede ser rentable pero con drawdowns y periodos de recuperación insoportables.",
+     "La recuperación es asimétrica (perder 50% exige +100%). Conocer el drawdown máximo histórico y "
+     "el tiempo de recuperación prepara psicológicamente y evita abandonar el sistema en su peor "
+     "momento (que suele preceder a la recuperación). El ratio Calmar (retorno/drawdown) resume esto. "
+     "Controlar el drawdown con tamaño y filtros de régimen es clave para la supervivencia y la constancia."),
+
+    ("Probabilidad condicional y pensamiento bayesiano",
+     "El trader razona con probabilidades CONDICIONALES: 'dado A (una señal, un contexto), ¿cuál es la "
+     "probabilidad de B (que suba)?'. El pensamiento bayesiano ACTUALIZA esa probabilidad con cada "
+     "nueva evidencia (confluencia, confirmación, resultado), partiendo de una tasa base honesta.",
+     "Ejemplo: la probabilidad base de una ruptura puede ser modesta; añade volumen alto y tendencia a "
+     "favor (nueva evidencia) y la probabilidad sube; añade una noticia adversa y baja. No se busca "
+     "certeza, sino MEJORAR la probabilidad con factores independientes (confluencia). Cuidado con la "
+     "falacia de la tasa base (ignorar la probabilidad de partida). Pensar en condicionales y actualizar es el núcleo del análisis probabilístico."),
+
+    ("Gestión de crisis y flash crashes",
+     "En crisis y 'flash crashes' la liquidez DESAPARECE de golpe: el precio salta, los spreads se "
+     "disparan y los stops se ejecutan muy lejos (slippage brutal). Ejemplos: flash crash de 2010, "
+     "sacudidas de marzo 2020, colapsos cripto. Prepararse para lo extremo es parte de operar.",
+     "Medidas: reduce apalancamiento y tamaño ANTES de eventos de riesgo; usa órdenes límite (no "
+     "confíes solo en stops de mercado en momentos ilíquidos); no coloques stops en el nivel 'obvio' "
+     "donde todos los tienen; ten liquidez/coberturas. En una cascada de liquidaciones (cripto), el "
+     "movimiento se autoalimenta. Sobrevivir a la crisis importa más que exprimir el último punto: protege el capital."),
+
+    ("Interruptores del mercado (circuit breakers)",
+     "Las bolsas tienen 'circuit breakers' que HALTAN la negociación ante caídas extremas (en el S&P "
+     "500, umbrales de −7%, −13% y −20% detienen el mercado por minutos o el día). Sirven para frenar "
+     "el pánico y restaurar orden. Algunos futuros y cripto tienen límites o pausas similares.",
+     "Implicaciones: durante un halt no puedes operar ni ajustar posiciones (riesgo si estás "
+     "apalancado). Tras la reapertura suele haber volatilidad. En forex (descentralizado) no hay "
+     "circuit breakers, pero sí baja liquidez en shocks. Conocer estos mecanismos evita sorpresas y "
+     "refuerza por qué no conviene ir sobreapalancado en momentos de estrés extremo del mercado."),
+
+    ("Contagio: las correlaciones tienden a 1",
+     "En crisis, la DIVERSIFICACIÓN falla justo cuando más la necesitas: activos normalmente poco "
+     "correlacionados caen todos juntos ('todo se vuelve 1'). El contagio y la búsqueda de liquidez "
+     "hacen que se venda lo que se puede, no solo lo débil. El único refugio suele ser el efectivo, el dólar o los bonos.",
+     "Por eso el control del riesgo AGREGADO importa: en un shock, varias posiciones 'diversificadas' "
+     "pueden perder a la vez. Ten en cuenta la correlación en estrés (no la de tiempos tranquilos), "
+     "reduce exposición ante eventos de riesgo y considera coberturas o efectivo. La verdadera "
+     "diversificación se prueba en la crisis, no en la calma. Planifica para el escenario de correlación extrema."),
+
+    ("Cobertura de cola (tail hedging)",
+     "La cobertura de cola protege la cartera de eventos extremos (crashes) con exposiciones que ganan "
+     "MUCHO cuando todo cae: puts fuera de dinero, posiciones en oro/dólar/bonos, o efectivo. Tiene un "
+     "coste continuo (como un seguro), pero evita la ruina en el cisne negro (idea de Taleb).",
+     "El objetivo no es ganar con la cobertura sino SOBREVIVIR y poder comprar barato tras el pánico "
+     "(convexidad: pierdes poco de forma continua, ganas mucho en el shock). No sobre-cubrirse (drena "
+     "retorno) ni infra-cubrirse (te expone a la ruina). Para el minorista, la 'cobertura' más simple "
+     "es reducir tamaño/apalancamiento y mantener efectivo ante incertidumbre. Preservar capital habilita el compounding futuro."),
+
+    ("Riesgo de contraparte y custodia (cripto)",
+     "Más allá del mercado, existe el riesgo de CONTRAPARTE: que el bróker o exchange quiebre, congele "
+     "fondos o sea fraudulento (caso FTX). En cripto rige 'not your keys, not your coins': si no "
+     "custodias tú las claves, dependes de la solvencia y honestidad del exchange.",
+     "Mitigación: usa plataformas REGULADAS y solventes, no dejes más fondos de los necesarios en el "
+     "exchange, y en cripto considera la autocustodia para el largo plazo. Diversifica el riesgo de "
+     "plataforma. El mejor análisis técnico no sirve si pierdes los fondos por un colapso del "
+     "custodio. La seguridad operativa (dónde y con quién operas) es parte de la gestión de riesgo integral."),
+
+    ("Stablecoins y riesgo de 'depeg'",
+     "Las stablecoins (USDT, USDC…) buscan mantener 1:1 con el dólar y son la 'liquidez' del ecosistema "
+     "cripto. Pero pueden PERDER LA PARIDAD ('depeg') si su respaldo es dudoso o hay pánico: el colapso "
+     "de UST/Terra (2022) borró miles de millones; USDC sufrió un depeg temporal por exposición bancaria.",
+     "No todas son iguales: las respaldadas por efectivo/bonos de corto plazo y auditadas son más "
+     "fiables que las algorítmicas (que han fracasado). Un depeg de la stablecoin que usas afecta a "
+     "todas tus posiciones y a la liquidez. Conocer el respaldo y el riesgo de cada stablecoin es "
+     "parte del análisis de riesgo en cripto. La 'estabilidad' no está garantizada."),
+
+    ("Instrumentos: spot, futuros, CFD y opciones",
+     "Se puede operar un mismo activo con distintos instrumentos: SPOT (posees el activo), FUTUROS "
+     "(apalancados, con vencimiento y curva), CFD (contrato por diferencia, OTC del bróker, con coste "
+     "de financiación nocturna) y OPCIONES (derecho, no obligación; con griegas y vencimiento). Cada uno "
+     "tiene costes y riesgos distintos.",
+     "Los futuros y CFD ofrecen apalancamiento (y su peligro) y costes de rollover/swap; las opciones "
+     "permiten estrategias no lineales y cobertura. El spot es el más simple y sin vencimiento. Elige "
+     "el instrumento según tu horizonte, coste y necesidad de apalancamiento. Entender la mecánica "
+     "(financiación, vencimiento, contraparte) evita sorpresas que erosionan el resultado."),
+
+    ("Brokers regulados y protección del cliente",
+     "Operar con un bróker REGULADO (por una autoridad seria) aporta protección: fondos segregados de "
+     "los del bróker, supervisión, y a veces esquemas de compensación. Un bróker no regulado o en "
+     "paraísos opacos añade riesgo de fraude, manipulación de precios o impago de retiros.",
+     "Antes de depositar, verifica la licencia en el regulador correspondiente, lee opiniones sobre "
+     "RETIROS (no solo depósitos) y desconfía de bonos agresivos o presión para operar. La seguridad de "
+     "tu dinero es tan importante como tu estrategia: un gran sistema no sirve con un bróker que no te "
+     "paga. Elegir bien la plataforma es la base de una operativa profesional y segura."),
+
+    ("Opciones binarias: riesgos y conflicto de interés",
+     "Las opciones binarias (pago fijo si aciertas dirección/tiempo) tienen desventajas ESTRUCTURALES: "
+     "el payout es <100% (necesitas ganar >~54% solo para empatar) y muchos brokers OTC son la "
+     "CONTRAPARTE de tu operación (ganan cuando pierdes), un conflicto de interés. Varios reguladores "
+     "(p.ej. la ESMA en la UE) las restringieron o prohibieron para minoristas.",
+     "Trátalas como producto de ALTO RIESGO: opera solo con plataformas serias, con gestión estricta, "
+     "sin martingala, y siendo consciente de la ventaja de la casa. Prioriza la calidad de la señal y "
+     "el punto de equilibrio del payout. Este sistema busca darte una ventaja probabilística real, pero "
+     "ninguna estrategia elimina el riesgo estructural: opera con honestidad sobre las probabilidades y protege tu capital."),
+
+    ("Sentimiento minorista y posicionamiento",
+     "El posicionamiento del público minorista suele ser un indicador CONTRARIAN en extremos: cuando la "
+     "gran mayoría de traders retail está en una dirección, el mercado a menudo hace lo contrario "
+     "(barre esa liquidez). Algunos brokers publican el % de clientes largos/cortos; el COT muestra a "
+     "los grandes.",
+     "Ejemplo: si el 85% de retail está largo en un par, hay mucha liquidez de stops debajo y sesgo a "
+     "una caída que los barra. No es timing exacto, sino contexto: en extremos de sentimiento, "
+     "prepárate para reversiones. Combina el sentimiento (retail contrarian, COT de grandes) con la "
+     "estructura técnica. 'Cuando todos piensan igual, casi nadie está pensando': úsalo como filtro de fondo."),
+
+    ("Playbook: Petróleo (WTI/Brent)",
+     "El petróleo (WTI, Brent) es muy volátil y se rige por OFERTA/DEMANDA: OPEP+, inventarios "
+     "semanales de la EIA, crecimiento global, dólar y geopolítica. Reacciona con fuerza a titulares y "
+     "tiene estacionalidad (temporada de conducción, invierno). Respeta niveles técnicos muy vigilados.",
+     "Plan con el crudo: marca el dato de inventarios de la EIA y NO operes en el minuto del dato; "
+     "sigue el sesgo de la OPEP+ (recortes = alcista) y del dólar (fuerte = bajista); usa stops AMPLIOS "
+     "por su alto ATR y tamaño reducido. Vigila la geopolítica de zonas productoras (dispara "
+     "volatilidad) y la curva de futuros (contango/backwardation) si operas ETFs. Opera rupturas y "
+     "rebotes en niveles claros con confirmación."),
+
+    ("Playbook: Nasdaq y tecnología",
+     "El Nasdaq 100 (QQQ) y las tecnológicas (Apple, Nvidia, Tesla) son más VOLÁTILES y sensibles a los "
+     "TIPOS de interés que el mercado amplio: subidas de tipos/rendimientos suelen presionar al "
+     "'growth'. Gran actividad en la apertura de Wall Street; el VIX y los bonos marcan el tono de riesgo.",
+     "Plan con Nasdaq/tech: alinéate con la tendencia del índice y con el entorno de tipos (dovish "
+     "favorece tech; hawkish la presiona); usa la apertura para rupturas (ORB) y vigila el VIX. En "
+     "acciones concretas, cuidado con los EARNINGS (gaps enormes) y opera los LÍDERES con fuerza "
+     "relativa. La beta alta amplifica los movimientos del índice: ajusta el tamaño. Confirmación de "
+     "volumen en rupturas de bases (taza con asa, CAN SLIM)."),
+]
+
 # Todos los lotes y el conjunto completo (para count() y recuperación)
 _BATCHES: dict[int, list[tuple[str, str, str]]] = {
     1: _BATCH1, 2: _BATCH2, 3: _BATCH3, 4: _BATCH4, 5: _BATCH5,
-    6: _BATCH6, 7: _BATCH7, 8: _BATCH8}
+    6: _BATCH6, 7: _BATCH7, 8: _BATCH8, 9: _BATCH9}
 ENTRIES: list[tuple[str, str, str]] = [e for v in sorted(_BATCHES) for e in _BATCHES[v]]
 
 

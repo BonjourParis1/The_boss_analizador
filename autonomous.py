@@ -197,6 +197,15 @@ def _scan_cycle(stop_event: threading.Event, min_conf: float, timeframe: str) ->
     for s in _scan_targets():
         if stop_event.is_set():
             break
+        # Salta los mercados CERRADOS (forex/acciones fin de semana o fuera de horario):
+        # no gasta cuota de datos y se enfoca en lo que está abierto (p.ej. cripto 24/7).
+        if _S.session_filter:
+            try:
+                from analysis import sessions as _ss
+                if not _ss.session_state(s).get("open", True):
+                    continue
+            except Exception:
+                pass
         try:
             df = compute_all(fetch_with_retry(s, interval=timeframe, limit=150))
             sig = analyze(s.key, df, candles=read_candles(df))

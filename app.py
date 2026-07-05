@@ -80,12 +80,29 @@ _inject_watermark()
 
 
 # --------------------------- Cache de datos --------------------------------
-# TTL de 15s: las velas se recargan como mucho cada 15s (protege APIs gratuitas
-# como Twelve Data 8/min); el movimiento "en vivo" lo da el tick de la última vela.
+# Datos de mercado con caché en DOS niveles para que TODOS los mercados funcionen igual
+# sin agotar las APIs gratuitas: cripto (Binance, 24/7 e ilimitado) recarga cada 15s; y
+# forex/acciones/índices/materias (Twelve Data 8/min) recargan cada 90s para no quemar la
+# cuota (por eso antes fallaban los datos, los niveles y las señales en forex).
 @st.cache_data(show_spinner=False, ttl=15)
+def _load_market_fast(symbol_key: str, interval: str, limit: int):
+    return compute_all(fetch_with_retry(SYMBOLS_BY_KEY[symbol_key], interval=interval, limit=limit))
+
+
+@st.cache_data(show_spinner=False, ttl=90)
+def _load_market_slow(symbol_key: str, interval: str, limit: int):
+    return compute_all(fetch_with_retry(SYMBOLS_BY_KEY[symbol_key], interval=interval, limit=limit))
+
+
 def load_market(symbol_key: str, interval: str, limit: int):
-    df = fetch_with_retry(SYMBOLS_BY_KEY[symbol_key], interval=interval, limit=limit)
-    return compute_all(df)
+    if SYMBOLS_BY_KEY[symbol_key].type == "cripto":
+        return _load_market_fast(symbol_key, interval, limit)
+    return _load_market_slow(symbol_key, interval, limit)
+
+
+def _clear_market_cache():
+    _load_market_fast.clear()
+    _load_market_slow.clear()
 
 
 @st.cache_data(show_spinner=False, ttl=300)  # noticias: refresco cada 5 min
@@ -926,6 +943,17 @@ def render_strip():
     sk = st.session_state["symbol_key"]
     symbol = SYMBOLS_BY_KEY[sk]
     duration = st.session_state.get("duration", "1m")
+    # Aviso claro cuando el mercado está CERRADO (p.ej. forex/acciones en fin de semana):
+    # no es un fallo; simplemente no cotiza y no se puede operar hasta que abra.
+    try:
+        from analysis import sessions as _ss0
+        _sess0 = _ss0.session_state(symbol)
+        if not _sess0.get("open", True):
+            st.warning(f"⏸️ **{symbol.label}: {_sess0['note']}.** No cotiza ahora, así que "
+                       f"no hay señales ni operaciones hasta que abra. Mientras tanto, el "
+                       f"sistema opera y aprende con los mercados abiertos (p.ej. cripto 24/7).")
+    except Exception:
+        pass
     digest = load_news(sk)
     social = _social_cached(sk)
     # Sentimiento combinado (noticias + social) que SÍ influye en el plan
@@ -1484,7 +1512,7 @@ with tab_live:
     else:
         if not is_realtime(_symbol):
             if st.button("🔄 Actualizar"):
-                load_market.clear()
+                _clear_market_cache()
             _chart_refresh = None
         elif _live:
             _seconds = _ctype in ("Velas 5s", "Velas 30s", "Línea en vivo")
